@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Permintaan DOF</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <span class="header-icon">📊</span>
+                <h1>Data Permintaan DOF</h1>
+                <button id="logoutBtn" class="logout-btn" title="Logout">🚪</button>
+            </div>
+        </header>
+
+        <div class="cards-grid">
+            <a href="permintaan/permintaan.html" class="card-link">
+                <div class="menu-card active">
+                    <div class="card-icon">📝</div>
+                    <h2>Permintaan</h2>
+                    <p>Lihat data permintaan</p>
+                </div>
+            </a>
+
+            <div class="card-link backdate-card" id="backdateCard">
+                <div class="menu-card active">
+                    <div class="card-icon">📅</div>
+                    <h2>Backdate</h2>
+                    <p>Lihat data backdate</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup untuk Backdate Options -->
+    <div id="backdatePopup" class="backdate-popup">
+        <div class="backdate-popup-content">
+            <span class="backdate-close-btn">&times;</span>
+            <h2>DATA BACKDATE</h2>
+            <div class="backdate-options">
+                <a href="backdate/backdate.html" class="backdate-option">
+                    <div class="option-icon">📊</div>
+                    <h3>Data Permintaan Backdate</h3>
+                    <p>Akses tabel data backdate</p>
+                </a>
+                <a href="backdate/surat-backdate.html" class="backdate-option">
+                    <div class="option-icon">📄</div>
+                    <h3>Data Surat Yang Backdate</h3>
+                    <p>Lihat daftar surat backdate</p>
+                </a>
+                <a href="#" id="googleFormLink" class="backdate-option" target="_blank">
+                    <div class="option-icon">📝</div>
+                    <h3>Input Data Backdate</h3>
+                    <p>Buka form pengisian backdate</p>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
