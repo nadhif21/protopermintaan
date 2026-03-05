@@ -554,30 +554,36 @@ tbody td {
     margin-bottom: 8px;
 }
 
-.save-status-btn {
-    padding: 10px 24px;
-    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+.save-status-btn,
+.save-flag-btn {
+    padding: 12px 24px;
+    background: #4caf50;
     color: white;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.save-status-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+.save-status-btn:hover:not(:disabled),
+.save-flag-btn:hover:not(:disabled) {
+    background: #45a049;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
 }
 
-.save-status-btn:active:not(:disabled) {
-    transform: translateY(0);
+.save-status-btn:active:not(:disabled),
+.save-flag-btn:active:not(:disabled) {
+    background: #3d8b40;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .save-status-btn:disabled,
-.save-status-btn.disabled {
+.save-status-btn.disabled,
+.save-flag-btn:disabled,
+.save-flag-btn.disabled {
     opacity: 0.5;
     cursor: not-allowed;
     background: #9e9e9e;
@@ -585,8 +591,48 @@ tbody td {
 }
 
 .save-status-btn:disabled:hover,
-.save-status-btn.disabled:hover {
-    transform: none;
+.save-status-btn.disabled:hover,
+.save-flag-btn:disabled:hover,
+.save-flag-btn.disabled:hover {
+    background: #9e9e9e;
+    box-shadow: none;
+}
+
+.whatsapp-btn {
+    padding: 12px 24px;
+    background: #25d366;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.whatsapp-btn:hover:not(:disabled) {
+    background: #20ba5a;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.whatsapp-btn:active:not(:disabled) {
+    background: #1da851;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.whatsapp-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #9e9e9e;
+    box-shadow: none;
+}
+
+.whatsapp-btn:disabled:hover {
+    background: #9e9e9e;
     box-shadow: none;
 }
 

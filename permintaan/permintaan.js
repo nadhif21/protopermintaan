@@ -936,6 +936,27 @@ function showDetail(rowId) {
         statusSelect.value = 'Open';
     }
     
+    // Jika sudah ditolak dan status adalah Cancelled, nonaktifkan status select
+    // dan hanya izinkan nilai Cancelled
+    if (isRejected && currentStatus === 'Cancelled') {
+        statusSelect.disabled = true;
+        statusSelect.value = 'Cancelled';
+        // Hapus semua opsi kecuali Cancelled
+        const options = statusSelect.querySelectorAll('option');
+        options.forEach(option => {
+            if (option.value !== 'Cancelled') {
+                option.style.display = 'none';
+            }
+        });
+    } else {
+        statusSelect.disabled = false;
+        // Tampilkan semua opsi kembali
+        const options = statusSelect.querySelectorAll('option');
+        options.forEach(option => {
+            option.style.display = '';
+        });
+    }
+    
     if (currentPetugas) {
         petugasSelect.value = currentPetugas;
     } else {
@@ -1065,6 +1086,14 @@ function showDetail(rowId) {
         const selectedFlag = flagSelect.value;
         const selectedPetugas = petugasSelect.value;
         const selectedKeterangan = keteranganInput.value.trim();
+        
+        // Jika sudah ditolak dan status adalah Cancelled, tidak bisa diubah
+        if (isRejected && currentStatus === 'Cancelled' && selectedStatus !== 'Cancelled') {
+            statusSelect.value = 'Cancelled';
+            saveBtn.disabled = true;
+            saveBtn.classList.add('disabled');
+            return;
+        }
         
         const statusChanged = selectedStatus !== currentStatus;
         const flagChanged = selectedFlag !== currentFlag;
@@ -1198,6 +1227,12 @@ function showDetail(rowId) {
     };
     
     statusSelect.onchange = () => {
+        // Jika sudah ditolak dan status adalah Cancelled, kembalikan ke Cancelled
+        if (isRejected && currentStatus === 'Cancelled') {
+            statusSelect.value = 'Cancelled';
+            return;
+        }
+        
         const selectedStatus = statusSelect.value;
         const isClosedOrCancelled = selectedStatus === 'Closed' || selectedStatus === 'Cancelled';
         
@@ -1230,8 +1265,8 @@ function showDetail(rowId) {
         // Generate approval link using rowNumber instead of id (hanya 1 link)
         // Deteksi domain untuk link approval
         let baseUrl;
-        if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('permintaandof.vercel.app')) {
-            baseUrl = 'https://permintaandof.vercel.app/permintaan/';
+        if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('protopermintaan.vercel.app')) {
+            baseUrl = 'https://protopermintaan.vercel.app/permintaan/';
         } else {
             baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
         }
@@ -1294,8 +1329,57 @@ function showDetail(rowId) {
             }
         }
         
+        // Find nomor surat - cari dari kolom yang benar
+        let nomorSurat = '';
+        
+        // Prioritas 1: Cari dari original row menggunakan findColumnValue
+        if (row._originalRow) {
+            const originalRow = row._originalRow;
+            const suratKeys = [
+                'NO SURAT',
+                'No. Surat',
+                'Nomor Surat',
+                'NO. SURAT',
+                'NOMOR SURAT'
+            ];
+            
+            for (const key of suratKeys) {
+                const value = findColumnValue(originalRow, key);
+                if (value && value.trim() !== '') {
+                    nomorSurat = value.trim();
+                    break;
+                }
+            }
+        }
+        
+        // Prioritas 2: Cari dari spreadsheetHeaders
+        if (!nomorSurat || nomorSurat.trim() === '') {
+            for (let i = 0; i < spreadsheetHeaders.length; i++) {
+                const header = spreadsheetHeaders[i];
+                if (header) {
+                    const headerLower = header.toLowerCase().trim();
+                    // Cari header yang mengandung "surat" tapi bukan "status surat" atau "jenis surat"
+                    if (headerLower.includes('surat') && 
+                        (headerLower.includes('no') || headerLower.includes('nomor')) &&
+                        !headerLower.includes('status') &&
+                        !headerLower.includes('jenis') &&
+                        !headerLower.includes('backdate')) {
+                        const colLetter = String.fromCharCode(65 + i);
+                        const value = row[colLetter] || '';
+                        if (value && value.trim() !== '') {
+                            // Pastikan bukan timestamp (format ISO date)
+                            if (!value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
+                                nomorSurat = value.trim();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         // Add key details
-        if (row.A) message += `No. Surat: ${row.A}\n`;
+        if (nomorSurat) message += `No. Surat: ${nomorSurat}\n`;
         if (dataName) message += `Nama: ${dataName}\n`;
         if (row.pilihPermintaan) message += `Jenis Permintaan: ${row.pilihPermintaan}\n`;
         if (alasanPermintaan) message += `Alasan: ${alasanPermintaan}\n`;
@@ -1321,6 +1405,12 @@ function showDetail(rowId) {
     
     saveBtn.onclick = async () => {
         if (saveBtn.disabled) return;
+        
+        // Jika sudah ditolak dan status adalah Cancelled, tidak bisa diubah
+        if (isRejected && currentStatus === 'Cancelled') {
+            showNotification('Status tidak dapat diubah karena permintaan sudah ditolak.', 'error');
+            return;
+        }
         
         const newStatus = statusSelect.value;
         const newFlag = flagSelect.value;
