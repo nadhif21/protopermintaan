@@ -39,10 +39,17 @@ document.addEventListener('DOMContentLoaded', function() {
         errorMessage.classList.remove('show');
         errorMessage.textContent = '';
 
-        if (password === PASSWORD) {
-            setSession();
+        // Check super admin password
+        if (password === SUPER_ADMIN_PASSWORD) {
+            setSession(true); // Set sebagai super admin
             window.location.href = getIndexPath();
-        } else {
+        } 
+        // Check regular user password
+        else if (password === PASSWORD) {
+            setSession(false); // Set sebagai user biasa
+            window.location.href = getIndexPath();
+        } 
+        else {
             errorMessage.textContent = 'Password salah. Silakan coba lagi.';
             errorMessage.classList.add('show');
             passwordInput.value = '';

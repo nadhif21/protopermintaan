@@ -70,6 +70,10 @@ try {
             handleDeletePerjanjian($conn);
             break;
             
+        case 'insertBackdate':
+            handleInsertBackdate($conn);
+            break;
+            
         default:
             sendJSONResponse(false, null, 'Action tidak valid');
     }
@@ -380,4 +384,87 @@ function handleDeletePerjanjian($conn) {
     $stmt->close();
     
     sendJSONResponse(true, ['message' => 'Data perjanjian berhasil dihapus']);
+}
+
+// Handler untuk insertBackdate
+function handleInsertBackdate($conn) {
+    // Get data dari POST atau GET
+    $namaAdmin = $_POST['namaAdmin'] ?? $_GET['namaAdmin'] ?? '';
+    $npk = $_POST['npk'] ?? $_GET['npk'] ?? '';
+    $jabatan = $_POST['jabatan'] ?? $_GET['jabatan'] ?? '';
+    $tanggalBackdate = $_POST['tanggalBackdate'] ?? $_GET['tanggalBackdate'] ?? '';
+    $alasanBackdate = $_POST['alasanBackdate'] ?? $_GET['alasanBackdate'] ?? '';
+    $namaDibuka = $_POST['namaDibuka'] ?? $_GET['namaDibuka'] ?? '';
+    $departemen = $_POST['departemen'] ?? $_GET['departemen'] ?? '';
+    $nomorSurat = $_POST['nomorSurat'] ?? $_GET['nomorSurat'] ?? '';
+    $email = $_POST['email'] ?? $_GET['email'] ?? '';
+    
+    // Validasi field wajib dengan pesan yang lebih spesifik
+    $missingFields = [];
+    if (empty($namaAdmin) || trim($namaAdmin) === '') $missingFields[] = 'Nama Admin';
+    if (empty($npk) || trim($npk) === '') $missingFields[] = 'NPK';
+    if (empty($jabatan) || trim($jabatan) === '') $missingFields[] = 'Jabatan';
+    if (empty($tanggalBackdate) || trim($tanggalBackdate) === '') $missingFields[] = 'Tanggal Pembukaan Backdate';
+    if (empty($alasanBackdate) || trim($alasanBackdate) === '') $missingFields[] = 'Alasan Pembukaan Backdate';
+    if (empty($namaDibuka) || trim($namaDibuka) === '') $missingFields[] = 'Nama yang Dibuka Backdate';
+    if (empty($departemen) || trim($departemen) === '') $missingFields[] = 'Departemen';
+    if (empty($nomorSurat) || trim($nomorSurat) === '') $missingFields[] = 'Nomor Surat Backdate DOF';
+    if (empty($email) || trim($email) === '') $missingFields[] = 'Email Address';
+    
+    if (!empty($missingFields)) {
+        throw new Exception("Field wajib yang belum diisi: " . implode(', ', $missingFields));
+    }
+    
+    // Get max row_number
+    $maxRowQuery = "SELECT MAX(`row_number`) as max_row FROM `backdate`";
+    $maxResult = $conn->query($maxRowQuery);
+    $maxRow = 1;
+    if ($maxResult && $row = $maxResult->fetch_assoc()) {
+        $maxRow = ($row['max_row'] ?? 0) + 1;
+    }
+    
+    // Timestamp sekarang
+    $timestamp = date('Y-m-d H:i:s');
+    
+    // Convert tanggal backdate ke format yang benar jika perlu
+    if ($tanggalBackdate) {
+        $tanggalBackdateConverted = convertToMySQLDateTime($tanggalBackdate);
+        if ($tanggalBackdateConverted) {
+            $tanggalBackdate = $tanggalBackdateConverted;
+        }
+    }
+    
+    // Insert data
+    $sql = "INSERT INTO `backdate` (
+        `row_number`, `col_a`, `col_b`, `col_c`, `col_d`, `col_e`, `col_f`, `col_g`, `col_h`, `col_i`, `col_j`,
+        `nomor_surat_key`, `timestamp`, `status`, `flag`, `timestamp_selesai`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    // Mapping: col_a = timestamp, col_b = nama admin, col_c = npk, col_d = jabatan,
+    // col_e = tanggal backdate, col_f = alasan, col_g = nama dibuka, col_h = departemen,
+    // col_i = nomor surat, col_j = email
+    $status = 'Open';
+    $flag = '';
+    $timestampSelesai = null;
+    
+    // Bind parameter
+    $types = 'isssssssssssssss';
+    $stmt->bind_param($types,
+        $maxRow, $timestamp, $namaAdmin, $npk, $jabatan, $tanggalBackdate, $alasanBackdate,
+        $namaDibuka, $departemen, $nomorSurat, $email,
+        $nomorSurat, $timestamp, $status, $flag, $timestampSelesai
+    );
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $stmt->close();
+    
+    sendJSONResponse(true, ['message' => 'Data backdate berhasil disimpan', 'rowNumber' => $maxRow]);
 }

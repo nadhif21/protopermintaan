@@ -15,13 +15,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const backdateCard = document.getElementById('backdateCard');
     const backdatePopup = document.getElementById('backdatePopup');
     const backdateCloseBtn = document.querySelector('.backdate-close-btn');
-    const googleFormLink = document.getElementById('googleFormLink');
-
-    const GOOGLE_FORM_URL = 'https://forms.gle/ActGYFQTv7WxVCMv6';
-    
-    if (googleFormLink) {
-        googleFormLink.href = GOOGLE_FORM_URL;
-    }
 
     if (backdateCard) {
         backdateCard.addEventListener('click', function(e) {
