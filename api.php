@@ -173,6 +173,18 @@ try {
             handleInsertBackdate($conn);
             break;
             
+        case 'getApprovalPin':
+            handleGetApprovalPin($conn);
+            break;
+            
+        case 'setApprovalPin':
+            handleSetApprovalPin($conn);
+            break;
+            
+        case 'validateApprovalPin':
+            handleValidateApprovalPin($conn);
+            break;
+            
         default:
             sendJSONResponse(false, null, 'Action tidak valid');
     }
@@ -1489,14 +1501,54 @@ function handleGetData($conn) {
     sendJSONResponse(true, $data, null, $headers);
 }
 
-// Handler untuk batchUpdate (tidak memerlukan auth untuk backward compatibility)
+// Handler untuk batchUpdate
 function handleBatchUpdate($conn) {
-    // Allow access without auth for backward compatibility
-    // Auth is optional but not required
-    
     // Support both GET and POST
     $rowNumber = intval($_REQUEST['rowNumber'] ?? 0);
     $table = $_REQUEST['table'] ?? 'permintaan';
+    
+    // Jika ada persetujuan (approve/reject), validasi PIN
+    $persetujuan = trim($_REQUEST['persetujuan'] ?? '');
+    if (!empty($persetujuan)) {
+        $pin = trim($_REQUEST['pin'] ?? '');
+        
+        // Normalize PIN - remove all non-digit characters first
+        $normalizedInput = preg_replace('/[^0-9]/', '', $pin);
+        
+        if (empty($normalizedInput) || strlen($normalizedInput) !== 4 || !ctype_digit($normalizedInput)) {
+            throw new Exception("PIN harus berupa 4 digit angka");
+        }
+        
+        // Validasi PIN
+        $sql = "SELECT `pin` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
+        $result = $conn->query($sql);
+        
+        if (!$result) {
+            throw new Exception("Query error: " . $conn->error);
+        }
+        
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $storedPin = trim($row['pin']);
+            
+            // Normalize stored PIN - remove all non-digit characters
+            $normalizedStored = preg_replace('/[^0-9]/', '', $storedPin);
+            
+            // Ensure both are exactly 4 digits (should already be, but just in case)
+            $normalizedInput = str_pad($normalizedInput, 4, '0', STR_PAD_LEFT);
+            $normalizedStored = str_pad($normalizedStored, 4, '0', STR_PAD_LEFT);
+            
+            // Debug logging
+            error_log("BatchUpdate PIN validation - Input: '$pin' (normalized: '$normalizedInput'), Stored: '$storedPin' (normalized: '$normalizedStored'), Match: " . ($normalizedInput === $normalizedStored ? 'YES' : 'NO'));
+            
+            // Compare normalized strings with strict validation
+            if ($normalizedInput !== $normalizedStored || strlen($normalizedInput) !== 4 || strlen($normalizedStored) !== 4 || !ctype_digit($normalizedInput) || !ctype_digit($normalizedStored)) {
+                throw new Exception("PIN tidak valid");
+            }
+        } else {
+            throw new Exception("PIN belum diatur oleh admin");
+        }
+    }
     
     if ($rowNumber <= 0) {
         throw new Exception("Row number tidak valid");
@@ -1981,6 +2033,148 @@ function handleInsertBackdate($conn) {
     $stmt->close();
     
     sendJSONResponse(true, ['message' => 'Data backdate berhasil disimpan', 'rowNumber' => $maxRow]);
+}
+
+// Handler untuk getApprovalPin (hanya super_admin)
+function handleGetApprovalPin($conn) {
+    requireSuperAdmin($conn);
+    
+    $sql = "SELECT `pin` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
+    $result = $conn->query($sql);
+    
+    if (!$result) {
+        throw new Exception("Query error: " . $conn->error);
+    }
+    
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $pinValue = trim($row['pin']);
+        // Remove any non-digit characters
+        $pinValue = preg_replace('/[^0-9]/', '', $pinValue);
+        // Ensure it's exactly 4 digits
+        if (strlen($pinValue) === 4 && ctype_digit($pinValue)) {
+            sendJSONResponse(true, ['pin' => $pinValue]);
+        } else {
+            // If PIN is corrupted, return default
+            error_log("Warning: PIN in database is corrupted: '$pinValue' (length: " . strlen($pinValue) . ")");
+            sendJSONResponse(true, ['pin' => '0000']);
+        }
+    } else {
+        // Jika belum ada, buat default
+        $defaultPin = '0000';
+        $insertSql = "INSERT INTO `approval_pin` (`pin`) VALUES (?)";
+        $stmt = $conn->prepare($insertSql);
+        if ($stmt) {
+            $stmt->bind_param('s', $defaultPin);
+            $stmt->execute();
+            $stmt->close();
+        }
+        sendJSONResponse(true, ['pin' => $defaultPin]);
+    }
+}
+
+// Handler untuk setApprovalPin (hanya super_admin)
+function handleSetApprovalPin($conn) {
+    requireSuperAdmin($conn);
+    
+    $pin = trim(getRequestParam('pin', ''));
+    
+    // Normalize PIN - remove all non-digit characters
+    $pin = preg_replace('/[^0-9]/', '', $pin);
+    
+    if (empty($pin) || strlen($pin) !== 4 || !ctype_digit($pin)) {
+        throw new Exception("PIN harus berupa 4 digit angka");
+    }
+    
+    // Cek apakah sudah ada PIN
+    $checkSql = "SELECT `id` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
+    $checkResult = $conn->query($checkSql);
+    
+    if ($checkResult && $checkResult->num_rows > 0) {
+        // Update existing PIN - use WHERE clause instead of ORDER BY LIMIT
+        $row = $checkResult->fetch_assoc();
+        $pinId = intval($row['id']);
+        
+        $updateSql = "UPDATE `approval_pin` SET `pin` = ? WHERE `id` = ?";
+        $stmt = $conn->prepare($updateSql);
+        if (!$stmt) {
+            throw new Exception("Prepare error: " . $conn->error);
+        }
+        $stmt->bind_param('si', $pin, $pinId);
+        if (!$stmt->execute()) {
+            throw new Exception("Execute error: " . $stmt->error);
+        }
+        $stmt->close();
+    } else {
+        // Insert new PIN
+        $insertSql = "INSERT INTO `approval_pin` (`pin`) VALUES (?)";
+        $stmt = $conn->prepare($insertSql);
+        if (!$stmt) {
+            throw new Exception("Prepare error: " . $conn->error);
+        }
+        $stmt->bind_param('s', $pin);
+        if (!$stmt->execute()) {
+            throw new Exception("Execute error: " . $stmt->error);
+        }
+        $stmt->close();
+    }
+    
+    $session = requireAuth($conn);
+    auditLog($conn, intval($session['user_id']), 'set_approval_pin', 'system');
+    
+    // Return the updated PIN in response
+    sendJSONResponse(true, ['message' => 'PIN approval berhasil diubah', 'pin' => $pin]);
+}
+
+// Handler untuk validateApprovalPin (public, tidak perlu auth)
+function handleValidateApprovalPin($conn) {
+    $pin = trim(getRequestParam('pin', ''));
+    
+    // Normalize input PIN - remove all non-digit characters first
+    $normalizedInput = preg_replace('/[^0-9]/', '', $pin);
+    
+    if (empty($normalizedInput) || strlen($normalizedInput) !== 4 || !ctype_digit($normalizedInput)) {
+        sendJSONResponse(false, ['valid' => false, 'message' => 'PIN harus berupa 4 digit angka']);
+        return;
+    }
+    
+    $sql = "SELECT `pin` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
+    $result = $conn->query($sql);
+    
+    if (!$result) {
+        sendJSONResponse(false, ['valid' => false, 'message' => 'Query error: ' . $conn->error]);
+        return;
+    }
+    
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $storedPin = trim($row['pin']);
+        
+        // Normalize stored PIN - remove all non-digit characters
+        $normalizedStored = preg_replace('/[^0-9]/', '', $storedPin);
+        
+        // Ensure both are exactly 4 digits
+        $normalizedInput = str_pad($normalizedInput, 4, '0', STR_PAD_LEFT);
+        $normalizedStored = str_pad($normalizedStored, 4, '0', STR_PAD_LEFT);
+        
+        // Debug logging - more detailed
+        $inputLen = strlen($normalizedInput);
+        $storedLen = strlen($normalizedStored);
+        $inputBytes = bin2hex($normalizedInput);
+        $storedBytes = bin2hex($normalizedStored);
+        $match = ($normalizedInput === $normalizedStored);
+        
+        error_log("PIN validation - Input: '$pin' (normalized: '$normalizedInput', len: $inputLen, bytes: $inputBytes), Stored: '$storedPin' (normalized: '$normalizedStored', len: $storedLen, bytes: $storedBytes), Match: " . ($match ? 'YES' : 'NO'));
+        
+        // Compare normalized strings with strict validation
+        if ($match && $inputLen === 4 && $storedLen === 4 && ctype_digit($normalizedInput) && ctype_digit($normalizedStored)) {
+            sendJSONResponse(true, ['valid' => true, 'message' => 'PIN valid', 'debug' => ['input' => $normalizedInput, 'stored' => $normalizedStored]]);
+        } else {
+            sendJSONResponse(false, ['valid' => false, 'message' => 'PIN tidak valid', 'debug' => ['input' => $normalizedInput, 'stored' => $normalizedStored, 'inputLen' => $inputLen, 'storedLen' => $storedLen, 'inputBytes' => $inputBytes, 'storedBytes' => $storedBytes]]);
+        }
+    } else {
+        sendJSONResponse(false, ['valid' => false, 'message' => 'PIN belum diatur']);
+    }
 }
 
 // Handler untuk getUnitKerja

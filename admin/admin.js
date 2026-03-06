@@ -10,9 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
     bindEditUserModal();
     bindRefreshButtons();
     bindRegistrations();
+    bindPinApproval();
 
     loadUsers();
     loadRegistrations();
+    loadApprovalPin();
 });
 
 function bindLogout() {
@@ -32,6 +34,7 @@ function renderCurrentUser() {
 
 function bindRefreshButtons() {
     document.getElementById('refreshUsersBtn')?.addEventListener('click', loadUsers);
+    document.getElementById('refreshPinBtn')?.addEventListener('click', loadApprovalPin);
 }
 
 function bindRegistrations() {
@@ -543,4 +546,225 @@ function clearRejectError() {
     if (!el) return;
     el.textContent = '';
     el.classList.remove('show');
+}
+
+function bindPinApproval() {
+    const pinInput = document.getElementById('approvalPinInput');
+    const editPinBtn = document.getElementById('editPinBtn');
+    const savePinBtn = document.getElementById('savePinBtn');
+    const cancelEditPinBtn = document.getElementById('cancelEditPinBtn');
+    const refreshPinBtn = document.getElementById('refreshPinBtn');
+    const pinError = document.getElementById('pinError');
+    
+    if (!pinInput || !editPinBtn || !savePinBtn) return;
+    
+    let originalPin = ''; // Store original PIN value
+    
+    // Only allow numbers
+    pinInput.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    });
+    
+    // Edit PIN button - enable edit mode
+    editPinBtn.addEventListener('click', () => {
+        originalPin = pinInput.value; // Store current value
+        pinInput.readOnly = false;
+        pinInput.style.backgroundColor = '#ffffff';
+        pinInput.style.cursor = 'text';
+        pinInput.focus();
+        
+        editPinBtn.style.display = 'none';
+        savePinBtn.style.display = 'inline-block';
+        cancelEditPinBtn.style.display = 'inline-block';
+        
+        if (pinError) {
+            pinError.style.display = 'none';
+        }
+    });
+    
+    // Cancel edit button - restore original value
+    if (cancelEditPinBtn) {
+        cancelEditPinBtn.addEventListener('click', () => {
+            pinInput.value = originalPin; // Restore original value
+            pinInput.readOnly = true;
+            pinInput.style.backgroundColor = '#f5f5f5';
+            pinInput.style.cursor = 'not-allowed';
+            
+            editPinBtn.style.display = 'inline-block';
+            savePinBtn.style.display = 'none';
+            cancelEditPinBtn.style.display = 'none';
+            
+            if (pinError) {
+                pinError.style.display = 'none';
+            }
+        });
+    }
+    
+    // Save PIN
+    savePinBtn.addEventListener('click', async () => {
+        const pin = pinInput.value.trim();
+        
+        if (pin.length !== 4) {
+            if (pinError) {
+                pinError.textContent = 'PIN harus 4 digit angka';
+                pinError.style.display = 'block';
+            }
+            return;
+        }
+        
+        if (!/^\d{4}$/.test(pin)) {
+            if (pinError) {
+                pinError.textContent = 'PIN harus berupa 4 digit angka';
+                pinError.style.display = 'block';
+            }
+            return;
+        }
+        
+        savePinBtn.disabled = true;
+        savePinBtn.textContent = 'Menyimpan...';
+        if (pinError) {
+            pinError.style.display = 'none';
+        }
+        
+        try {
+            const url = new URL(API_URL, window.location.origin);
+            url.searchParams.append('action', 'setApprovalPin');
+            url.searchParams.append('pin', pin);
+            
+            const response = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'X-Auth-Token': getAuthToken()
+                },
+                mode: 'cors',
+                cache: 'no-cache'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Gagal menyimpan PIN');
+            }
+            
+            const result = await response.json();
+            
+            console.log('Save PIN Result:', result);
+            
+            if (!result.success) {
+                throw new Error(result.error || 'Gagal menyimpan PIN');
+            }
+            
+            // Update PIN value immediately from response if available
+            if (result.pin) {
+                const savedPin = String(result.pin).trim().replace(/\s/g, '');
+                console.log('Updating PIN from response:', savedPin);
+                pinInput.value = savedPin;
+            } else {
+                // If no PIN in response, use the one we just saved
+                const savedPin = String(pin).trim().replace(/\s/g, '');
+                console.log('Updating PIN from input:', savedPin);
+                pinInput.value = savedPin;
+            }
+            
+            alert('PIN berhasil disimpan!');
+            
+            // Exit edit mode
+            pinInput.readOnly = true;
+            pinInput.style.backgroundColor = '#f5f5f5';
+            pinInput.style.cursor = 'not-allowed';
+            
+            editPinBtn.style.display = 'inline-block';
+            savePinBtn.style.display = 'none';
+            cancelEditPinBtn.style.display = 'none';
+            
+            // Force reload PIN after a short delay to ensure DB is updated
+            setTimeout(() => {
+                console.log('Reloading PIN after save...');
+                loadApprovalPin();
+            }, 300);
+            
+        } catch (error) {
+            console.error('Error:', error);
+            if (pinError) {
+                pinError.textContent = error.message || 'Gagal menyimpan PIN';
+                pinError.style.display = 'block';
+            }
+        } finally {
+            savePinBtn.disabled = false;
+            savePinBtn.textContent = 'Simpan PIN';
+        }
+    });
+}
+
+async function loadApprovalPin() {
+    const pinInput = document.getElementById('approvalPinInput');
+    if (!pinInput) {
+        console.warn('PIN input element not found');
+        return;
+    }
+    
+    try {
+        const url = new URL(API_URL, window.location.origin);
+        url.searchParams.append('action', 'getApprovalPin');
+        url.searchParams.append('_t', Date.now()); // Cache busting
+        
+        const headers = {
+            'X-Auth-Token': getAuthToken(),
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        };
+        
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: headers,
+            mode: 'cors',
+            cache: 'no-cache'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Gagal memuat PIN: HTTP ' + response.status);
+        }
+        
+        const result = await response.json();
+        
+        console.log('PIN Load Result (raw):', result);
+        console.log('PIN Load Result (JSON):', JSON.stringify(result));
+        
+        if (result.success) {
+            // Handle both result.pin and result.data.pin formats
+            let pinValue = null;
+            if (result.pin) {
+                pinValue = String(result.pin).trim().replace(/\s/g, '');
+            } else if (result.data && result.data.pin) {
+                pinValue = String(result.data.pin).trim().replace(/\s/g, '');
+            }
+            
+            if (pinValue && pinValue.length === 4) {
+                console.log('Setting PIN value to:', pinValue);
+                pinInput.value = pinValue;
+                
+                // Ensure input is readonly after loading
+                pinInput.readOnly = true;
+                pinInput.style.backgroundColor = '#f5f5f5';
+                pinInput.style.cursor = 'not-allowed';
+                
+                // Ensure buttons are in correct state
+                const editPinBtn = document.getElementById('editPinBtn');
+                const savePinBtn = document.getElementById('savePinBtn');
+                const cancelEditPinBtn = document.getElementById('cancelEditPinBtn');
+                
+                if (editPinBtn) editPinBtn.style.display = 'inline-block';
+                if (savePinBtn) savePinBtn.style.display = 'none';
+                if (cancelEditPinBtn) cancelEditPinBtn.style.display = 'none';
+            } else {
+                console.warn('PIN value is invalid:', pinValue);
+                console.warn('Full result:', result);
+            }
+        } else {
+            console.warn('PIN not found in response or request failed:', result);
+        }
+        
+    } catch (error) {
+        console.error('Error loading PIN:', error);
+        alert('Gagal memuat PIN: ' + error.message);
+    }
 }

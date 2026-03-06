@@ -91,6 +91,29 @@
                 </div>
             </section>
 
+            <!-- PIN Approval Section (Super Admin Only) -->
+            <section class="panel" id="pinApprovalPanel">
+                <div class="panel-header">
+                    <h2>🔐 Pengaturan PIN Approval</h2>
+                    <div class="panel-actions">
+                        <button id="refreshPinBtn" class="btn">Refresh</button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <label for="approvalPinInput">PIN Approval (4 digit)</label>
+                        <input type="text" id="approvalPinInput" maxlength="4" pattern="[0-9]{4}" placeholder="0000" readonly style="font-size: 24px; letter-spacing: 8px; text-align: center; width: 200px; padding: 12px; background-color: #f5f5f5;">
+                        <div class="help-text">Klik "Edit PIN" untuk mengubah PIN approval</div>
+                    </div>
+                    <div id="pinError" class="error-box" style="display: none;"></div>
+                    <div class="form-actions">
+                        <button id="editPinBtn" class="btn btn-primary">Edit PIN</button>
+                        <button id="savePinBtn" class="btn btn-primary" style="display: none;">Simpan PIN</button>
+                        <button id="cancelEditPinBtn" class="btn" style="display: none;">Batal</button>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 
