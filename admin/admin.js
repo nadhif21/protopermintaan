@@ -196,7 +196,6 @@ function userRowHtml(u) {
                 <div class="row-actions">
                     <button class="btn-small" data-action="edit">Edit</button>
                     <button class="btn-small" data-action="reset">Reset Password</button>
-                    ${u.isActive ? `<button class="btn-small btn-danger" data-action="disable">Nonaktifkan</button>` : `<button class="btn-small" data-action="enable">Aktifkan</button>`}
                     <button class="btn-small btn-danger" data-action="delete" title="Hapus user">Hapus</button>
                 </div>
             </td>
@@ -216,13 +215,6 @@ function bindUserRowActions() {
 
             if (action === 'reset') {
                 await resetPasswordFlow(userId);
-            } else if (action === 'disable') {
-                if (!confirm('Nonaktifkan user ini?')) return;
-                await apiPost('updateUser', { id: userId, isActive: 0 });
-                await loadUsers();
-            } else if (action === 'enable') {
-                await apiPost('updateUser', { id: userId, isActive: 1 });
-                await loadUsers();
             } else if (action === 'edit') {
                 await editUserFlow(tr, userId);
                 await loadUsers();

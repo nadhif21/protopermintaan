@@ -9,13 +9,6 @@ document.addEventListener('DOMContentLoaded', function() {
         adminCardLink.style.display = isSuperAdmin() ? 'block' : 'none';
     }
     
-    // Tampilkan menu Approval Akun untuk admin dan super_admin
-    const approvalCardLink = document.getElementById('approvalCardLink');
-    if (approvalCardLink) {
-        const role = getUserRole();
-        approvalCardLink.style.display = (role === 'admin' || role === 'super_admin') ? 'block' : 'none';
-    }
-
     // Tampilkan menu Form Permintaan untuk user
     const formPermintaanCardLink = document.getElementById('formPermintaanCardLink');
     if (formPermintaanCardLink) {

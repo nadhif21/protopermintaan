@@ -1519,80 +1519,8 @@ function showDetail(rowId) {
         } else {
             if (chatUlangSection) chatUlangSection.style.display = 'none';
         }
-    } else if (chatUlangBtn && chatUlangSection) {
-        // Hanya admin/super_admin yang bisa chat ulang (jika diperlukan)
-        // Get petugas info from original row
-        const originalRow = row._originalRow || {};
-        const petugasNoWa = originalRow['Petugas No WA'] || originalRow['petugas_no_wa'] || '';
-        const petugasId = originalRow['Petugas ID'] || originalRow['petugas_id'] || '';
-        
-        // Show chat ulang button if petugas exists (untuk admin)
-        if (currentPetugas) {
-            chatUlangSection.style.display = 'flex';
-            
-            chatUlangBtn.onclick = async () => {
-                let targetNoWa = petugasNoWa;
-                
-                // If no_wa not available, try to get from petugas name via API
-                if (!targetNoWa && currentPetugas) {
-                    try {
-                        // Try to get petugas info from API
-                        const response = await fetch(`../api.php?action=getPetugas&nama=${encodeURIComponent(currentPetugas)}`);
-                        const result = await response.json();
-                        if (result && result.success && result.data && result.data.no_wa) {
-                            targetNoWa = result.data.no_wa;
-                        }
-                    } catch (e) {
-                        console.error('Error fetching petugas:', e);
-                    }
-                }
-                
-                if (!targetNoWa) {
-                    alert('Nomor WhatsApp petugas tidak tersedia. Silakan hubungi admin.');
-                    return;
-                }
-                
-                // Build message for chat ulang
-                let message = `Halo ${currentPetugas},\n\n`;
-                message += `Saya ingin menanyakan progress permintaan saya:\n\n`;
-                
-                // Add request details
-                if (dataName) message += `Nama: ${dataName}\n`;
-                if (row.pilihPermintaan) message += `Jenis Permintaan: ${row.pilihPermintaan}\n`;
-                
-                // Find nomor surat
-                let nomorSurat = '';
-                const originalRow = row._originalRow || {};
-                const suratKeys = ['NO SURAT', 'No. Surat', 'Nomor Surat', 'NO. SURAT', 'NOMOR SURAT'];
-                for (const key of suratKeys) {
-                    const value = findColumnValue(originalRow, key);
-                    if (value && value.trim() !== '') {
-                        nomorSurat = value.trim();
-                        break;
-                    }
-                }
-                if (nomorSurat) message += `No. Surat: ${nomorSurat}\n`;
-                
-                message += `Status: ${currentStatus || 'Open'}\n`;
-                if (currentFlag) message += `Flag: ${currentFlag}\n`;
-                if (currentKeterangan) message += `Keterangan: ${currentKeterangan}\n`;
-                
-                message += `\nMohon informasi progress terbaru. Terima kasih.`;
-                
-                // Clean phone number (remove leading 0, add country code 62)
-                let cleanPhone = targetNoWa.replace(/^0/, '62');
-                cleanPhone = cleanPhone.replace(/\D/g, ''); // Remove non-digits
-                
-                const encodedMessage = encodeURIComponent(message);
-                const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-                
-                window.open(whatsappUrl, '_blank');
-            };
-        } else {
-            chatUlangSection.style.display = 'none';
-        }
-    } else if (!isUser) {
-        // Hide chat ulang for non-user roles
+    } else {
+        // Untuk admin/super_admin, sembunyikan tombol chat ulang petugas
         if (chatUlangSection) chatUlangSection.style.display = 'none';
     }
     

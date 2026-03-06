@@ -1365,7 +1365,25 @@ function handleGetData($conn) {
     $table = $_GET['table'] ?? 'permintaan'; // default permintaan
     
     if ($table === 'backdate') {
-        $sql = "SELECT * FROM `backdate` ORDER BY `timestamp` DESC, `id` DESC";
+        // Filter by user_id if role is 'user'
+        if ($userRole === 'user' && $userId) {
+            // Check if user_id column exists
+            $checkColumn = $conn->query("SHOW COLUMNS FROM `backdate` LIKE 'user_id'");
+            if ($checkColumn && $checkColumn->num_rows > 0) {
+                // STRICT: Only show data where user_id matches exactly
+                $sql = "SELECT * FROM `backdate` WHERE `user_id` = $userId AND `user_id` IS NOT NULL ORDER BY `timestamp` DESC, `id` DESC";
+            } else {
+                // If column doesn't exist, return empty for user (they can't see old data)
+                $sql = "SELECT * FROM `backdate` WHERE 1=0";
+            }
+        } else {
+            // For admin/super_admin or no auth (backward compatibility), show all data
+            // This includes cases where:
+            // - userRole is null (no auth token)
+            // - userRole is 'admin' or 'super_admin'
+            // - userRole is 'user' but userId is null (shouldn't happen, but fallback)
+            $sql = "SELECT * FROM `backdate` ORDER BY `timestamp` DESC, `id` DESC";
+        }
     } else {
         // Filter by user_id if role is 'user'
         if ($userRole === 'user' && $userId) {
@@ -1843,30 +1861,46 @@ function handleUpdatePermintaanFields($conn) {
 // Handler untuk insertBackdate
 function handleInsertBackdate($conn) {
     // Get data dari POST atau GET
-    $namaAdmin = $_POST['namaAdmin'] ?? $_GET['namaAdmin'] ?? '';
-    $npk = $_POST['npk'] ?? $_GET['npk'] ?? '';
-    $jabatan = $_POST['jabatan'] ?? $_GET['jabatan'] ?? '';
-    $tanggalBackdate = $_POST['tanggalBackdate'] ?? $_GET['tanggalBackdate'] ?? '';
-    $alasanBackdate = $_POST['alasanBackdate'] ?? $_GET['alasanBackdate'] ?? '';
-    $namaDibuka = $_POST['namaDibuka'] ?? $_GET['namaDibuka'] ?? '';
-    $departemen = $_POST['departemen'] ?? $_GET['departemen'] ?? '';
-    $nomorSurat = $_POST['nomorSurat'] ?? $_GET['nomorSurat'] ?? '';
-    $email = $_POST['email'] ?? $_GET['email'] ?? '';
+    $namaAdmin = trim($_POST['namaAdmin'] ?? $_GET['namaAdmin'] ?? '');
+    $tanggalBackdate = trim($_POST['tanggalBackdate'] ?? $_GET['tanggalBackdate'] ?? '');
+    $alasanBackdate = trim($_POST['alasanBackdate'] ?? $_GET['alasanBackdate'] ?? '');
+    $namaDibuka = trim($_POST['namaDibuka'] ?? $_GET['namaDibuka'] ?? '');
+    $departemen = trim($_POST['departemen'] ?? $_GET['departemen'] ?? '');
+    $nomorSurat = trim($_POST['nomorSurat'] ?? $_GET['nomorSurat'] ?? '');
     
-    // Validasi field wajib dengan pesan yang lebih spesifik
+    // Validasi field wajib
     $missingFields = [];
-    if (empty($namaAdmin) || trim($namaAdmin) === '') $missingFields[] = 'Nama Admin';
-    if (empty($npk) || trim($npk) === '') $missingFields[] = 'NPK';
-    if (empty($jabatan) || trim($jabatan) === '') $missingFields[] = 'Jabatan';
-    if (empty($tanggalBackdate) || trim($tanggalBackdate) === '') $missingFields[] = 'Tanggal Pembukaan Backdate';
-    if (empty($alasanBackdate) || trim($alasanBackdate) === '') $missingFields[] = 'Alasan Pembukaan Backdate';
-    if (empty($namaDibuka) || trim($namaDibuka) === '') $missingFields[] = 'Nama yang Dibuka Backdate';
-    if (empty($departemen) || trim($departemen) === '') $missingFields[] = 'Departemen';
-    if (empty($nomorSurat) || trim($nomorSurat) === '') $missingFields[] = 'Nomor Surat Backdate DOF';
-    if (empty($email) || trim($email) === '') $missingFields[] = 'Email Address';
+    if (empty($namaAdmin)) $missingFields[] = 'Nama Admin';
+    if (empty($tanggalBackdate)) $missingFields[] = 'Tanggal Pembukaan Backdate';
+    if (empty($alasanBackdate)) $missingFields[] = 'Alasan Pembukaan Backdate';
+    if (empty($namaDibuka)) $missingFields[] = 'Nama yang Dibuka Backdate';
+    if (empty($departemen)) $missingFields[] = 'Departemen yang dibukakan Backdate';
+    if (empty($nomorSurat)) $missingFields[] = 'Nomor Surat Backdate DOF';
     
     if (!empty($missingFields)) {
         throw new Exception("Field wajib yang belum diisi: " . implode(', ', $missingFields));
+    }
+    
+    // Get user_id from session if available
+    $userId = null;
+    try {
+        $token = getAuthTokenFromRequest();
+        if ($token !== '' && $token !== null) {
+            $sessionResult = $conn->query("SELECT s.`user_id` FROM `auth_sessions` s
+                JOIN `users` u ON u.`id` = s.`user_id`
+                WHERE s.`token` = '" . $conn->real_escape_string($token) . "' 
+                AND s.`expires_at` > NOW() 
+                AND u.`is_active` = 1
+                LIMIT 1");
+            
+            if ($sessionResult && $sessionResult->num_rows > 0) {
+                $sessionRow = $sessionResult->fetch_assoc();
+                $userId = intval($sessionRow['user_id']);
+            }
+        }
+    } catch (Exception $e) {
+        // Log error for debugging but don't throw
+        error_log("Error getting user_id in handleInsertBackdate: " . $e->getMessage());
     }
     
     // Get max row_number
@@ -1888,31 +1922,57 @@ function handleInsertBackdate($conn) {
         }
     }
     
-    // Insert data
-    $sql = "INSERT INTO `backdate` (
-        `row_number`, `col_a`, `col_b`, `col_c`, `col_d`, `col_e`, `col_f`, `col_g`, `col_h`, `col_i`, `col_j`,
-        `nomor_surat_key`, `timestamp`, `status`, `flag`, `timestamp_selesai`
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    // Tabel backdate menggunakan nama kolom deskriptif
+    // Gunakan nama kolom deskriptif langsung
+    $npk = ''; // Kosong karena tidak diperlukan
+    $jabatan = ''; // Kosong karena tidak diperlukan
+    $email = ''; // Kosong karena tidak diperlukan
+    $status = 'Open';
+    $flag = '';
+    $timestampSelesai = null;
+    
+    // Check if user_id column exists
+    $checkColumn = $conn->query("SHOW COLUMNS FROM `backdate` LIKE 'user_id'");
+    $hasUserIdColumn = $checkColumn && $checkColumn->num_rows > 0;
+    
+    // Insert data menggunakan nama kolom deskriptif
+    if ($hasUserIdColumn && $userId) {
+        $sql = "INSERT INTO `backdate` (
+            `row_number`, `timestamp_data`, `nama_admin`, `npk`, `jabatan`, 
+            `tanggal_pembukaan`, `alasan_pembukaan`, `nama_dibuka`, `departemen`, 
+            `nomor_surat_dof`, `email_address`, `nomor_surat_key`, `timestamp`, `status`, `flag`, `timestamp_selesai`, `user_id`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        $types = 'isssssssssssssssi';
+    } else {
+        $sql = "INSERT INTO `backdate` (
+            `row_number`, `timestamp_data`, `nama_admin`, `npk`, `jabatan`, 
+            `tanggal_pembukaan`, `alasan_pembukaan`, `nama_dibuka`, `departemen`, 
+            `nomor_surat_dof`, `email_address`, `nomor_surat_key`, `timestamp`, `status`, `flag`, `timestamp_selesai`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        $types = 'isssssssssssssss';
+    }
     
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         throw new Exception("Prepare error: " . $conn->error);
     }
     
-    // Mapping: col_a = timestamp, col_b = nama admin, col_c = npk, col_d = jabatan,
-    // col_e = tanggal backdate, col_f = alasan, col_g = nama dibuka, col_h = departemen,
-    // col_i = nomor surat, col_j = email
-    $status = 'Open';
-    $flag = '';
-    $timestampSelesai = null;
-    
-    // Bind parameter
-    $types = 'isssssssssssssss';
-    $stmt->bind_param($types,
-        $maxRow, $timestamp, $namaAdmin, $npk, $jabatan, $tanggalBackdate, $alasanBackdate,
-        $namaDibuka, $departemen, $nomorSurat, $email,
-        $nomorSurat, $timestamp, $status, $flag, $timestampSelesai
-    );
+    // Bind parameter - i untuk int, s untuk string (termasuk datetime dan NULL)
+    if ($hasUserIdColumn && $userId) {
+        $stmt->bind_param($types,
+            $maxRow, $timestamp, $namaAdmin, $npk, $jabatan, $tanggalBackdate, $alasanBackdate,
+            $namaDibuka, $departemen, $nomorSurat, $email,
+            $nomorSurat, $timestamp, $status, $flag, $timestampSelesai, $userId
+        );
+    } else {
+        $stmt->bind_param($types,
+            $maxRow, $timestamp, $namaAdmin, $npk, $jabatan, $tanggalBackdate, $alasanBackdate,
+            $namaDibuka, $departemen, $nomorSurat, $email,
+            $nomorSurat, $timestamp, $status, $flag, $timestampSelesai
+        );
+    }
     
     if (!$stmt->execute()) {
         throw new Exception("Execute error: " . $stmt->error);

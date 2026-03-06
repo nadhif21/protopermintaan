@@ -100,6 +100,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!checkAuth()) {
         return;
     }
+    
+    // Check if user is regular user - show info message and hide edit sections
+    const userRole = getUserRole();
+    const isUser = userRole === 'user';
+    
+    if (isUser) {
+        // Show info message for user
+        const userInfoMessage = document.getElementById('userInfoMessage');
+        if (userInfoMessage) {
+            userInfoMessage.style.display = 'block';
+        }
+        
+        // Hide all edit sections and action buttons for user
+        const statusSection = document.getElementById('statusSection');
+        const saveBtn = document.getElementById('saveBtn');
+        const actionHeader = document.getElementById('actionHeader');
+        
+        if (statusSection) statusSection.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (actionHeader) actionHeader.style.display = 'none';
+    }
+    
     loadData();
     setupEventListeners();
     setupLogout();
@@ -247,10 +269,18 @@ async function loadData() {
         url.searchParams.append('table', 'backdate');
         url.searchParams.append('_t', Date.now());
         
+        // Get auth token for filtering by user
+        const token = getAuthToken();
+        const fetchHeaders = {};
+        if (token) {
+            fetchHeaders['X-Auth-Token'] = token;
+        }
+        
         let response;
         try {
             response = await fetch(url.toString(), {
                 method: 'GET',
+                headers: fetchHeaders,
                 mode: 'cors',
                 cache: 'no-cache'
             });
@@ -270,22 +300,32 @@ async function loadData() {
         
         const result = await response.json();
         
+        console.log('API Response:', result); // Debug log
+        console.log('Result success:', result.success); // Debug log
+        console.log('Result data:', result.data); // Debug log
+        console.log('Result headers:', result.headers); // Debug log
+        
         if (!result) {
-            throw new Error('Response kosong dari Apps Script');
+            throw new Error('Response kosong dari server');
         }
 
         if (!result.success) {
             throw new Error(result.error || 'Error dari server');
         }
 
-        const headers = result.headers || (result.data.length > 0 ? Object.keys(result.data[0]) : []);
+        // Pastikan result.data adalah array
+        const dataArray = Array.isArray(result.data) ? result.data : [];
+        console.log('Data array count:', dataArray.length); // Debug log
+        
+        const headers = result.headers || (dataArray.length > 0 ? Object.keys(dataArray[0]) : []);
+        console.log('Headers:', headers); // Debug log
         spreadsheetHeaders = headers;
         updateTableHeaders();
         
         allData = [];
         filteredData = [];
         
-        allData = result.data.map((row, index) => {
+        allData = dataArray.map((row, index) => {
             const getColumnValue = (position) => {
                 if (position < headers.length) {
                     const headerName = headers[position];
@@ -325,10 +365,13 @@ async function loadData() {
         allData = sortedData;
         filteredData = [];
         
+        console.log('Data loaded successfully. Total:', allData.length); // Debug log
+        
         setupFilterOptions();
         filterAndDisplayData();
     } catch (error) {
         console.error('Error loading data:', error);
+        console.error('Error details:', error.stack); // Debug log
         document.getElementById('tableBody').innerHTML = 
             '<tr><td colspan="9" class="loading">' +
             '<strong style="color: #dc3545;">Error: ' + escapeHtml(error.message) + '</strong>' +
@@ -814,6 +857,24 @@ function showDetail(rowId) {
         return;
     }
 
+    // Check if user is regular user - hide edit sections
+    const userRole = getUserRole();
+    const isUser = userRole === 'user';
+    
+    if (isUser) {
+        // Hide all edit sections for user
+        const statusSection = document.getElementById('statusSection');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusSelect = document.getElementById('statusSelect');
+        
+        if (statusSection) statusSection.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (statusSelect) {
+            statusSelect.style.display = 'none';
+            statusSelect.disabled = true;
+        }
+    }
+
     let dataName = '';
     const nameHeaders = ['Nama Lengkap', 'Nama', 'Name', 'NAMA LENGKAP', 'NAMA'];
     
@@ -916,16 +977,31 @@ function showDetail(rowId) {
                                         headerLower.includes('no surat backdate dof');
         
         if (isNomorSuratBackdateDOF && value) {
-            return `
-                <div class="detail-item">
-                    <label>${escapeHtml(headerName)}</label>
-                    <div class="value" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <span style="flex: 1; min-width: 200px;">${value}</span>
-                        <button class="btn-add-perjanjian" onclick="openAddPerjanjianForm('${escapeHtml(value)}')" style="padding: 6px 12px; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Add</button>
-                        <button class="btn-detail-perjanjian" onclick="openDetailPerjanjian('${escapeHtml(value)}')" style="padding: 6px 12px; background: #1976d2; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Detail</button>
+            // Check if user is regular user - hide action buttons
+            // userRole dan isUser sudah dideklarasikan di awal fungsi showDetail
+            if (isUser) {
+                // User hanya melihat, tidak ada tombol aksi
+                return `
+                    <div class="detail-item">
+                        <label>${escapeHtml(headerName)}</label>
+                        <div class="value">
+                            <span>${value}</span>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            } else {
+                // Admin/super_admin bisa akses tombol Add dan Detail
+                return `
+                    <div class="detail-item">
+                        <label>${escapeHtml(headerName)}</label>
+                        <div class="value" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <span style="flex: 1; min-width: 200px;">${value}</span>
+                            <button class="btn-add-perjanjian" onclick="openAddPerjanjianForm('${escapeHtml(value)}')" style="padding: 6px 12px; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Add</button>
+                            <button class="btn-detail-perjanjian" onclick="openDetailPerjanjian('${escapeHtml(value)}')" style="padding: 6px 12px; background: #1976d2; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Detail</button>
+                        </div>
+                    </div>
+                `;
+            }
         }
         
         return `
@@ -985,114 +1061,135 @@ function showDetail(rowId) {
     const saveBtn = document.getElementById('saveBtn');
     const statusSection = document.getElementById('statusSection');
     
-    saveBtn.textContent = 'Simpan';
-    
-    if (currentStatus) {
-        statusSelect.value = currentStatus;
+    // Check if user is regular user - disable edit functionality
+    // userRole dan isUser sudah dideklarasikan di awal fungsi showDetail
+    if (isUser) {
+        // Hide and disable all edit sections for user
+        if (statusSection) statusSection.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (statusSelect) {
+            statusSelect.style.display = 'none';
+            statusSelect.disabled = true;
+        }
     } else {
-        statusSelect.value = '';
-    }
-    
-    currentDetailRow = row;
-    
-    function toggleDropdowns() {
-        const selectedStatus = statusSelect.value;
-        const isClosedOrCancelled = selectedStatus === 'Closed' || selectedStatus === 'Cancelled';
+        // Admin/super_admin: Setup edit functionality seperti sebelumnya (tidak ada perubahan)
+        if (saveBtn) saveBtn.textContent = 'Simpan';
         
-        if (isCompleted) {
-            statusSection.style.display = 'none';
-            saveBtn.style.display = 'none';
-        } else if (isClosedOrCancelled) {
-            statusSection.style.display = 'flex';
-            saveBtn.style.display = 'block';
-        } else {
-            statusSection.style.display = 'flex';
-            saveBtn.style.display = 'none';
-        }
-    }
-    
-    function checkChanges() {
-        if (isCompleted) {
-            saveBtn.disabled = true;
-            saveBtn.classList.add('disabled');
-            return;
-        }
-        
-        const selectedStatus = statusSelect.value;
-        const statusChanged = selectedStatus !== currentStatus;
-        
-        const isClosedOrCancelled = selectedStatus === 'Closed' || selectedStatus === 'Cancelled';
-        
-        let hasChanges = false;
-        
-        if (statusChanged) {
-            hasChanges = true;
-        }
-        
-        if (isClosedOrCancelled) {
-            if (!currentTimestampSelesai) {
-                hasChanges = true;
+        if (statusSelect) {
+            if (currentStatus) {
+                statusSelect.value = currentStatus;
+            } else {
+                statusSelect.value = '';
             }
         }
         
-        if (hasChanges && isClosedOrCancelled) {
-            saveBtn.disabled = false;
-            saveBtn.classList.remove('disabled');
-        } else {
-            saveBtn.disabled = true;
-            saveBtn.classList.add('disabled');
+        currentDetailRow = row;
+        
+        function toggleDropdowns() {
+            if (!statusSelect || !saveBtn || !statusSection) return;
+            
+            const selectedStatus = statusSelect.value;
+            const isClosedOrCancelled = selectedStatus === 'Closed' || selectedStatus === 'Cancelled';
+            
+            if (isCompleted) {
+                statusSection.style.display = 'none';
+                saveBtn.style.display = 'none';
+            } else if (isClosedOrCancelled) {
+                statusSection.style.display = 'flex';
+                saveBtn.style.display = 'block';
+            } else {
+                statusSection.style.display = 'flex';
+                saveBtn.style.display = 'none';
+            }
         }
-    }
-    
-    statusSelect.onchange = () => {
-        toggleDropdowns();
-        checkChanges();
-    };
-    
-    toggleDropdowns();
-    checkChanges();
-    
-    saveBtn.onclick = async () => {
-        if (saveBtn.disabled) return;
         
-        const newStatus = statusSelect.value;
-        
-        try {
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Menyimpan...';
+        function checkChanges() {
+            if (!statusSelect || !saveBtn) return;
             
-            const rowNumberToUpdate = row.originalRowNumber || row.rowNumber;
-            const isClosedOrCancelled = newStatus === 'Closed' || newStatus === 'Cancelled';
-            
-            const updateData = {};
-            if (newStatus !== currentStatus) {
-                updateData.status = newStatus;
-            }
-            
-            if (isClosedOrCancelled) {
-                updateData.flag = 'Merah';
-                
-                updateData.timestamp = new Date().toISOString();
-            }
-            
-            // Convert waktuSelesai to timestamp for backdate
-            if (updateData.waktuSelesai) {
-                updateData.timestamp = updateData.waktuSelesai;
-                delete updateData.waktuSelesai;
-            }
-            
-            if (Object.keys(updateData).length === 0) {
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'Simpan';
+            if (isCompleted) {
+                saveBtn.disabled = true;
+                saveBtn.classList.add('disabled');
                 return;
             }
             
-            await batchUpdate(rowNumberToUpdate, updateData);
+            const selectedStatus = statusSelect.value;
+            const statusChanged = selectedStatus !== currentStatus;
             
-            row.status = newStatus || row.status;
-            row.flag = 'Merah';
-            if (updateData.timestamp) {
-                row.timestampSelesai = updateData.timestamp;
+            const isClosedOrCancelled = selectedStatus === 'Closed' || selectedStatus === 'Cancelled';
+            
+            let hasChanges = false;
+            
+            if (statusChanged) {
+                hasChanges = true;
+            }
+            
+            if (isClosedOrCancelled) {
+                if (!currentTimestampSelesai) {
+                    hasChanges = true;
+                }
+            }
+            
+            if (hasChanges && isClosedOrCancelled) {
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('disabled');
+            } else {
+                saveBtn.disabled = true;
+                saveBtn.classList.add('disabled');
+            }
+        }
+        
+        if (statusSelect) {
+            statusSelect.onchange = () => {
+                toggleDropdowns();
+                checkChanges();
+            };
+        }
+        
+        toggleDropdowns();
+        checkChanges();
+        
+        if (saveBtn) {
+            saveBtn.onclick = async () => {
+            if (saveBtn.disabled) return;
+            
+            const newStatus = statusSelect.value;
+            
+            try {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Menyimpan...';
+                
+                const rowNumberToUpdate = row.originalRowNumber || row.rowNumber;
+                const isClosedOrCancelled = newStatus === 'Closed' || newStatus === 'Cancelled';
+                
+                const updateData = {};
+                if (newStatus !== currentStatus) {
+                    updateData.status = newStatus;
+                }
+                
+                if (isClosedOrCancelled) {
+                    updateData.flag = 'Merah';
+                    
+                    updateData.timestamp = new Date().toISOString();
+                }
+                
+                // Convert waktuSelesai to timestamp for backdate
+                if (updateData.waktuSelesai) {
+                    updateData.timestamp = updateData.waktuSelesai;
+                    delete updateData.waktuSelesai;
+                }
+                
+                if (Object.keys(updateData).length === 0) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Simpan';
+                    return;
+                }
+                
+                await batchUpdate(rowNumberToUpdate, updateData);
+                
+                row.status = newStatus || row.status;
+                row.flag = 'Merah';
+                if (updateData.timestamp) {
+                    row.timestampSelesai = updateData.timestamp;
             }
             
             const rowIndex = allData.findIndex(r => r.id === row.id);
@@ -1111,12 +1208,16 @@ function showDetail(rowId) {
             saveBtn.disabled = false;
             saveBtn.textContent = 'Simpan';
             showNotification('Error: ' + error.message, 'error');
+            }
+            };
         }
-    };
+    }
 
     const popup = document.getElementById('detailPopup');
-    popup.classList.add('show');
-    document.body.style.overflow = 'hidden';
+    if (popup) {
+        popup.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
 }
 
 let currentDetailRow = null;

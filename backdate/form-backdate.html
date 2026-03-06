@@ -153,14 +153,14 @@
             <div class="header-content">
                 <a href="../" class="back-link">← Kembali</a>
                 <span class="header-icon">📝</span>
-                <h1>Form Input Data Backdate</h1>
+                <h1>Rekapitulasi Pembukaan Akses Backdate DOF</h1>
                 <button id="logoutBtn" class="logout-btn" title="Logout">🚪</button>
             </div>
         </header>
 
         <div class="form-container">
             <div class="form-header">
-                <h1>Input Data Backdate</h1>
+                <h1>Rekapitulasi Pembukaan Akses Backdate DOF</h1>
                 <p style="color: #888; margin-top: 10px;">Silakan isi form di bawah ini dengan lengkap</p>
             </div>
 
@@ -173,16 +173,6 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="npk" class="required">NPK</label>
-                    <input type="text" id="npk" name="npk" required placeholder="NPK akan terisi otomatis" readonly>
-                </div>
-
-                <div class="form-group">
-                    <label for="jabatan" class="required">Jabatan</label>
-                    <input type="text" id="jabatan" name="jabatan" required placeholder="Jabatan akan terisi otomatis" readonly>
-                </div>
-
-                <div class="form-group">
                     <label for="tanggalBackdate" class="required">Tanggal Pembukaan Backdate</label>
                     <input type="date" id="tanggalBackdate" name="tanggalBackdate" required>
                     <div class="help-text">Pilih tanggal pembukaan backdate</div>
@@ -190,7 +180,7 @@
 
                 <div class="form-group">
                     <label for="alasanBackdate" class="required">Alasan Pembukaan Backdate</label>
-                    <textarea id="alasanBackdate" name="alasanBackdate" required placeholder="Diisi alasan dan siapa yang memberikan perintah pembukaan backdate"></textarea>
+                    <textarea id="alasanBackdate" name="alasanBackdate" required placeholder="Diisi alasan dan siapa yang memberikan perintah pembukaan backdate" rows="4"></textarea>
                     <div class="help-text">Jelaskan alasan dan siapa yang memberikan perintah</div>
                 </div>
 
@@ -211,11 +201,6 @@
                     <input type="text" id="nomorSurat" name="nomorSurat" required placeholder="Masukkan nomor surat backdate DOF">
                 </div>
 
-                <div class="form-group">
-                    <label for="email" class="required">Email Address</label>
-                    <input type="email" id="email" name="email" required placeholder="Masukkan email address">
-                </div>
-
                 <div class="form-actions">
                     <button type="button" class="btn btn-cancel" onclick="window.location.href='../'">Batal</button>
                     <button type="submit" class="btn btn-submit" id="submitBtn">Simpan Data</button>
@@ -230,105 +215,6 @@
     <script>
         const API_URL = '../api.php';
         
-        // Data petugas/admin
-        const PETUGAS_DATA = {
-            'Ulfa Ilma': {
-                npk: '4144345',
-                jabatan: 'Staf Kearsipan dan Administrasi'
-            },
-            'Abdul Jalal': {
-                npk: 'KNEB20017',
-                jabatan: 'Staf kearsipan dan Administrasi'
-            },
-            'Bayu Prasetyo Aji': {
-                npk: '0',
-                jabatan: 'Staf Kearsipan dan Administrasi'
-            }
-        };
-        
-        // Data unit kerja/departemen
-        const UNIT_KERJA_LIST = [
-            'Dep Keamanan',
-            'Dep Manajemen Aset',
-            'Dep Pelayanan Umum',
-            'Dep. Administrasi Korporat',
-            'Dep. Administrasi Pemasaran & Penjualan',
-            'Dep. Akuntansi',
-            'Dep. Anggaran',
-            'Dep. Audit Bisnis & Keuangan',
-            'Dep. Bengkel',
-            'Dep. Bisnis dan Administrasi',
-            'Dep. Hubungan Investor',
-            'Dep. Hukum',
-            'Dep. Inspeksi Teknik 1',
-            'Dep. Inspeksi Teknik 2',
-            'Dep. IT Service Business Partner',
-            'Dep. Keandalan Pabrik',
-            'Dep. Keselamatan & Kesehatan Kerja',
-            'Dep. Keuangan',
-            'Dep. Komunikasi Korporat',
-            'Dep. Konsultasi & Jaminan Kualitas',
-            'Dep. Laboratorium',
-            'Dep. Lingkungan Hidup',
-            'Dep. Manajemen & Pengembangan SDM',
-            'Dep. Manajemen Risiko Korporasi',
-            'Dep. Manufacturing',
-            'Dep. Operasi Pabrik 1A',
-            'Dep. Operasi Pabrik 2',
-            'Dep. Operasi Pabrik 3',
-            'Dep. Operasi Pabrik 4',
-            'Dep. Operasi Pabrik 5',
-            'Dep. Operasi Pabrik 6 / EX P1',
-            'Dep. Operasi Pabrik 7',
-            'Dep. Operasional SDM',
-            'Dep. Pelabuhan dan Pengapalan',
-            'Dep. Pelaporan Manajemen',
-            'Dep. Pemeliharaan Instrumen',
-            'Dep. Pemeliharaan Listrik',
-            'Dep. Pemeliharaan Mekanik',
-            'Dep. Pengadaan Barang',
-            'Dep. Pengadaan Jasa',
-            'Dep. Pengelolaan Pelanggan',
-            'Dep. Pengembangan Korporat',
-            'Dep. Perencanaan & Monitoring',
-            'Dep. Perencanaan & Pengendalian Har.',
-            'Dep. Perencanaan & Pengendalian TA',
-            'Dep. Perencanaan Penerimaan& Pergudangan',
-            'Dep. Portofolio Bisnis',
-            'Dep. Proses & Pengelolaan Energi',
-            'Dep. Rekayasa & Konstruksi',
-            'Dep. Riset',
-            'Dep. Sistem Manajemen Terpadu & Inovasi',
-            'Dep. Strategic Delivery Unit',
-            'Dep. Teknik dan Kontrol Kualitas',
-            'Departemen TJSL',
-            'Direktur Keuangan dan Umum',
-            'Direktur Manajemen Risiko',
-            'Direktur Operasi',
-            'Direktur Pengembangan',
-            'Direktur Utama',
-            'Komp. Administrasi Keuangan',
-            'Komp. HSE & Teknologi',
-            'Komp. Operasi 1',
-            'Komp. Operasi 2',
-            'Komp. Pemeliharaan Pabrik',
-            'Komp. Pengembangan & Portofolio Bisnis',
-            'Komp. Rantai Pasok',
-            'Komp. Satuan Pengawasan Intern',
-            'Komp. SBU Jasa Pelayanan Pabrik',
-            'Komp. SDM',
-            'Komp. Sekretaris Perusahaan',
-            'Komp. Tata Kelola & Manajemen Risiko',
-            'Komp. Transformasi Bisnis',
-            'Kompartemen Umum',
-            'Proyek Soda Ash',
-            'PT Katts',
-            'PT KIE',
-            'Sekretaris Dewan Komisaris',
-            'VP Operasi Shift',
-            'YKHT'
-        ];
-        
         // Check authentication
         if (!checkAuth()) {
             window.location.href = '../login.html';
@@ -338,54 +224,63 @@
         const submitBtn = document.getElementById('submitBtn');
         const notification = document.getElementById('notification');
         const namaAdminSelect = document.getElementById('namaAdmin');
-        const npkInput = document.getElementById('npk');
-        const jabatanInput = document.getElementById('jabatan');
         const departemenSelect = document.getElementById('departemen');
         
-        // Populate dropdown petugas
-        function populatePetugasDropdown() {
-            Object.keys(PETUGAS_DATA).forEach(nama => {
-                const option = document.createElement('option');
-                option.value = nama;
-                option.textContent = nama;
-                namaAdminSelect.appendChild(option);
-            });
+        // Load petugas dari API
+        async function loadPetugas() {
+            try {
+                const response = await fetch(`${API_URL}?action=getPetugas&_t=${Date.now()}`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    // Clear existing options except first
+                    while (namaAdminSelect.options.length > 1) {
+                        namaAdminSelect.remove(1);
+                    }
+                    
+                    // Add petugas options
+                    result.data.forEach(petugas => {
+                        const option = document.createElement('option');
+                        option.value = petugas.nama;
+                        option.textContent = petugas.nama;
+                        namaAdminSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading petugas:', error);
+                showNotification('Gagal memuat data petugas', 'error');
+            }
         }
         
-        // Populate dropdown departemen
-        function populateDepartemenDropdown() {
-            if (!departemenSelect) {
-                console.error('departemenSelect tidak ditemukan');
-                return;
+        // Load unit kerja dari API
+        async function loadUnitKerja() {
+            try {
+                const response = await fetch(`${API_URL}?action=getUnitKerja&_t=${Date.now()}`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    // Clear existing options except first
+                    while (departemenSelect.options.length > 1) {
+                        departemenSelect.remove(1);
+                    }
+                    
+                    // Add unit kerja options
+                    result.data.forEach(unit => {
+                        const option = document.createElement('option');
+                        option.value = unit.nama_unit;
+                        option.textContent = unit.nama_unit;
+                        departemenSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading unit kerja:', error);
+                showNotification('Gagal memuat data unit kerja', 'error');
             }
-            if (!UNIT_KERJA_LIST || UNIT_KERJA_LIST.length === 0) {
-                console.error('UNIT_KERJA_LIST tidak terdefinisi atau kosong');
-                return;
-            }
-            UNIT_KERJA_LIST.forEach(departemen => {
-                const option = document.createElement('option');
-                option.value = departemen;
-                option.textContent = departemen;
-                departemenSelect.appendChild(option);
-            });
         }
-        
-        // Auto-fill NPK dan Jabatan ketika admin dipilih
-        namaAdminSelect.addEventListener('change', function() {
-            const selectedNama = this.value;
-            if (selectedNama && PETUGAS_DATA[selectedNama]) {
-                const data = PETUGAS_DATA[selectedNama];
-                npkInput.value = data.npk || '';
-                jabatanInput.value = data.jabatan || '';
-            } else {
-                npkInput.value = '';
-                jabatanInput.value = '';
-            }
-        });
         
         // Initialize dropdown saat halaman dimuat
-        populatePetugasDropdown();
-        populateDepartemenDropdown();
+        loadPetugas();
+        loadUnitKerja();
 
         function showNotification(message, type = 'success') {
             notification.textContent = message;
@@ -402,25 +297,19 @@
             
             // Validasi client-side sebelum submit
             const namaAdmin = namaAdminSelect.value.trim();
-            const npk = npkInput.value.trim();
-            const jabatan = jabatanInput.value.trim();
             const tanggalBackdate = document.getElementById('tanggalBackdate').value.trim();
             const alasanBackdate = document.getElementById('alasanBackdate').value.trim();
             const namaDibuka = document.getElementById('namaDibuka').value.trim();
             const departemen = departemenSelect.value.trim();
             const nomorSurat = document.getElementById('nomorSurat').value.trim();
-            const email = document.getElementById('email').value.trim();
             
             const missingFields = [];
             if (!namaAdmin || namaAdmin === '') missingFields.push('Nama Admin');
-            if (!npk) missingFields.push('NPK');
-            if (!jabatan) missingFields.push('Jabatan');
             if (!tanggalBackdate) missingFields.push('Tanggal Pembukaan Backdate');
             if (!alasanBackdate) missingFields.push('Alasan Pembukaan Backdate');
             if (!namaDibuka) missingFields.push('Nama yang Dibuka Backdate');
-            if (!departemen) missingFields.push('Departemen');
+            if (!departemen) missingFields.push('Departemen yang dibukakan Backdate');
             if (!nomorSurat) missingFields.push('Nomor Surat Backdate DOF');
-            if (!email) missingFields.push('Email Address');
             
             if (missingFields.length > 0) {
                 showNotification('Field wajib yang belum diisi: ' + missingFields.join(', '), 'error');
@@ -431,17 +320,14 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Menyimpan...';
             
-            // Get form data - pastikan semua field termasuk readonly terkirim
+            // Get form data
             const data = {
                 namaAdmin: namaAdmin,
-                npk: npk,
-                jabatan: jabatan,
                 tanggalBackdate: tanggalBackdate,
                 alasanBackdate: alasanBackdate,
                 namaDibuka: namaDibuka,
                 departemen: departemen,
-                nomorSurat: nomorSurat,
-                email: email
+                nomorSurat: nomorSurat
             };
             
             try {
@@ -454,8 +340,16 @@
                     }
                 });
                 
+                // Get auth token for user_id
+                const token = getAuthToken();
+                const fetchHeaders = {};
+                if (token) {
+                    fetchHeaders['X-Auth-Token'] = token;
+                }
+                
                 const response = await fetch(url.toString(), {
                     method: 'GET',
+                    headers: fetchHeaders,
                     mode: 'cors',
                     cache: 'no-cache'
                 });
@@ -477,9 +371,9 @@
                     form.reset();
                     // Clear dan re-populate dropdown setelah reset
                     namaAdminSelect.innerHTML = '<option value="">Pilih Admin</option>';
-                    populatePetugasDropdown();
                     departemenSelect.innerHTML = '<option value="">Pilih Departemen</option>';
-                    populateDepartemenDropdown();
+                    loadPetugas();
+                    loadUnitKerja();
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Simpan Data';
                     
