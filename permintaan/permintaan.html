@@ -18,6 +18,9 @@
         </header>
 
         <div class="controls">
+            <div id="userInfoMessage" class="user-info-message" style="display: none; padding: 10px; background: #e3f2fd; border-radius: 8px; margin-bottom: 10px; color: #1976d2; font-weight: 600;">
+                ℹ️ Anda hanya melihat data permintaan yang Anda input sendiri.
+            </div>
             <div class="search-section">
                 <input type="text" id="searchInput" placeholder="Cari data">
             </div>
@@ -111,7 +114,7 @@
             </div>
             <div id="detailContent" class="detail-content"></div>
             <div class="status-flag-container">
-                <div id="flagSection" class="status-section">
+                <div id="flagSection" class="status-section" style="display: none;">
                     <label for="flagSelect">Flag:</label>
                     <select id="flagSelect" class="status-select">
                         <option value="">Pilih Flag</option>
@@ -144,6 +147,9 @@
                 </div>
                 <div id="whatsappSection" class="status-section" style="display: none;">
                     <button id="whatsappBtn" class="whatsapp-btn">📱 Minta Persetujuan via WhatsApp</button>
+                </div>
+                <div id="chatUlangSection" class="status-section" style="display: none;">
+                    <button id="chatUlangBtn" class="whatsapp-btn">💬 Chat Ulang Petugas</button>
                 </div>
                 <div class="save-button-container">
                     <button id="saveBtn" class="save-status-btn" style="display: none;">Simpan</button>

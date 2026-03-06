@@ -30,6 +30,11 @@ function getDBConnection() {
 
 // Helper function untuk response JSON
 function sendJSONResponse($success, $data = null, $error = null, $headers = null) {
+    // Clear any output buffer before sending JSON
+    if (ob_get_level() > 0) {
+        ob_clean();
+    }
+    
     header('Content-Type: application/json; charset=utf-8');
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');

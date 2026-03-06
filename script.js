@@ -8,6 +8,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (adminCardLink) {
         adminCardLink.style.display = isSuperAdmin() ? 'block' : 'none';
     }
+
+    // Tampilkan menu Approval Akun untuk admin dan super_admin
+    const approvalCardLink = document.getElementById('approvalCardLink');
+    if (approvalCardLink) {
+        const role = getUserRole();
+        approvalCardLink.style.display = (role === 'admin' || role === 'super_admin') ? 'block' : 'none';
+    }
+
+    // Tampilkan menu Form Permintaan untuk user
+    const formPermintaanCardLink = document.getElementById('formPermintaanCardLink');
+    if (formPermintaanCardLink) {
+        const role = getUserRole();
+        formPermintaanCardLink.style.display = (role === 'user') ? 'block' : 'none';
+    }
     
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {

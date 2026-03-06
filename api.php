@@ -1,4 +1,12 @@
 <?php
+// Disable error display, but log errors
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+
+// Start output buffering to catch any unexpected output
+ob_start();
+
 require_once 'config.php';
 
 // Fungsi untuk convert format datetime dari ISO 8601 ke MySQL DATETIME
@@ -79,11 +87,26 @@ try {
         case 'resetUserPassword':
             handleResetUserPassword($conn);
             break;
+        case 'deleteUser':
+            handleDeleteUser($conn);
+            break;
         case 'disableUser':
             handleDisableUser($conn);
             break;
         case 'getAuditLogs':
             handleGetAuditLogs($conn);
+            break;
+        case 'register':
+            handleRegister($conn);
+            break;
+        case 'listRegistrations':
+            handleListRegistrations($conn);
+            break;
+        case 'approveRegistration':
+            handleApproveRegistration($conn);
+            break;
+        case 'rejectRegistration':
+            handleRejectRegistration($conn);
             break;
 
         case 'getData':
@@ -150,8 +173,15 @@ try {
             sendJSONResponse(false, null, 'Action tidak valid');
     }
 } catch (Exception $e) {
+    // Clear any output buffer
+    ob_clean();
     error_log("API Error: " . $e->getMessage());
     sendJSONResponse(false, null, $e->getMessage());
+} catch (Error $e) {
+    // Catch PHP 7+ errors
+    ob_clean();
+    error_log("API Fatal Error: " . $e->getMessage());
+    sendJSONResponse(false, null, "Terjadi kesalahan sistem: " . $e->getMessage());
 }
 
 // =========================
@@ -264,28 +294,70 @@ function requireSuperAdmin($conn) {
     return $session;
 }
 
+function requireAdminOrSuperAdmin($conn) {
+    $session = requireAuth($conn);
+    $role = $session['role'] ?? '';
+    if ($role !== 'admin' && $role !== 'super_admin') {
+        throw new Exception("Akses ditolak: butuh role admin atau super_admin.");
+    }
+    return $session;
+}
+
 function handleLogin($conn) {
     $username = trim(getRequestParam('username', ''));
     $password = getRequestParam('password', '');
 
     if ($username === '' || $password === '') {
-        throw new Exception("Username dan password wajib diisi.");
+        throw new Exception("Username/email dan password wajib diisi.");
     }
 
-    $sql = "SELECT `id`, `username`, `name`, `role`, `password`, `password_hash`, `is_active` FROM `users` WHERE `username` = ? LIMIT 1";
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new Exception("Prepare error: " . $conn->error);
+    // Check if email column exists
+    $checkColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
+    $hasEmailColumn = $checkColumn && $checkColumn->num_rows > 0;
+    
+    $user = null;
+    
+    // Check if password column exists (for backward compatibility)
+    $checkPasswordColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'password'");
+    $hasPasswordColumn = $checkPasswordColumn && $checkPasswordColumn->num_rows > 0;
+    
+    // Build SELECT columns
+    $selectColumns = "`id`, `username`, `name`, `role`, `email`, `password_hash`";
+    if ($hasPasswordColumn) {
+        $selectColumns .= ", `password`";
     }
-    $stmt->bind_param('s', $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $user = $result ? $result->fetch_assoc() : null;
-    $stmt->close();
+    $selectColumns .= ", `is_active`";
+    
+    // If input contains @, try to login with email (for regular users)
+    if (strpos($username, '@') !== false && $hasEmailColumn) {
+        $sql = "SELECT " . $selectColumns . " FROM `users` WHERE `email` = ? LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        if ($stmt) {
+            $stmt->bind_param('s', $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $user = $result ? $result->fetch_assoc() : null;
+            $stmt->close();
+        }
+    }
+    
+    // If not found or doesn't contain @, try username (for admin/super_admin)
+    if (!$user) {
+        $sql = "SELECT " . $selectColumns . " FROM `users` WHERE `username` = ? LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            throw new Exception("Prepare error: " . $conn->error);
+        }
+        $stmt->bind_param('s', $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result ? $result->fetch_assoc() : null;
+        $stmt->close();
+    }
 
     if (!$user) {
         auditLog($conn, 0, 'login_failed', 'user', ['username' => $username, 'reason' => 'not_found']);
-        throw new Exception("Username atau password salah.");
+        throw new Exception("Username/email atau password salah.");
     }
     if (intval($user['is_active']) !== 1) {
         auditLog($conn, intval($user['id']), 'login_failed', 'user', ['reason' => 'inactive']);
@@ -293,10 +365,37 @@ function handleLogin($conn) {
     }
     
     // Check password (plain text comparison)
-    $storedPassword = $user['password'] ?? $user['password_hash'] ?? '';
+    // Try both password_hash and password columns
+    $storedPassword = $user['password_hash'] ?? $user['password'] ?? '';
+    
+    // Remove any whitespace from both passwords for comparison
+    $password = trim($password);
+    $storedPassword = trim($storedPassword);
+    
+    // Debug: Check if password matches
     if ($password !== $storedPassword) {
-        auditLog($conn, intval($user['id']), 'login_failed', 'user', ['reason' => 'bad_password']);
-        throw new Exception("Username atau password salah.");
+        // Also check if stored password might be hashed (old data)
+        // If stored password looks like a hash (starts with $2y$ or $2a$), skip this check
+        if (strpos($storedPassword, '$2y$') === 0 || strpos($storedPassword, '$2a$') === 0) {
+            // Old hashed password, try to verify
+            if (password_verify($password, $storedPassword)) {
+                // Password matches with hash, update to plain text for future
+                $updateSql = "UPDATE `users` SET `password_hash` = ? WHERE `id` = ?";
+                $updateStmt = $conn->prepare($updateSql);
+                if ($updateStmt) {
+                    $userId = intval($user['id']);
+                    $updateStmt->bind_param('si', $password, $userId);
+                    $updateStmt->execute();
+                    $updateStmt->close();
+                }
+            } else {
+                auditLog($conn, intval($user['id']), 'login_failed', 'user', ['reason' => 'bad_password']);
+                throw new Exception("Username/email atau password salah.");
+            }
+        } else {
+            auditLog($conn, intval($user['id']), 'login_failed', 'user', ['reason' => 'bad_password']);
+            throw new Exception("Username/email atau password salah.");
+        }
     }
 
     $token = generateToken();
@@ -330,15 +429,59 @@ function handleLogin($conn) {
 
 function handleMe($conn) {
     $session = requireAuth($conn);
-    sendJSONResponse(true, [
+    
+    // Get full user data including npk, email, nomor_telepon, unit_kerja
+    $userId = intval($session['user_id']);
+    $sql = "SELECT `id`, `username`, `name`, `role`, `npk`, `email`, `nomor_telepon`, `unit_kerja` 
+            FROM `users` WHERE `id` = ? LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$user) {
+        throw new Exception("User tidak ditemukan.");
+    }
+    
+    // Ensure we return empty string instead of null for nullable fields
+    $npk = isset($user['npk']) && $user['npk'] !== null ? trim($user['npk']) : '';
+    $email = isset($user['email']) && $user['email'] !== null ? trim($user['email']) : '';
+    $nomorTelepon = isset($user['nomor_telepon']) && $user['nomor_telepon'] !== null ? trim($user['nomor_telepon']) : '';
+    $unitKerja = isset($user['unit_kerja']) && $user['unit_kerja'] !== null ? trim($user['unit_kerja']) : '';
+    
+    // Return response dengan format yang benar - user langsung di root, bukan di data
+    // Karena sendJSONResponse akan wrap dalam 'data', kita perlu struktur khusus
+    if (ob_get_level() > 0) {
+        ob_clean();
+    }
+    
+    header('Content-Type: application/json; charset=utf-8');
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, X-Auth-Token');
+    
+    $response = [
+        'success' => true,
         'user' => [
-            'id' => $session['user_id'],
-            'username' => $session['username'],
-            'name' => $session['name'],
-            'role' => $session['role']
+            'id' => intval($user['id']),
+            'username' => $user['username'],
+            'name' => $user['name'],
+            'role' => $user['role'],
+            'npk' => $npk,
+            'email' => $email,
+            'nomorTelepon' => $nomorTelepon,
+            'unitKerja' => $unitKerja
         ],
         'expiresAt' => $session['expires_at']
-    ]);
+    ];
+    
+    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    exit;
 }
 
 function handleLogout($conn) {
@@ -356,15 +499,37 @@ function handleLogout($conn) {
 }
 
 function handleListUsers($conn) {
-    $session = requireSuperAdmin($conn);
+    $session = requireAdminOrSuperAdmin($conn);
 
-    $result = $conn->query("SELECT `id`,`username`,`name`,`role`,`is_active`,`created_at`,`updated_at` FROM `users` ORDER BY `role` ASC, `username` ASC");
+    // Build SELECT columns - include additional fields if they exist
+    $selectColumns = "`id`,`username`,`name`,`role`,`is_active`,`created_at`,`updated_at`,`password_hash`";
+    
+    // Check if additional columns exist
+    $checkNpk = $conn->query("SHOW COLUMNS FROM `users` LIKE 'npk'");
+    $checkEmail = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
+    $checkTel = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
+    $checkUnit = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
+    
+    if ($checkNpk && $checkNpk->num_rows > 0) {
+        $selectColumns .= ",`npk`";
+    }
+    if ($checkEmail && $checkEmail->num_rows > 0) {
+        $selectColumns .= ",`email`";
+    }
+    if ($checkTel && $checkTel->num_rows > 0) {
+        $selectColumns .= ",`nomor_telepon`";
+    }
+    if ($checkUnit && $checkUnit->num_rows > 0) {
+        $selectColumns .= ",`unit_kerja`";
+    }
+    
+    $result = $conn->query("SELECT " . $selectColumns . " FROM `users` ORDER BY `role` ASC, `username` ASC");
     if (!$result) {
         throw new Exception("Query error: " . $conn->error);
     }
     $users = [];
     while ($row = $result->fetch_assoc()) {
-        $users[] = [
+        $userData = [
             'id' => intval($row['id']),
             'username' => $row['username'],
             'name' => $row['name'],
@@ -373,6 +538,26 @@ function handleListUsers($conn) {
             'createdAt' => $row['created_at'],
             'updatedAt' => $row['updated_at']
         ];
+        
+        // Add optional fields if they exist
+        if (isset($row['npk'])) {
+            $userData['npk'] = $row['npk'];
+        }
+        if (isset($row['email'])) {
+            $userData['email'] = $row['email'];
+        }
+        if (isset($row['nomor_telepon'])) {
+            $userData['nomorTelepon'] = $row['nomor_telepon'];
+        }
+        if (isset($row['unit_kerja'])) {
+            $userData['unitKerja'] = $row['unit_kerja'];
+        }
+        // Add password (stored as plain text in password_hash column)
+        if (isset($row['password_hash'])) {
+            $userData['password'] = $row['password_hash'];
+        }
+        
+        $users[] = $userData;
     }
 
     auditLog($conn, $session['user_id'], 'list_users', 'user');
@@ -398,13 +583,13 @@ function handleCreateUser($conn) {
         throw new Exception("Role tidak valid.");
     }
 
-    $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+    // Store password as plain text
     $sql = "INSERT INTO `users` (`username`,`name`,`role`,`password_hash`,`is_active`) VALUES (?,?,?,?,1)";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         throw new Exception("Prepare error: " . $conn->error);
     }
-    $stmt->bind_param('ssss', $username, $name, $role, $passwordHash);
+    $stmt->bind_param('ssss', $username, $name, $role, $password);
     if (!$stmt->execute()) {
         $err = $stmt->error;
         $stmt->close();
@@ -418,12 +603,16 @@ function handleCreateUser($conn) {
 }
 
 function handleUpdateUser($conn) {
-    $session = requireSuperAdmin($conn);
+    $session = requireAdminOrSuperAdmin($conn);
 
     $id = intval(getRequestParam('id', 0));
     $name = trim(getRequestParam('name', ''));
     $role = trim(getRequestParam('role', ''));
     $isActive = getRequestParam('isActive', null);
+    $email = trim(getRequestParam('email', ''));
+    $npk = trim(getRequestParam('npk', ''));
+    $nomorTelepon = trim(getRequestParam('nomor_telepon', ''));
+    $unitKerja = trim(getRequestParam('unit_kerja', ''));
 
     if ($id <= 0) {
         throw new Exception("ID user tidak valid.");
@@ -454,6 +643,74 @@ function handleUpdateUser($conn) {
         $updates[] = "`is_active` = ?";
         $params[] = $isActiveVal;
         $types .= 'i';
+    }
+
+    // Check if email column exists and update if provided
+    $checkEmailColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
+    $hasEmailColumn = $checkEmailColumn && $checkEmailColumn->num_rows > 0;
+    if ($hasEmailColumn && $email !== '') {
+        // Validate email format
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception("Format email tidak valid.");
+        }
+        // Check if email already exists for another user
+        $checkEmail = $conn->prepare("SELECT `id` FROM `users` WHERE `email` = ? AND `id` != ? LIMIT 1");
+        if ($checkEmail) {
+            $checkEmail->bind_param('si', $email, $id);
+            $checkEmail->execute();
+            $result = $checkEmail->get_result();
+            if ($result && $result->num_rows > 0) {
+                $checkEmail->close();
+                throw new Exception("Email sudah digunakan oleh user lain.");
+            }
+            $checkEmail->close();
+        }
+        $updates[] = "`email` = ?";
+        $params[] = $email;
+        $types .= 's';
+    }
+
+    // Check if npk column exists and update if provided
+    $checkNpkColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'npk'");
+    $hasNpkColumn = $checkNpkColumn && $checkNpkColumn->num_rows > 0;
+    if ($hasNpkColumn && $npk !== '') {
+        // Check if NPK already exists for another user
+        $checkNpk = $conn->prepare("SELECT `id` FROM `users` WHERE `npk` = ? AND `id` != ? LIMIT 1");
+        if ($checkNpk) {
+            $checkNpk->bind_param('si', $npk, $id);
+            $checkNpk->execute();
+            $result = $checkNpk->get_result();
+            if ($result && $result->num_rows > 0) {
+                $checkNpk->close();
+                throw new Exception("NPK sudah digunakan oleh user lain.");
+            }
+            $checkNpk->close();
+        }
+        $updates[] = "`npk` = ?";
+        $params[] = $npk;
+        $types .= 's';
+    }
+
+    // Check if nomor_telepon column exists and update if provided
+    $checkTelColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
+    $hasTelColumn = $checkTelColumn && $checkTelColumn->num_rows > 0;
+    if ($hasTelColumn && $nomorTelepon !== '') {
+        // Validate phone number format
+        if (!preg_match('/^08\d{8,11}$/', $nomorTelepon)) {
+            throw new Exception("Format nomor telepon tidak valid. Gunakan format: 08xxxxxxxxxx");
+        }
+        $updates[] = "`nomor_telepon` = ?";
+        $params[] = $nomorTelepon;
+        $types .= 's';
+    }
+
+    // Check if unit_kerja column exists and update if provided
+    $checkUnitColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
+    $hasUnitColumn = $checkUnitColumn && $checkUnitColumn->num_rows > 0;
+    if ($hasUnitColumn && $unitKerja !== '') {
+        $updates[] = "`unit_kerja` = ?";
+        $params[] = $unitKerja;
+        $types .= 's';
     }
 
     if (empty($updates)) {
@@ -492,7 +749,7 @@ function handleUpdateUser($conn) {
 }
 
 function handleResetUserPassword($conn) {
-    $session = requireSuperAdmin($conn);
+    $session = requireAdminOrSuperAdmin($conn);
 
     $id = intval(getRequestParam('id', 0));
     $newPassword = getRequestParam('newPassword', '');
@@ -504,11 +761,11 @@ function handleResetUserPassword($conn) {
         throw new Exception("Password baru wajib diisi.");
     }
 
-    $hash = password_hash($newPassword, PASSWORD_BCRYPT);
+    // Store password as plain text
     $sql = "UPDATE `users` SET `password_hash` = ? WHERE `id` = ?";
     $stmt = $conn->prepare($sql);
     if (!$stmt) throw new Exception("Prepare error: " . $conn->error);
-    $stmt->bind_param('si', $hash, $id);
+    $stmt->bind_param('si', $newPassword, $id);
     if (!$stmt->execute()) throw new Exception("Execute error: " . $stmt->error);
     $stmt->close();
 
@@ -523,6 +780,60 @@ function handleResetUserPassword($conn) {
 
     auditLog($conn, $session['user_id'], 'reset_password', 'user', ['targetUserId' => $id]);
     sendJSONResponse(true, ['message' => 'Password user berhasil direset (semua session dicabut)']);
+}
+
+function handleDeleteUser($conn) {
+    $session = requireAdminOrSuperAdmin($conn);
+    
+    $id = intval(getRequestParam('id', 0));
+    if ($id <= 0) {
+        throw new Exception("ID user tidak valid.");
+    }
+
+    // Prevent deleting yourself
+    if ($id === intval($session['user_id'])) {
+        throw new Exception("Tidak dapat menghapus akun sendiri.");
+    }
+
+    // Check if user exists
+    $check = $conn->prepare("SELECT `id`, `username`, `name` FROM `users` WHERE `id` = ? LIMIT 1");
+    if (!$check) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $check->bind_param('i', $id);
+    $check->execute();
+    $result = $check->get_result();
+    $user = $result ? $result->fetch_assoc() : null;
+    $check->close();
+
+    if (!$user) {
+        throw new Exception("User tidak ditemukan.");
+    }
+
+    // Delete all sessions first
+    $delSessions = $conn->prepare("DELETE FROM `auth_sessions` WHERE `user_id` = ?");
+    if ($delSessions) {
+        $delSessions->bind_param('i', $id);
+        $delSessions->execute();
+        $delSessions->close();
+    }
+
+    // Delete user
+    $sql = "DELETE FROM `users` WHERE `id` = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('i', $id);
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal menghapus user: " . $err);
+    }
+    $stmt->close();
+
+    auditLog($conn, $session['user_id'], 'delete_user', 'user', ['deletedUserId' => $id, 'username' => $user['username']]);
+    sendJSONResponse(true, ['message' => 'User berhasil dihapus']);
 }
 
 function handleDisableUser($conn) {
@@ -565,16 +876,429 @@ function handleGetAuditLogs($conn) {
     sendJSONResponse(true, $rows);
 }
 
+function handleRegister($conn) {
+    // Tidak perlu auth untuk pendaftaran
+    $nama = trim(getRequestParam('nama', ''));
+    $npk = trim(getRequestParam('npk', ''));
+    $nomor_telepon = trim(getRequestParam('nomor_telepon', ''));
+    $email = trim(getRequestParam('email', ''));
+    $unit_kerja = trim(getRequestParam('unit_kerja', ''));
+
+    // Validation (password tidak diperlukan, akan di-generate saat approval)
+    if ($nama === '' || $npk === '' || $nomor_telepon === '' || $email === '' || $unit_kerja === '') {
+        throw new Exception("Semua field wajib diisi.");
+    }
+
+    // Validate email format
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new Exception("Format email tidak valid.");
+    }
+
+    // Validate phone number (should start with 08)
+    if (!preg_match('/^08\d{8,11}$/', $nomor_telepon)) {
+        throw new Exception("Format nomor telepon tidak valid. Gunakan format: 08xxxxxxxxxx");
+    }
+
+    // Check if NPK already exists in users table (only if column exists)
+    $checkColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'npk'");
+    if ($checkColumn && $checkColumn->num_rows > 0) {
+        $checkNpk = $conn->prepare("SELECT `id` FROM `users` WHERE `npk` = ? LIMIT 1");
+        if ($checkNpk) {
+            $checkNpk->bind_param('s', $npk);
+            $checkNpk->execute();
+            $result = $checkNpk->get_result();
+            if ($result && $result->num_rows > 0) {
+                $checkNpk->close();
+                throw new Exception("NPK sudah terdaftar.");
+            }
+            $checkNpk->close();
+        }
+    }
+
+    // Check if email already exists in users table (only if column exists)
+    $checkColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
+    if ($checkColumn && $checkColumn->num_rows > 0) {
+        $checkEmail = $conn->prepare("SELECT `id` FROM `users` WHERE `email` = ? LIMIT 1");
+        if ($checkEmail) {
+            $checkEmail->bind_param('s', $email);
+            $checkEmail->execute();
+            $result = $checkEmail->get_result();
+            if ($result && $result->num_rows > 0) {
+                $checkEmail->close();
+                throw new Exception("Email sudah terdaftar.");
+            }
+            $checkEmail->close();
+        }
+    }
+
+    // Check if NPK already exists in pending registrations
+    $checkRegNpk = $conn->prepare("SELECT `id` FROM `user_registrations` WHERE `npk` = ? AND `status` = 'pending' LIMIT 1");
+    if ($checkRegNpk) {
+        $checkRegNpk->bind_param('s', $npk);
+        $checkRegNpk->execute();
+        $result = $checkRegNpk->get_result();
+        if ($result && $result->num_rows > 0) {
+            $checkRegNpk->close();
+            throw new Exception("NPK sudah terdaftar dan sedang menunggu persetujuan.");
+        }
+        $checkRegNpk->close();
+    }
+
+    // Check if email already exists in pending registrations
+    $checkRegEmail = $conn->prepare("SELECT `id` FROM `user_registrations` WHERE `email` = ? AND `status` = 'pending' LIMIT 1");
+    if ($checkRegEmail) {
+        $checkRegEmail->bind_param('s', $email);
+        $checkRegEmail->execute();
+        $result = $checkRegEmail->get_result();
+        if ($result && $result->num_rows > 0) {
+            $checkRegEmail->close();
+            throw new Exception("Email sudah terdaftar dan sedang menunggu persetujuan.");
+        }
+        $checkRegEmail->close();
+    }
+
+    // Insert registration (password tidak diperlukan, akan di-generate saat approval)
+    $sql = "INSERT INTO `user_registrations` (`nama`, `npk`, `nomor_telepon`, `email`, `unit_kerja`, `status`) VALUES (?, ?, ?, ?, ?, 'pending')";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('sssss', $nama, $npk, $nomor_telepon, $email, $unit_kerja);
+    
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal mendaftar: " . $err);
+    }
+    $newId = $stmt->insert_id;
+    $stmt->close();
+
+    sendJSONResponse(true, ['message' => 'Pendaftaran berhasil. Menunggu persetujuan admin.', 'id' => $newId]);
+}
+
+function handleListRegistrations($conn) {
+    $session = requireAuth($conn);
+    
+    // Hanya admin dan super_admin yang bisa melihat
+    if ($session['role'] !== 'admin' && $session['role'] !== 'super_admin') {
+        throw new Exception("Akses ditolak: butuh role admin atau super_admin.");
+    }
+
+    $status = getRequestParam('status', '');
+    $whereClause = '';
+    $params = [];
+    $types = '';
+
+    if ($status !== '' && in_array($status, ['pending', 'approved', 'rejected'], true)) {
+        $whereClause = "WHERE `status` = ?";
+        $params[] = $status;
+        $types = 's';
+    }
+
+    $sql = "SELECT r.`id`, r.`nama`, r.`npk`, r.`nomor_telepon`, r.`email`, r.`unit_kerja`, r.`status`, 
+                   r.`approved_by`, r.`approved_at`, r.`rejection_reason`, r.`created_at`, r.`updated_at`,
+                   u.`name` as `approved_by_name`
+            FROM `user_registrations` r
+            LEFT JOIN `users` u ON u.`id` = r.`approved_by`
+            " . $whereClause . "
+            ORDER BY r.`created_at` DESC";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $registrations = [];
+    
+    while ($row = $result->fetch_assoc()) {
+        $registrations[] = [
+            'id' => intval($row['id']),
+            'nama' => $row['nama'],
+            'npk' => $row['npk'],
+            'nomorTelepon' => $row['nomor_telepon'],
+            'email' => $row['email'],
+            'unitKerja' => $row['unit_kerja'],
+            'status' => $row['status'],
+            'approvedBy' => $row['approved_by'] ? intval($row['approved_by']) : null,
+            'approvedByName' => $row['approved_by_name'] ?? null,
+            'approvedAt' => $row['approved_at'],
+            'rejectionReason' => $row['rejection_reason'],
+            'createdAt' => $row['created_at'],
+            'updatedAt' => $row['updated_at']
+        ];
+    }
+    
+    $stmt->close();
+    
+    auditLog($conn, $session['user_id'], 'list_registrations', 'user_registration');
+    sendJSONResponse(true, $registrations);
+}
+
+function handleApproveRegistration($conn) {
+    $session = requireAuth($conn);
+    
+    // Hanya admin dan super_admin yang bisa approve
+    if ($session['role'] !== 'admin' && $session['role'] !== 'super_admin') {
+        throw new Exception("Akses ditolak: butuh role admin atau super_admin.");
+    }
+
+    $id = intval(getRequestParam('id', 0));
+    if ($id <= 0) {
+        throw new Exception("ID pendaftaran tidak valid.");
+    }
+
+    // Get registration data
+    $sql = "SELECT * FROM `user_registrations` WHERE `id` = ? AND `status` = 'pending' LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $registration = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+
+    if (!$registration) {
+        throw new Exception("Pendaftaran tidak ditemukan atau sudah diproses.");
+    }
+
+    // Check if NPK or email already exists in users (only if columns exist)
+    $checkNpkColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'npk'");
+    $checkEmailColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
+    $hasNpkColumn = $checkNpkColumn && $checkNpkColumn->num_rows > 0;
+    $hasEmailColumn = $checkEmailColumn && $checkEmailColumn->num_rows > 0;
+    
+    if ($hasNpkColumn || $hasEmailColumn) {
+        $whereConditions = [];
+        $params = [];
+        $types = '';
+        
+        if ($hasNpkColumn) {
+            $whereConditions[] = "`npk` = ?";
+            $params[] = $registration['npk'];
+            $types .= 's';
+        }
+        
+        if ($hasEmailColumn) {
+            $whereConditions[] = "`email` = ?";
+            $params[] = $registration['email'];
+            $types .= 's';
+        }
+        
+        if (!empty($whereConditions)) {
+            $sql = "SELECT `id` FROM `users` WHERE " . implode(' OR ', $whereConditions) . " LIMIT 1";
+            $checkUser = $conn->prepare($sql);
+            if ($checkUser) {
+                $checkUser->bind_param($types, ...$params);
+                $checkUser->execute();
+                $userResult = $checkUser->get_result();
+                if ($userResult && $userResult->num_rows > 0) {
+                    $checkUser->close();
+                    throw new Exception("NPK atau Email sudah terdaftar sebagai user aktif.");
+                }
+                $checkUser->close();
+            }
+        }
+    }
+
+    // Generate username from NPK (lowercase)
+    $username = strtolower($registration['npk']);
+    
+    // Generate fixed password for all users: "User@25"
+    $passwordHash = 'User@25';
+
+    // Start transaction
+    $conn->begin_transaction();
+
+    try {
+        // Create user account
+        $sqlUser = "INSERT INTO `users` (`username`, `name`, `npk`, `nomor_telepon`, `email`, `unit_kerja`, `role`, `password_hash`, `is_active`) 
+                    VALUES (?, ?, ?, ?, ?, ?, 'user', ?, 1)";
+        $stmtUser = $conn->prepare($sqlUser);
+        if (!$stmtUser) {
+            throw new Exception("Prepare error: " . $conn->error);
+        }
+        $stmtUser->bind_param('sssssss', $username, $registration['nama'], $registration['npk'], 
+                             $registration['nomor_telepon'], $registration['email'], 
+                             $registration['unit_kerja'], $passwordHash);
+        
+        if (!$stmtUser->execute()) {
+            throw new Exception("Gagal membuat user: " . $stmtUser->error);
+        }
+        $newUserId = $stmtUser->insert_id;
+        $stmtUser->close();
+
+        // Update registration status
+        $approvedAt = date('Y-m-d H:i:s');
+        $sqlUpdate = "UPDATE `user_registrations` SET `status` = 'approved', `approved_by` = ?, `approved_at` = ? WHERE `id` = ?";
+        $stmtUpdate = $conn->prepare($sqlUpdate);
+        if (!$stmtUpdate) {
+            throw new Exception("Prepare error: " . $conn->error);
+        }
+        $stmtUpdate->bind_param('isi', $session['user_id'], $approvedAt, $id);
+        if (!$stmtUpdate->execute()) {
+            throw new Exception("Gagal update status: " . $stmtUpdate->error);
+        }
+        $stmtUpdate->close();
+
+        // Commit transaction
+        $conn->commit();
+
+        // Send WhatsApp notification
+        $whatsappMessage = generateApprovalMessage($registration, $username, $passwordHash);
+        $whatsappUrl = generateWhatsAppUrl($registration['nomor_telepon'], $whatsappMessage);
+
+        auditLog($conn, $session['user_id'], 'approve_registration', 'user_registration', [
+            'registrationId' => $id,
+            'newUserId' => $newUserId,
+            'npk' => $registration['npk']
+        ]);
+
+        sendJSONResponse(true, [
+            'message' => 'Pendaftaran berhasil disetujui dan akun user telah dibuat.',
+            'userId' => $newUserId,
+            'whatsappUrl' => $whatsappUrl
+        ]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        throw $e;
+    }
+}
+
+function handleRejectRegistration($conn) {
+    $session = requireAuth($conn);
+    
+    // Hanya admin dan super_admin yang bisa reject
+    if ($session['role'] !== 'admin' && $session['role'] !== 'super_admin') {
+        throw new Exception("Akses ditolak: butuh role admin atau super_admin.");
+    }
+
+    $id = intval(getRequestParam('id', 0));
+    $rejectionReason = trim(getRequestParam('rejectionReason', ''));
+
+    if ($id <= 0) {
+        throw new Exception("ID pendaftaran tidak valid.");
+    }
+
+    // Get registration data
+    $sql = "SELECT * FROM `user_registrations` WHERE `id` = ? AND `status` = 'pending' LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $registration = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+
+    if (!$registration) {
+        throw new Exception("Pendaftaran tidak ditemukan atau sudah diproses.");
+    }
+
+    // Update registration status
+    $sqlUpdate = "UPDATE `user_registrations` SET `status` = 'rejected', `rejection_reason` = ? WHERE `id` = ?";
+    $stmtUpdate = $conn->prepare($sqlUpdate);
+    if (!$stmtUpdate) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmtUpdate->bind_param('si', $rejectionReason, $id);
+    if (!$stmtUpdate->execute()) {
+        throw new Exception("Gagal update status: " . $stmtUpdate->error);
+    }
+    $stmtUpdate->close();
+
+    auditLog($conn, $session['user_id'], 'reject_registration', 'user_registration', [
+        'registrationId' => $id,
+        'npk' => $registration['npk'],
+        'reason' => $rejectionReason
+    ]);
+
+    sendJSONResponse(true, ['message' => 'Pendaftaran ditolak.']);
+}
+
+function generateApprovalMessage($registration, $username, $password) {
+    $message = "Selamat! Pendaftaran akun Anda telah *DISETUJUI*.\n\n";
+    $message .= "Detail Akun:\n";
+    $message .= "• Nama: " . $registration['nama'] . "\n";
+    $message .= "• Username: " . $username . "\n";
+    $message .= "• Password: " . $password . "\n";
+    $message .= "• NPK: " . $registration['npk'] . "\n";
+    $message .= "• Unit Kerja: " . $registration['unit_kerja'] . "\n\n";
+    $message .= "Silakan login menggunakan username dan password di atas.\n";
+    $message .= "Sangat disarankan untuk mengubah password setelah login pertama kali.\n\n";
+    $message .= "Terima kasih.";
+    
+    return $message;
+}
+
+function generateWhatsAppUrl($phoneNumber, $message) {
+    // Remove leading 0 and add country code 62
+    $cleanPhone = preg_replace('/^0/', '62', $phoneNumber);
+    $encodedMessage = urlencode($message);
+    return "https://wa.me/{$cleanPhone}?text={$encodedMessage}";
+}
+
 // Handler untuk getData (permintaan atau backdate)
 function handleGetData($conn) {
-    // Allow access without auth for backward compatibility
-    // Super admin can also access via token
+    // Try to get session for filtering by user
+    $session = null;
+    $userId = null;
+    $userRole = null;
+    
+    try {
+        $token = getAuthTokenFromRequest();
+        if ($token !== '') {
+            $sessionResult = $conn->query("SELECT s.`user_id`, s.`token`, s.`expires_at`, u.`username`, u.`name`, u.`role`, u.`is_active`
+                FROM `auth_sessions` s
+                JOIN `users` u ON u.`id` = s.`user_id`
+                WHERE s.`token` = '" . $conn->real_escape_string($token) . "' 
+                AND s.`expires_at` > NOW() 
+                AND u.`is_active` = 1
+                LIMIT 1");
+            
+            if ($sessionResult && $sessionResult->num_rows > 0) {
+                $sessionRow = $sessionResult->fetch_assoc();
+                $userId = intval($sessionRow['user_id']);
+                $userRole = $sessionRow['role'];
+            }
+        }
+    } catch (Exception $e) {
+        // Ignore auth errors for backward compatibility
+    }
+    
     $table = $_GET['table'] ?? 'permintaan'; // default permintaan
     
     if ($table === 'backdate') {
         $sql = "SELECT * FROM `backdate` ORDER BY `timestamp` DESC, `id` DESC";
     } else {
-        $sql = "SELECT * FROM `permintaan` ORDER BY `timestamp` DESC, `id` DESC";
+        // Filter by user_id if role is 'user'
+        if ($userRole === 'user' && $userId) {
+            // Check if user_id column exists
+            $checkColumn = $conn->query("SHOW COLUMNS FROM `permintaan` LIKE 'user_id'");
+            if ($checkColumn && $checkColumn->num_rows > 0) {
+                // STRICT: Only show data where user_id matches exactly
+                // This ensures users only see their own data
+                $sql = "SELECT * FROM `permintaan` WHERE `user_id` = $userId AND `user_id` IS NOT NULL ORDER BY `timestamp` DESC, `id` DESC";
+            } else {
+                // If column doesn't exist, return empty for user (they can't see old data)
+                $sql = "SELECT * FROM `permintaan` WHERE 1=0";
+            }
+        } else if ($userRole === 'user' && !$userId) {
+            // If user role but no userId found, return empty
+            $sql = "SELECT * FROM `permintaan` WHERE 1=0";
+        } else {
+            // For admin/super_admin, show all data
+            $sql = "SELECT * FROM `permintaan` ORDER BY `timestamp` DESC, `id` DESC";
+        }
     }
     
     $result = $conn->query($sql);
@@ -626,7 +1350,7 @@ function handleGetData($conn) {
                     'Status Surat', 'Alasan Permintaan/Permintaan', 
                     'Email Address', 'Jenis Surat', 'Isi Penjelasan Singkat Permintaanya',
                     'Status', 'Flag', 'Petugas', 'Waktu Selesai', 
-                    'Keterangan', 'Persetujuan'
+                    'Keterangan', 'Persetujuan', 'Petugas ID', 'Petugas No WA'
                 ];
             }
             
@@ -649,6 +1373,9 @@ function handleGetData($conn) {
             $rowData['Waktu Selesai'] = $row['waktu_selesai'] ?? '';
             $rowData['Keterangan'] = $row['keterangan'] ?? '';
             $rowData['Persetujuan'] = $row['persetujuan'] ?? '';
+            // Tambahkan petugas_id dan petugas_no_wa untuk kebutuhan chat
+            $rowData['Petugas ID'] = $row['petugas_id'] ?? '';
+            $rowData['Petugas No WA'] = $row['petugas_no_wa'] ?? '';
         }
         
         $data[] = $rowData;
@@ -1234,6 +1961,40 @@ function handleDeletePilihPermintaanOption($conn) {
 
 // Handler untuk getPetugas
 function handleGetPetugas($conn) {
+    // Jika ada parameter nama, cari petugas berdasarkan nama
+    $nama = trim(getRequestParam('nama', ''));
+    
+    if ($nama !== '') {
+        // Cari petugas berdasarkan nama
+        $sql = "SELECT `id`, `nama`, `npk`, `jabatan`, `no_wa` FROM `petugas` WHERE `nama` = ? AND `is_active` = 1 LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            throw new Exception("Prepare error: " . $conn->error);
+        }
+        $stmt->bind_param('s', $nama);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result && $result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $data = [
+                'id' => intval($row['id']),
+                'nama' => $row['nama'],
+                'npk' => $row['npk'] ?? '',
+                'jabatan' => $row['jabatan'] ?? '',
+                'no_wa' => $row['no_wa'] ?? ''
+            ];
+            $stmt->close();
+            sendJSONResponse(true, $data);
+            return;
+        }
+        $stmt->close();
+        
+        // Jika tidak ditemukan, kembalikan error
+        throw new Exception("Petugas dengan nama '$nama' tidak ditemukan.");
+    }
+    
+    // Jika tidak ada parameter nama, kembalikan semua petugas
     $sql = "SELECT `id`, `nama`, `npk`, `jabatan`, `no_wa` FROM `petugas` WHERE `is_active` = 1 ORDER BY `nama` ASC";
     $result = $conn->query($sql);
     
@@ -1248,7 +2009,7 @@ function handleGetPetugas($conn) {
             'nama' => $row['nama'],
             'npk' => $row['npk'] ?? '',
             'jabatan' => $row['jabatan'] ?? '',
-            'no_wa' => $row['no_wa']
+            'no_wa' => $row['no_wa'] ?? ''
         ];
     }
     
@@ -1304,29 +2065,76 @@ function handleSubmitPermintaan($conn) {
     $timestamp = date('Y-m-d H:i:s');
     
     // Get petugas name
-    $petugasResult = $conn->query("SELECT `nama` FROM `petugas` WHERE `id` = $petugasId LIMIT 1");
+    $petugasResult = $conn->query("SELECT `nama`, `no_wa` FROM `petugas` WHERE `id` = $petugasId LIMIT 1");
     $petugasRow = $petugasResult->fetch_assoc();
     $petugasNama = $petugasRow['nama'] ?? '';
+    $petugasNoWa = $petugasRow['no_wa'] ?? '';
     
-    // Insert into permintaan table
-    $sql = "INSERT INTO `permintaan` (
-        `row_number`, `timestamp_data`, `npk`, `nama_lengkap`, `unit_kerja`, 
-        `no_telepon`, `pilih_permintaan`, `status_surat`, `jenis_surat`, 
-        `no_surat`, `alasan_permintaan`, `isi_penjelasan`, `petugas`, 
-        `status`, `timestamp`
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Open', ?)";
-    
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new Exception("Prepare error: " . $conn->error);
+    // Get user_id from session if available
+    $userId = null;
+    try {
+        $token = getAuthTokenFromRequest();
+        if ($token !== '') {
+            $sessionResult = $conn->query("SELECT s.`user_id` FROM `auth_sessions` s
+                JOIN `users` u ON u.`id` = s.`user_id`
+                WHERE s.`token` = '" . $conn->real_escape_string($token) . "' 
+                AND s.`expires_at` > NOW() 
+                AND u.`is_active` = 1
+                LIMIT 1");
+            
+            if ($sessionResult && $sessionResult->num_rows > 0) {
+                $sessionRow = $sessionResult->fetch_assoc();
+                $userId = intval($sessionRow['user_id']);
+            }
+        }
+    } catch (Exception $e) {
+        // Ignore auth errors
     }
     
-    $stmt->bind_param('isssssssssssss', 
-        $rowNumber, $timestamp, $npk, $namaLengkap, $unitKerja,
-        $noTelepon, $pilihPermintaan, $statusSurat, $jenisSurat,
-        $noSurat, $alasanPermintaan, $isiPenjelasan, $petugasNama,
-        $timestamp
-    );
+    // Check if user_id column exists
+    $checkColumn = $conn->query("SHOW COLUMNS FROM `permintaan` LIKE 'user_id'");
+    $hasUserIdColumn = $checkColumn && $checkColumn->num_rows > 0;
+    
+    // Insert into permintaan table
+    if ($hasUserIdColumn && $userId) {
+        $sql = "INSERT INTO `permintaan` (
+            `row_number`, `timestamp_data`, `npk`, `nama_lengkap`, `unit_kerja`, 
+            `no_telepon`, `pilih_permintaan`, `status_surat`, `jenis_surat`, 
+            `no_surat`, `alasan_permintaan`, `isi_penjelasan`, `petugas`, 
+            `status`, `timestamp`, `user_id`, `petugas_id`, `petugas_no_wa`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Open', ?, ?, ?, ?)";
+        
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            throw new Exception("Prepare error: " . $conn->error);
+        }
+        
+        $stmt->bind_param('isssssssssssssiis', 
+            $rowNumber, $timestamp, $npk, $namaLengkap, $unitKerja,
+            $noTelepon, $pilihPermintaan, $statusSurat, $jenisSurat,
+            $noSurat, $alasanPermintaan, $isiPenjelasan, $petugasNama,
+            $timestamp, $userId, $petugasId, $petugasNoWa
+        );
+    } else {
+        $sql = "INSERT INTO `permintaan` (
+            `row_number`, `timestamp_data`, `npk`, `nama_lengkap`, `unit_kerja`, 
+            `no_telepon`, `pilih_permintaan`, `status_surat`, `jenis_surat`, 
+            `no_surat`, `alasan_permintaan`, `isi_penjelasan`, `petugas`, 
+            `status`, `timestamp`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Open', ?)";
+        
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            throw new Exception("Prepare error: " . $conn->error);
+        }
+        
+        $stmt->bind_param('isssssssssssss', 
+            $rowNumber, $timestamp, $npk, $namaLengkap, $unitKerja,
+            $noTelepon, $pilihPermintaan, $statusSurat, $jenisSurat,
+            $noSurat, $alasanPermintaan, $isiPenjelasan, $petugasNama,
+            $timestamp
+        );
+    }
     
     if (!$stmt->execute()) {
         throw new Exception("Execute error: " . $stmt->error);

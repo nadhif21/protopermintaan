@@ -51,10 +51,11 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Pilih Permintaan <span class="required">*</span></label>
-                    <div id="pilihPermintaanContainer" class="radio-group">
+                    <label for="pilih_permintaan">Pilih Permintaan <span class="required">*</span></label>
+                    <select id="pilih_permintaan" name="pilih_permintaan" required>
+                        <option value="">Pilih Permintaan</option>
                         <!-- Options will be loaded dynamically -->
-                    </div>
+                    </select>
                 </div>
 
                 <div class="form-navigation">
@@ -71,39 +72,23 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Status Surat <span class="required">*</span></label>
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" name="status_surat" value="Drafter">
-                            <span>Drafter</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="status_surat" value="Reviewer">
-                            <span>Reviewer</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="status_surat" value="Approver">
-                            <span>Approver</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="status_surat" value="Sudah disetujui Approver">
-                            <span>Sudah disetujui Approver</span>
-                        </label>
-                    </div>
+                    <label for="status_surat">Status Surat <span class="required">*</span></label>
+                    <select id="status_surat" name="status_surat" required>
+                        <option value="">Pilih Status Surat</option>
+                        <option value="Drafter">Drafter</option>
+                        <option value="Reviewer">Reviewer</option>
+                        <option value="Approver">Approver</option>
+                        <option value="Sudah disetujui Approver">Sudah disetujui Approver</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Jenis Surat <span class="required">*</span></label>
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" name="jenis_surat" value="Internal">
-                            <span>Internal</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="jenis_surat" value="Eksternal">
-                            <span>Eksternal</span>
-                        </label>
-                    </div>
+                    <label for="jenis_surat">Jenis Surat <span class="required">*</span></label>
+                    <select id="jenis_surat" name="jenis_surat" required>
+                        <option value="">Pilih Jenis Surat</option>
+                        <option value="Internal">Internal</option>
+                        <option value="Eksternal">Eksternal</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
@@ -168,6 +153,7 @@
         </div>
     </div>
 
+    <script src="auth.js"></script>
     <script src="form-permintaan.js"></script>
 </body>
 </html>

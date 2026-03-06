@@ -19,9 +19,50 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!checkAuth()) {
         return;
     }
+    
+    // Check if user is regular user - hide edit sections
+    const userRole = getUserRole();
+    const isUser = userRole === 'user';
+    
+    if (isUser) {
+        // Show info message for user
+        const userInfoMessage = document.getElementById('userInfoMessage');
+        if (userInfoMessage) {
+            userInfoMessage.style.display = 'block';
+        }
+        
+        // Hide edit sections for regular users
+        const flagSection = document.getElementById('flagSection');
+        const statusSection = document.getElementById('statusSection');
+        const petugasSection = document.getElementById('petugasSection');
+        const keteranganSection = document.getElementById('keteranganSection');
+        const whatsappSection = document.getElementById('whatsappSection');
+        const editModeBtn = document.getElementById('editModeBtn');
+        
+        if (flagSection) flagSection.style.display = 'none';
+        if (statusSection) statusSection.style.display = 'none';
+        if (petugasSection) petugasSection.style.display = 'none';
+        if (keteranganSection) keteranganSection.style.display = 'none';
+        if (whatsappSection) whatsappSection.style.display = 'none';
+        if (editModeBtn) editModeBtn.style.display = 'none';
+    }
+    
     loadData();
     setupEventListeners();
     setupLogout();
+    
+    // Cek apakah ada parameter id di URL untuk membuka detail
+    const urlParams = new URLSearchParams(window.location.search);
+    const detailId = urlParams.get('id');
+    if (detailId) {
+        // Tunggu data selesai dimuat, lalu buka detail
+        setTimeout(() => {
+            const rowId = parseInt(detailId, 10);
+            if (!isNaN(rowId)) {
+                showDetail(rowId);
+            }
+        }, 1000);
+    }
 });
 
 function setupLogout() {
@@ -111,10 +152,18 @@ async function loadData() {
         url.searchParams.append('table', 'permintaan');
         url.searchParams.append('_t', Date.now());
         
+        // Get auth token for filtering by user
+        const token = getAuthToken();
+        const fetchHeaders = {};
+        if (token) {
+            fetchHeaders['X-Auth-Token'] = token;
+        }
+        
         let response;
         try {
             response = await fetch(url.toString(), {
                 method: 'GET',
+                headers: fetchHeaders,
                 mode: 'cors',
                 cache: 'no-cache'
             });
@@ -196,6 +245,7 @@ async function loadData() {
                                  findColumnValue(row, 'Alasan Permintaan') ||
                                  findColumnValue(row, 'ALASAN PERMINTAAN') ||
                                  '',
+                dbId: row.id || null, // ID dari database (unik)
                 _originalRow: row // Simpan original row untuk akses langsung
             };
         });
@@ -912,6 +962,38 @@ function showDetail(rowId) {
     const flagSection = document.getElementById('flagSection');
     const petugasSection = document.getElementById('petugasSection');
     const keteranganSection = document.getElementById('keteranganSection');
+    const editModeBtn = document.getElementById('editModeBtn');
+    const chatUlangBtn = document.getElementById('chatUlangBtn');
+    const chatUlangSection = document.getElementById('chatUlangSection');
+    
+    // Check user role - user hanya bisa melihat, tidak bisa aksi apapun
+    const userRole = getUserRole();
+    const isUser = userRole === 'user';
+    
+    // Sembunyikan semua aksi/edit untuk user di awal
+    // Tapi tetap tampilkan button hubungi petugas jika status belum selesai
+    if (isUser) {
+        if (flagSection) flagSection.style.display = 'none';
+        if (statusSection) statusSection.style.display = 'none';
+        if (petugasSection) petugasSection.style.display = 'none';
+        if (keteranganSection) keteranganSection.style.display = 'none';
+        if (whatsappSection) whatsappSection.style.display = 'none';
+        if (editModeBtn) editModeBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (saveFlagBtn) saveFlagBtn.style.display = 'none';
+        
+        // Tampilkan button hubungi petugas hanya jika status belum selesai dan ada petugas
+        const isNotCompleted = currentStatus !== 'Closed' && currentStatus !== 'Cancelled';
+        if (isNotCompleted && currentPetugas && chatUlangBtn && chatUlangSection) {
+            // Setup button hubungi petugas untuk user
+            setupHubungiPetugasButton(row, currentPetugas, dataName, chatUlangBtn, chatUlangSection, originalRow, currentStatus, currentFlag, currentKeterangan);
+        } else {
+            if (chatUlangSection) chatUlangSection.style.display = 'none';
+        }
+    } else {
+        // Untuk admin, sembunyikan chat ulang (jika diperlukan)
+        if (chatUlangSection) chatUlangSection.style.display = 'none';
+    }
     
     // Check if elements exist
     if (!saveBtn || !saveFlagBtn || !whatsappBtn || !whatsappSection || !statusSection || !flagSection || !petugasSection || !keteranganSection) {
@@ -985,6 +1067,11 @@ function showDetail(rowId) {
     currentDetailRow = row;
     
     function toggleDropdowns() {
+        // User hanya bisa melihat, tidak bisa edit apapun
+        if (isUser) {
+            return; // Jangan tampilkan apapun untuk user
+        }
+        
         const selectedStatus = statusSelect.value;
         const selectedFlag = flagSelect.value;
         const isClosedOrCancelled = selectedStatus === 'Closed' || selectedStatus === 'Cancelled';
@@ -1413,6 +1500,102 @@ function showDetail(rowId) {
         window.open(whatsappUrl, '_blank');
     };
     
+    // Setup button hubungi petugas untuk user (hanya jika status belum selesai)
+    if (isUser) {
+        // Sembunyikan semua aksi/edit
+        if (flagSection) flagSection.style.display = 'none';
+        if (statusSection) statusSection.style.display = 'none';
+        if (petugasSection) petugasSection.style.display = 'none';
+        if (keteranganSection) keteranganSection.style.display = 'none';
+        if (whatsappSection) whatsappSection.style.display = 'none';
+        if (editModeBtn) editModeBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (saveFlagBtn) saveFlagBtn.style.display = 'none';
+        
+        // Tampilkan button hubungi petugas hanya jika status belum selesai
+        const isNotCompleted = currentStatus !== 'Closed' && currentStatus !== 'Cancelled';
+        if (isNotCompleted && currentPetugas && chatUlangBtn && chatUlangSection) {
+            setupHubungiPetugasButton(row, currentPetugas, dataName, chatUlangBtn, chatUlangSection, originalRow, currentStatus, currentFlag, currentKeterangan);
+        } else {
+            if (chatUlangSection) chatUlangSection.style.display = 'none';
+        }
+    } else if (chatUlangBtn && chatUlangSection) {
+        // Hanya admin/super_admin yang bisa chat ulang (jika diperlukan)
+        // Get petugas info from original row
+        const originalRow = row._originalRow || {};
+        const petugasNoWa = originalRow['Petugas No WA'] || originalRow['petugas_no_wa'] || '';
+        const petugasId = originalRow['Petugas ID'] || originalRow['petugas_id'] || '';
+        
+        // Show chat ulang button if petugas exists (untuk admin)
+        if (currentPetugas) {
+            chatUlangSection.style.display = 'flex';
+            
+            chatUlangBtn.onclick = async () => {
+                let targetNoWa = petugasNoWa;
+                
+                // If no_wa not available, try to get from petugas name via API
+                if (!targetNoWa && currentPetugas) {
+                    try {
+                        // Try to get petugas info from API
+                        const response = await fetch(`../api.php?action=getPetugas&nama=${encodeURIComponent(currentPetugas)}`);
+                        const result = await response.json();
+                        if (result && result.success && result.data && result.data.no_wa) {
+                            targetNoWa = result.data.no_wa;
+                        }
+                    } catch (e) {
+                        console.error('Error fetching petugas:', e);
+                    }
+                }
+                
+                if (!targetNoWa) {
+                    alert('Nomor WhatsApp petugas tidak tersedia. Silakan hubungi admin.');
+                    return;
+                }
+                
+                // Build message for chat ulang
+                let message = `Halo ${currentPetugas},\n\n`;
+                message += `Saya ingin menanyakan progress permintaan saya:\n\n`;
+                
+                // Add request details
+                if (dataName) message += `Nama: ${dataName}\n`;
+                if (row.pilihPermintaan) message += `Jenis Permintaan: ${row.pilihPermintaan}\n`;
+                
+                // Find nomor surat
+                let nomorSurat = '';
+                const originalRow = row._originalRow || {};
+                const suratKeys = ['NO SURAT', 'No. Surat', 'Nomor Surat', 'NO. SURAT', 'NOMOR SURAT'];
+                for (const key of suratKeys) {
+                    const value = findColumnValue(originalRow, key);
+                    if (value && value.trim() !== '') {
+                        nomorSurat = value.trim();
+                        break;
+                    }
+                }
+                if (nomorSurat) message += `No. Surat: ${nomorSurat}\n`;
+                
+                message += `Status: ${currentStatus || 'Open'}\n`;
+                if (currentFlag) message += `Flag: ${currentFlag}\n`;
+                if (currentKeterangan) message += `Keterangan: ${currentKeterangan}\n`;
+                
+                message += `\nMohon informasi progress terbaru. Terima kasih.`;
+                
+                // Clean phone number (remove leading 0, add country code 62)
+                let cleanPhone = targetNoWa.replace(/^0/, '62');
+                cleanPhone = cleanPhone.replace(/\D/g, ''); // Remove non-digits
+                
+                const encodedMessage = encodeURIComponent(message);
+                const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+                
+                window.open(whatsappUrl, '_blank');
+            };
+        } else {
+            chatUlangSection.style.display = 'none';
+        }
+    } else if (!isUser) {
+        // Hide chat ulang for non-user roles
+        if (chatUlangSection) chatUlangSection.style.display = 'none';
+    }
+    
     toggleDropdowns();
     checkChanges();
     
@@ -1501,7 +1684,7 @@ function showDetail(rowId) {
     };
 
     // Setup edit mode button - hanya untuk super admin
-    const editModeBtn = document.getElementById('editModeBtn');
+    // editModeBtn sudah dideklarasikan di atas
     let isEditMode = false;
     let originalData = null;
     let saveEditBtn = null;
@@ -2200,4 +2383,89 @@ function updatePagination() {
     prevBtn.classList.toggle('disabled', currentPage === 1);
     nextBtn.classList.toggle('disabled', currentPage === totalPages);
     lastBtn.classList.toggle('disabled', currentPage === totalPages);
+}
+
+// Fungsi untuk setup button hubungi petugas untuk user
+function setupHubungiPetugasButton(row, currentPetugas, dataName, chatUlangBtn, chatUlangSection, originalRow, currentStatus, currentFlag, currentKeterangan) {
+    // Tampilkan section
+    chatUlangSection.style.display = 'flex';
+    
+    // Update text button
+    chatUlangBtn.textContent = '📱 Hubungi Petugas';
+    
+    // Setup onclick handler
+    chatUlangBtn.onclick = async () => {
+        // Get petugas no WA from original row
+        let targetNoWa = originalRow['Petugas No WA'] || originalRow['petugas_no_wa'] || '';
+        
+        console.log('Debug - originalRow:', originalRow);
+        console.log('Debug - Petugas No WA:', originalRow['Petugas No WA']);
+        console.log('Debug - petugas_no_wa:', originalRow['petugas_no_wa']);
+        console.log('Debug - currentPetugas:', currentPetugas);
+        console.log('Debug - targetNoWa (before API):', targetNoWa);
+        
+        // If no_wa not available, try to get from petugas name via API
+        if (!targetNoWa && currentPetugas) {
+            try {
+                console.log('Mencoba mengambil data petugas dari API...');
+                const response = await fetch(`../api.php?action=getPetugas&nama=${encodeURIComponent(currentPetugas)}`);
+                const result = await response.json();
+                console.log('API Response:', result);
+                if (result && result.success && result.data && result.data.no_wa) {
+                    targetNoWa = result.data.no_wa;
+                    console.log('Berhasil mendapatkan nomor dari API:', targetNoWa);
+                }
+            } catch (e) {
+                console.error('Error fetching petugas:', e);
+            }
+        }
+        
+        console.log('Debug - targetNoWa (final):', targetNoWa);
+        
+        if (!targetNoWa) {
+            alert('Nomor WhatsApp petugas tidak tersedia. Silakan hubungi admin.\n\nPetugas: ' + (currentPetugas || 'Tidak diketahui'));
+            return;
+        }
+        
+        // Build message untuk hubungi petugas
+        let message = `Halo ${currentPetugas},\n\n`;
+        message += `Saya ingin menanyakan progress permintaan saya:\n\n`;
+        
+        // Add request details
+        if (dataName) message += `Nama: ${dataName}\n`;
+        if (row.pilihPermintaan) message += `Jenis Permintaan: ${row.pilihPermintaan}\n`;
+        
+        // Find nomor surat
+        let nomorSurat = '';
+        const suratKeys = ['NO SURAT', 'No. Surat', 'Nomor Surat', 'NO. SURAT', 'NOMOR SURAT'];
+        for (const key of suratKeys) {
+            const value = findColumnValue(originalRow, key);
+            if (value && value.trim() !== '') {
+                nomorSurat = value.trim();
+                break;
+            }
+        }
+        if (nomorSurat) message += `No. Surat: ${nomorSurat}\n`;
+        
+        message += `Status: ${currentStatus || 'Open'}\n`;
+        if (currentFlag) message += `Flag: ${currentFlag}\n`;
+        if (currentKeterangan) message += `Keterangan: ${currentKeterangan}\n`;
+        
+        // Tambahkan link detail permintaan
+        // Gunakan row.id (index array) untuk membuka detail modal
+        const detailId = row.id !== undefined ? row.id : '';
+        const detailUrl = `${window.location.origin}${window.location.pathname}?id=${detailId}`;
+        message += `\n*Link Detail Permintaan:*\n${detailUrl}\n`;
+        
+        message += `\nMohon informasi progress terbaru. Terima kasih.`;
+        
+        // Clean phone number (remove leading 0, add country code 62)
+        let cleanPhone = targetNoWa.replace(/^0/, '62');
+        cleanPhone = cleanPhone.replace(/\D/g, ''); // Remove non-digits
+        
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+        
+        window.open(whatsappUrl, '_blank');
+    };
 }

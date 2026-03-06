@@ -7,14 +7,313 @@ let selectedPetugas = null;
 
 // Load data saat halaman dimuat
 document.addEventListener('DOMContentLoaded', async () => {
+    // Check authentication
+    if (!checkAuth()) {
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    // Wait for DOM to be fully ready
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    // Load user data first and wait for it to complete
+    try {
+        await loadUserData();
+    } catch (error) {
+        console.error('Failed to load user data:', error);
+        // Don't retry if there's an error, just continue
+    }
+    
+    // Wait a bit to ensure fields are filled
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Load unit kerja (this will auto-select user's unit kerja)
     await loadUnitKerja();
+    
+    // Wait and retry unit kerja selection if needed
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const unitKerjaSelect = document.getElementById('unit_kerja');
+    if (unitKerjaSelect && window.currentUserUnitKerja && !unitKerjaSelect.value) {
+        console.log('Retrying unit kerja selection...');
+        // Try to match again
+        for (let i = 0; i < unitKerjaSelect.options.length; i++) {
+            const opt = unitKerjaSelect.options[i];
+            const optText = opt.text.toLowerCase().trim();
+            const userUnitKerjaLower = (window.currentUserUnitKerja || '').toLowerCase().trim();
+            if (optText === userUnitKerjaLower || opt.value === window.currentUserUnitKerja) {
+                unitKerjaSelect.value = opt.value;
+                // Make it disabled
+                const existingHidden = document.getElementById('unit_kerja_hidden');
+                if (existingHidden) existingHidden.remove();
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'unit_kerja';
+                hiddenInput.id = 'unit_kerja_hidden';
+                hiddenInput.value = opt.value;
+                unitKerjaSelect.parentNode.insertBefore(hiddenInput, unitKerjaSelect.nextSibling);
+                unitKerjaSelect.disabled = true;
+                unitKerjaSelect.style.backgroundColor = '#e9ecef';
+                unitKerjaSelect.style.cursor = 'not-allowed';
+                unitKerjaSelect.style.color = '#6c757d';
+                unitKerjaSelect.removeAttribute('name');
+                console.log('Unit kerja matched on retry:', opt.value);
+                break;
+            }
+        }
+    }
+    
     await loadPilihPermintaanOptions();
     await loadPetugas();
     setupEventListeners();
     
     // Set default visibility bagian 2
     updateBagian2Visibility();
+    
+    console.log('Form initialization complete');
+    console.log('Final field values:', {
+        npk: document.getElementById('npk')?.value,
+        nama: document.getElementById('nama_lengkap')?.value,
+        noTelepon: document.getElementById('no_telepon')?.value,
+        unitKerja: document.getElementById('unit_kerja')?.value
+    });
 });
+
+async function loadUserData() {
+    try {
+        const token = getAuthToken();
+        if (!token) {
+            console.warn('No auth token found');
+            return;
+        }
+        
+        console.log('Loading user data from API...');
+        
+        // Force fresh data - add timestamp to prevent cache
+        const apiUrl = `${API_URL}?action=me&_t=${Date.now()}`;
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'X-Auth-Token': token,
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            },
+            cache: 'no-store'
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('HTTP error:', response.status, errorText);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        let result;
+        try {
+            const responseText = await response.text();
+            console.log('Raw API response:', responseText);
+            result = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Failed to parse JSON:', parseError);
+            throw new Error('Invalid JSON response from API');
+        }
+        
+        console.log('User data result from API:', result);
+        
+        // Handle both formats: result.user or result.data.user
+        let user = null;
+        if (result.success) {
+            if (result.user) {
+                user = result.user;
+            } else if (result.data && result.data.user) {
+                user = result.data.user;
+            }
+        }
+        
+        if (user) {
+            console.log('User data from API (full):', user);
+            console.log('User data details:', {
+                npk: user.npk,
+                name: user.name,
+                nomorTelepon: user.nomorTelepon,
+                unitKerja: user.unitKerja,
+                email: user.email
+            });
+            
+            // Pastikan data tidak kosong
+            if (!user.nomorTelepon && !user.unitKerja) {
+                console.warn('⚠️ API mengembalikan data kosong untuk nomorTelepon dan unitKerja');
+            }
+            
+            // SELALU gunakan data dari API, jangan fallback ke session
+            fillUserFields(user);
+            
+            // Update session dengan data terbaru
+            const session = getSession();
+            if (session) {
+                session.user = user;
+                localStorage.setItem('session', JSON.stringify(session));
+                console.log('Session updated with fresh data');
+            }
+        } else {
+            console.error('API response not successful or no user data:', result);
+            throw new Error('API tidak mengembalikan data user. Response: ' + JSON.stringify(result));
+        }
+    } catch (error) {
+        console.error('Error loading user data:', error);
+        // Jangan tampilkan alert yang mengganggu, cukup log error
+        console.warn('⚠️ Gagal memuat data user. Silakan logout dan login kembali jika field tidak terisi.');
+        // Jangan throw error lagi, biarkan form tetap bisa digunakan
+    }
+}
+
+function fillUserFields(user) {
+    try {
+            
+        // Store user data globally for form submission
+        window.currentUserData = {
+            npk: user.npk || user.username || '',
+            name: user.name || '',
+            nomorTelepon: user.nomorTelepon || user.nomor_telepon || '',
+            unitKerja: user.unitKerja || user.unit_kerja || ''
+        };
+        
+        console.log('Filling fields with user data:', window.currentUserData);
+        
+        // Auto-fill NPK
+        const npkInput = document.getElementById('npk');
+        if (npkInput) {
+            const npkValue = user.npk || user.username || '';
+            // Always set value
+            npkInput.value = npkValue;
+            if (npkValue) {
+                console.log('NPK filled:', npkValue);
+            } else {
+                console.warn('NPK is empty, but field will be readonly');
+            }
+            // Make it readonly (not disabled, so value is still submitted)
+            npkInput.setAttribute('readonly', 'readonly');
+            npkInput.style.backgroundColor = '#e9ecef';
+            npkInput.style.cursor = 'not-allowed';
+            npkInput.style.color = '#6c757d';
+            // Prevent editing via JavaScript
+            const savedNpkValue = npkValue;
+            npkInput.addEventListener('keydown', (e) => {
+                if (e.key !== 'Tab' && e.key !== 'Enter') {
+                    e.preventDefault();
+                }
+            });
+            npkInput.addEventListener('paste', (e) => e.preventDefault());
+            npkInput.addEventListener('input', (e) => {
+                e.target.value = savedNpkValue;
+            });
+            npkInput.addEventListener('change', (e) => {
+                e.target.value = savedNpkValue;
+            });
+            npkInput.addEventListener('focus', (e) => {
+                e.target.blur();
+            });
+        } else {
+            console.error('NPK input element not found!');
+        }
+        
+        // Auto-fill Nama Lengkap
+        const namaInput = document.getElementById('nama_lengkap');
+        if (namaInput) {
+            const namaValue = user.name || user.nama || '';
+            // Always set value
+            namaInput.value = namaValue;
+            if (namaValue) {
+                console.log('Nama filled:', namaValue);
+            } else {
+                console.warn('Nama is empty, but field will be readonly');
+            }
+            // Make it readonly (not disabled, so value is still submitted)
+            namaInput.setAttribute('readonly', 'readonly');
+            namaInput.style.backgroundColor = '#e9ecef';
+            namaInput.style.cursor = 'not-allowed';
+            namaInput.style.color = '#6c757d';
+            // Prevent editing via JavaScript
+            const savedNamaValue = namaValue;
+            namaInput.addEventListener('keydown', (e) => {
+                if (e.key !== 'Tab' && e.key !== 'Enter') {
+                    e.preventDefault();
+                }
+            });
+            namaInput.addEventListener('paste', (e) => e.preventDefault());
+            namaInput.addEventListener('input', (e) => {
+                e.target.value = savedNamaValue;
+            });
+            namaInput.addEventListener('change', (e) => {
+                e.target.value = savedNamaValue;
+            });
+            namaInput.addEventListener('focus', (e) => {
+                e.target.blur();
+            });
+        } else {
+            console.error('Nama input element not found!');
+        }
+        
+        // Auto-fill No Telepon
+        const noTeleponInput = document.getElementById('no_telepon');
+        if (noTeleponInput) {
+            // Try multiple property names
+            const noTeleponValue = user.nomorTelepon || user.nomor_telepon || user.phone || user.telepon || '';
+            console.log('No Telepon value from user:', noTeleponValue);
+            console.log('Checking all possible properties:', {
+                nomorTelepon: user.nomorTelepon,
+                nomor_telepon: user.nomor_telepon,
+                phone: user.phone,
+                telepon: user.telepon,
+                allKeys: Object.keys(user)
+            });
+            
+            // Always set value, even if empty
+            noTeleponInput.value = noTeleponValue;
+            if (noTeleponValue) {
+                console.log('No Telepon filled:', noTeleponValue);
+            } else {
+                console.warn('No Telepon is empty in user data, but field will be readonly');
+            }
+            
+            // Make it readonly (not disabled, so value is still submitted) - ALWAYS
+            noTeleponInput.setAttribute('readonly', 'readonly');
+            noTeleponInput.style.backgroundColor = '#e9ecef';
+            noTeleponInput.style.cursor = 'not-allowed';
+            noTeleponInput.style.color = '#6c757d';
+            
+            // Prevent editing via JavaScript - use saved value
+            const savedNoTeleponValue = noTeleponValue;
+            // Remove existing listeners to avoid duplicates
+            const newInput = noTeleponInput.cloneNode(true);
+            noTeleponInput.parentNode.replaceChild(newInput, noTeleponInput);
+            const freshInput = document.getElementById('no_telepon');
+            
+            freshInput.addEventListener('keydown', (e) => {
+                if (e.key !== 'Tab' && e.key !== 'Enter') {
+                    e.preventDefault();
+                }
+            });
+            freshInput.addEventListener('paste', (e) => e.preventDefault());
+            freshInput.addEventListener('input', (e) => {
+                e.target.value = savedNoTeleponValue;
+            });
+            freshInput.addEventListener('change', (e) => {
+                e.target.value = savedNoTeleponValue;
+            });
+            freshInput.addEventListener('focus', (e) => {
+                e.target.blur();
+            });
+            console.log('No Telepon field set to readonly with value:', savedNoTeleponValue || '(empty)');
+        } else {
+            console.error('No Telepon input element not found!');
+        }
+        
+        // Store unit kerja for later matching
+        window.currentUserUnitKerja = user.unitKerja || user.unit_kerja || '';
+        console.log('User unit kerja stored:', window.currentUserUnitKerja, 'Full user object:', user);
+    } catch (error) {
+        console.error('Error in fillUserFields:', error);
+    }
+}
 
 async function loadUnitKerja() {
     try {
@@ -31,12 +330,93 @@ async function loadUnitKerja() {
             
             if (Array.isArray(dataArray) && dataArray.length > 0) {
                 const select = document.getElementById('unit_kerja');
+                let userUnitKerjaFound = false;
+                
                 dataArray.forEach(unit => {
                     const option = document.createElement('option');
                     option.value = unit.id;
                     option.textContent = unit.nama_unit;
                     select.appendChild(option);
+                    
+                    // Check if this matches user's unit kerja
+                    if (window.currentUserUnitKerja && 
+                        (unit.nama_unit === window.currentUserUnitKerja || 
+                         unit.id.toString() === window.currentUserUnitKerja)) {
+                        select.value = unit.id;
+                        userUnitKerjaFound = true;
+                    }
                 });
+                
+                // If user's unit kerja found, make it disabled but add hidden input for form submission
+                if (userUnitKerjaFound) {
+                    // Add hidden input to preserve value for form submission (disabled fields don't submit)
+                    const existingHidden = document.getElementById('unit_kerja_hidden');
+                    if (existingHidden) {
+                        existingHidden.remove();
+                    }
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'unit_kerja';
+                    hiddenInput.id = 'unit_kerja_hidden';
+                    hiddenInput.value = select.value;
+                    select.parentNode.insertBefore(hiddenInput, select.nextSibling);
+                    
+                    // Disable the select
+                    select.disabled = true;
+                    select.style.backgroundColor = '#e9ecef';
+                    select.style.cursor = 'not-allowed';
+                    select.style.color = '#6c757d';
+                    // Remove name attribute so it doesn't submit (we use hidden input instead)
+                    select.removeAttribute('name');
+                    console.log('Unit kerja auto-selected and disabled:', select.value, 'Text:', select.options[select.selectedIndex]?.text);
+                } else if (window.currentUserUnitKerja) {
+                    console.warn('User unit kerja not found in options:', window.currentUserUnitKerja);
+                    console.log('Available options:', Array.from(select.options).map(opt => ({ value: opt.value, text: opt.text })));
+                    // Try flexible matching (case-insensitive, partial match)
+                    const userUnitKerjaLower = (window.currentUserUnitKerja || '').toLowerCase().trim();
+                    let foundFlexible = false;
+                    let matchedOption = null;
+                    
+                    for (let i = 0; i < select.options.length; i++) {
+                        const opt = select.options[i];
+                        const optText = opt.text.toLowerCase().trim();
+                        // Try exact match, partial match, or contains
+                        if (optText === userUnitKerjaLower || 
+                            optText.includes(userUnitKerjaLower) || 
+                            userUnitKerjaLower.includes(optText)) {
+                            matchedOption = opt;
+                            foundFlexible = true;
+                            break;
+                        }
+                    }
+                    
+                    if (foundFlexible && matchedOption) {
+                        select.value = matchedOption.value;
+                        // Add hidden input
+                        const existingHidden = document.getElementById('unit_kerja_hidden');
+                        if (existingHidden) {
+                            existingHidden.remove();
+                        }
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'unit_kerja';
+                        hiddenInput.id = 'unit_kerja_hidden';
+                        hiddenInput.value = select.value;
+                        select.parentNode.insertBefore(hiddenInput, select.nextSibling);
+                        
+                        // Disable the select
+                        select.disabled = true;
+                        select.style.backgroundColor = '#e9ecef';
+                        select.style.cursor = 'not-allowed';
+                        select.style.color = '#6c757d';
+                        select.removeAttribute('name');
+                        console.log('Unit kerja found with flexible matching:', select.value, 'Text:', matchedOption.text);
+                    } else {
+                        console.warn('Unit kerja not found even with flexible matching. User unit kerja:', window.currentUserUnitKerja);
+                    }
+                } else {
+                    console.warn('No unit kerja data for user. User data:', window.currentUserData);
+                }
             } else {
                 console.error('No valid data array found:', typeof result.data, result.data);
             }
@@ -79,36 +459,43 @@ async function loadPilihPermintaanOptions() {
 }
 
 function renderPilihPermintaanOptions() {
-    const container = document.getElementById('pilihPermintaanContainer');
-    container.innerHTML = '';
+    const select = document.getElementById('pilih_permintaan');
+    if (!select) {
+        console.error('Select element pilih_permintaan not found');
+        return;
+    }
     
     if (!Array.isArray(customOptions)) {
         console.error('customOptions is not an array:', customOptions);
         return;
     }
     
+    // Clear existing options except the first one (placeholder)
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+    
+    // Add options
     customOptions.forEach(option => {
-        const label = document.createElement('label');
-        label.className = 'radio-option';
-        
-        const radio = document.createElement('input');
-        radio.type = 'radio';
-        radio.name = 'pilih_permintaan';
-        radio.value = option.nama_opsi;
-        radio.required = true;
-        radio.onchange = () => {
-            selectedPilihPermintaan = option.nama_opsi;
-            // Update visibility bagian 2 berdasarkan pilihan
-            updateBagian2Visibility();
-        };
-        
-        const span = document.createElement('span');
-        span.textContent = option.nama_opsi;
-        
-        label.appendChild(radio);
-        label.appendChild(span);
-        container.appendChild(label);
+        const optionElement = document.createElement('option');
+        optionElement.value = option.nama_opsi;
+        optionElement.textContent = option.nama_opsi;
+        select.appendChild(optionElement);
     });
+    
+    // Remove existing event listeners by cloning the select
+    const newSelect = select.cloneNode(true);
+    select.parentNode.replaceChild(newSelect, select);
+    
+    // Add change event listener to the new select
+    const finalSelect = document.getElementById('pilih_permintaan');
+    finalSelect.addEventListener('change', () => {
+        selectedPilihPermintaan = finalSelect.value;
+        // Update visibility bagian 2 berdasarkan pilihan
+        updateBagian2Visibility();
+    });
+    
+    console.log('Pilih Permintaan options rendered:', customOptions.length);
 }
 
 async function updatePilihPermintaanOption(id, data) {
@@ -224,13 +611,14 @@ function nextSection() {
         const namaLengkap = document.getElementById('nama_lengkap');
         const unitKerja = document.getElementById('unit_kerja');
         const noTelepon = document.getElementById('no_telepon');
-        const pilihPermintaan = document.querySelector('input[name="pilih_permintaan"]:checked');
+        const pilihPermintaan = document.getElementById('pilih_permintaan');
         
         // Reset border color
         if (npk) npk.style.borderColor = '#ddd';
         if (namaLengkap) namaLengkap.style.borderColor = '#ddd';
         if (unitKerja) unitKerja.style.borderColor = '#ddd';
         if (noTelepon) noTelepon.style.borderColor = '#ddd';
+        if (pilihPermintaan) pilihPermintaan.style.borderColor = '#ddd';
         
         let isValid = true;
         let errorMessage = '';
@@ -264,20 +652,10 @@ function nextSection() {
         }
         
         // Validasi Pilih Permintaan
-        if (!pilihPermintaan) {
+        if (!pilihPermintaan || !pilihPermintaan.value || pilihPermintaan.value === '') {
             isValid = false;
+            if (pilihPermintaan) pilihPermintaan.style.borderColor = '#d32f2f';
             if (!errorMessage) errorMessage = 'Pilih Permintaan wajib dipilih!';
-            // Highlight semua radio option
-            document.querySelectorAll('input[name="pilih_permintaan"]').forEach(radio => {
-                const label = radio.closest('label');
-                if (label) label.style.borderColor = '#d32f2f';
-            });
-        } else {
-            // Reset border color untuk radio options
-            document.querySelectorAll('input[name="pilih_permintaan"]').forEach(radio => {
-                const label = radio.closest('label');
-                if (label) label.style.borderColor = '#ddd';
-            });
         }
         
         // Debug log
@@ -338,39 +716,30 @@ function nextSection() {
     
     if (currentSection === 2) {
         // Validasi form bagian 2
-        const statusSurat = document.querySelector('input[name="status_surat"]:checked');
-        const jenisSurat = document.querySelector('input[name="jenis_surat"]:checked');
+        const statusSurat = document.getElementById('status_surat');
+        const jenisSurat = document.getElementById('jenis_surat');
         const alasanPermintaan = document.getElementById('alasan_permintaan');
+        
+        // Reset border color
+        if (statusSurat) statusSurat.style.borderColor = '#ddd';
+        if (jenisSurat) jenisSurat.style.borderColor = '#ddd';
+        if (alasanPermintaan) alasanPermintaan.style.borderColor = '#ddd';
         
         let isValid = true;
         
-        if (!statusSurat) {
+        if (!statusSurat || !statusSurat.value || statusSurat.value === '') {
             isValid = false;
-            document.querySelectorAll('input[name="status_surat"]').forEach(r => {
-                r.closest('.radio-option').style.borderColor = '#d32f2f';
-            });
-        } else {
-            document.querySelectorAll('input[name="status_surat"]').forEach(r => {
-                r.closest('.radio-option').style.borderColor = '#ddd';
-            });
+            if (statusSurat) statusSurat.style.borderColor = '#d32f2f';
         }
         
-        if (!jenisSurat) {
+        if (!jenisSurat || !jenisSurat.value || jenisSurat.value === '') {
             isValid = false;
-            document.querySelectorAll('input[name="jenis_surat"]').forEach(r => {
-                r.closest('.radio-option').style.borderColor = '#d32f2f';
-            });
-        } else {
-            document.querySelectorAll('input[name="jenis_surat"]').forEach(r => {
-                r.closest('.radio-option').style.borderColor = '#ddd';
-            });
+            if (jenisSurat) jenisSurat.style.borderColor = '#d32f2f';
         }
         
-        if (!alasanPermintaan.value.trim()) {
+        if (!alasanPermintaan || !alasanPermintaan.value.trim()) {
             isValid = false;
-            alasanPermintaan.style.borderColor = '#d32f2f';
-        } else {
-            alasanPermintaan.style.borderColor = '#ddd';
+            if (alasanPermintaan) alasanPermintaan.style.borderColor = '#d32f2f';
         }
         
         if (!isValid) {
@@ -378,11 +747,11 @@ function nextSection() {
             const bagian2 = document.getElementById('bagian2');
             const firstErrorField = bagian2.querySelector('[style*="border-color: rgb(211, 47, 47)"]') || 
                                    bagian2.querySelector('input[style*="border-color: #d32f2f"]') ||
-                                   bagian2.querySelector('textarea[style*="border-color: #d32f2f"]') ||
-                                   bagian2.querySelector('.radio-option[style*="border-color: #d32f2f"]');
+                                   bagian2.querySelector('select[style*="border-color: #d32f2f"]') ||
+                                   bagian2.querySelector('textarea[style*="border-color: #d32f2f"]');
             if (firstErrorField) {
                 firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                if (firstErrorField.tagName === 'INPUT' || firstErrorField.tagName === 'TEXTAREA') {
+                if (firstErrorField.tagName === 'INPUT' || firstErrorField.tagName === 'SELECT' || firstErrorField.tagName === 'TEXTAREA') {
                     firstErrorField.focus();
                 }
             }
@@ -475,24 +844,27 @@ async function handleSubmit(e) {
     const selectedOption = customOptions.find(opt => opt.nama_opsi === selectedPilihPermintaan);
     if (selectedOption && selectedOption.bagian_target === 'bagian_2') {
         const bagian2 = document.getElementById('bagian2');
-        const statusSurat = document.querySelector('input[name="status_surat"]:checked');
-        const jenisSurat = document.querySelector('input[name="jenis_surat"]:checked');
+        const statusSurat = document.getElementById('status_surat');
+        const jenisSurat = document.getElementById('jenis_surat');
         const alasanPermintaan = document.getElementById('alasan_permintaan');
         
-        if (!statusSurat || !jenisSurat || !alasanPermintaan.value.trim()) {
+        // Reset border color
+        if (statusSurat) statusSurat.style.borderColor = '#ddd';
+        if (jenisSurat) jenisSurat.style.borderColor = '#ddd';
+        if (alasanPermintaan) alasanPermintaan.style.borderColor = '#ddd';
+        
+        if (!statusSurat || !statusSurat.value || statusSurat.value === '' ||
+            !jenisSurat || !jenisSurat.value || jenisSurat.value === '' ||
+            !alasanPermintaan || !alasanPermintaan.value.trim()) {
             isValid = false;
-            if (!statusSurat) {
-                document.querySelectorAll('input[name="status_surat"]').forEach(r => {
-                    r.closest('.radio-option').style.borderColor = '#d32f2f';
-                });
+            if (!statusSurat || !statusSurat.value || statusSurat.value === '') {
+                if (statusSurat) statusSurat.style.borderColor = '#d32f2f';
             }
-            if (!jenisSurat) {
-                document.querySelectorAll('input[name="jenis_surat"]').forEach(r => {
-                    r.closest('.radio-option').style.borderColor = '#d32f2f';
-                });
+            if (!jenisSurat || !jenisSurat.value || jenisSurat.value === '') {
+                if (jenisSurat) jenisSurat.style.borderColor = '#d32f2f';
             }
-            if (!alasanPermintaan.value.trim()) {
-                alasanPermintaan.style.borderColor = '#d32f2f';
+            if (!alasanPermintaan || !alasanPermintaan.value.trim()) {
+                if (alasanPermintaan) alasanPermintaan.style.borderColor = '#d32f2f';
             }
         }
     }
@@ -502,11 +874,11 @@ async function handleSubmit(e) {
             const bagian2 = document.getElementById('bagian2');
             const firstErrorField = bagian2.querySelector('[style*="border-color: rgb(211, 47, 47)"]') || 
                                    bagian2.querySelector('input[style*="border-color: #d32f2f"]') ||
-                                   bagian2.querySelector('textarea[style*="border-color: #d32f2f"]') ||
-                                   bagian2.querySelector('.radio-option[style*="border-color: #d32f2f"]');
+                                   bagian2.querySelector('select[style*="border-color: #d32f2f"]') ||
+                                   bagian2.querySelector('textarea[style*="border-color: #d32f2f"]');
             if (firstErrorField) {
                 firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                if (firstErrorField.tagName === 'INPUT' || firstErrorField.tagName === 'TEXTAREA') {
+                if (firstErrorField.tagName === 'INPUT' || firstErrorField.tagName === 'SELECT' || firstErrorField.tagName === 'TEXTAREA') {
                     firstErrorField.focus();
                 }
             }
@@ -516,11 +888,21 @@ async function handleSubmit(e) {
     // Collect form data
     const formData = new FormData(e.target);
     
+    // Get unit_kerja from hidden input if select is disabled, otherwise from select
+    const unitKerjaSelect = document.getElementById('unit_kerja');
+    const unitKerjaHidden = document.getElementById('unit_kerja_hidden');
+    const unitKerjaValue = unitKerjaHidden ? unitKerjaHidden.value : (unitKerjaSelect ? unitKerjaSelect.value : formData.get('unit_kerja'));
+    
+    // Ensure readonly fields are included (they should be, but just in case)
+    const npkValue = document.getElementById('npk')?.value || formData.get('npk') || '';
+    const namaValue = document.getElementById('nama_lengkap')?.value || formData.get('nama_lengkap') || '';
+    const noTeleponValue = document.getElementById('no_telepon')?.value || formData.get('no_telepon') || '';
+    
     const data = {
-        npk: formData.get('npk'),
-        nama_lengkap: formData.get('nama_lengkap'),
-        unit_kerja_id: formData.get('unit_kerja'),
-        no_telepon: formData.get('no_telepon'),
+        npk: npkValue,
+        nama_lengkap: namaValue,
+        unit_kerja_id: unitKerjaValue,
+        no_telepon: noTeleponValue,
         pilih_permintaan: formData.get('pilih_permintaan'),
         data_surat: formData.get('data_surat') || '',
         status_surat: selectedOption && selectedOption.bagian_target === 'bagian_2' ? formData.get('status_surat') : '',

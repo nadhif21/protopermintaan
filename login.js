@@ -42,7 +42,16 @@ document.addEventListener('DOMContentLoaded', function() {
         errorMessage.textContent = '';
 
         if (!username) {
-            errorMessage.textContent = 'Username wajib diisi.';
+            errorMessage.textContent = 'Username atau email wajib diisi.';
+            errorMessage.classList.add('show');
+            usernameInput?.focus();
+            return;
+        }
+
+        // If it looks like an email, validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (username.includes('@') && !emailRegex.test(username)) {
+            errorMessage.textContent = 'Format email tidak valid.';
             errorMessage.classList.add('show');
             usernameInput?.focus();
             return;
