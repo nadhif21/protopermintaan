@@ -2,6 +2,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!checkAuth()) {
         return;
     }
+
+    // Tampilkan menu Super Admin hanya untuk role super_admin
+    const adminCardLink = document.getElementById('adminCardLink');
+    if (adminCardLink) {
+        adminCardLink.style.display = isSuperAdmin() ? 'block' : 'none';
+    }
     
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {

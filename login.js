@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const loginForm = document.getElementById('loginForm');
+    const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const errorMessage = document.getElementById('errorMessage');
     const togglePassword = document.getElementById('togglePassword');
@@ -35,26 +36,26 @@ document.addEventListener('DOMContentLoaded', function() {
     loginForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
+        const username = (usernameInput?.value || '').trim();
         const password = passwordInput.value.trim();
         errorMessage.classList.remove('show');
         errorMessage.textContent = '';
 
-        // Check super admin password
-        if (password === SUPER_ADMIN_PASSWORD) {
-            setSession(true); // Set sebagai super admin
-            window.location.href = getIndexPath();
-        } 
-        // Check regular user password
-        else if (password === PASSWORD) {
-            setSession(false); // Set sebagai user biasa
-            window.location.href = getIndexPath();
-        } 
-        else {
-            errorMessage.textContent = 'Password salah. Silakan coba lagi.';
+        if (!username) {
+            errorMessage.textContent = 'Username wajib diisi.';
             errorMessage.classList.add('show');
-            passwordInput.value = '';
-            passwordInput.focus();
+            usernameInput?.focus();
+            return;
         }
+
+        if (!password) {
+            errorMessage.textContent = 'Password wajib diisi.';
+            errorMessage.classList.add('show');
+            passwordInput.focus();
+            return;
+        }
+
+        doLogin(username, password);
     });
 
     passwordInput.addEventListener('keypress', function(e) {
@@ -63,3 +64,61 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+async function doLogin(username, password) {
+    const errorMessage = document.getElementById('errorMessage');
+    const passwordInput = document.getElementById('password');
+    const usernameInput = document.getElementById('username');
+    const submitBtn = document.querySelector('.login-btn');
+
+    try {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.8';
+        }
+
+        const apiUrl = (window.location.pathname.includes('/permintaan/') || window.location.pathname.includes('/backdate/') || window.location.pathname.includes('/admin/'))
+            ? '../api.php'
+            : 'api.php';
+
+        const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                action: 'login',
+                username,
+                password
+            }).toString()
+        });
+
+        const result = await res.json().catch(() => null);
+        if (!res.ok || !result) {
+            throw new Error('Gagal terhubung ke server.');
+        }
+
+        if (!result.success) {
+            throw new Error(result.error || 'Login gagal.');
+        }
+
+        setSession({
+            token: result.data.token,
+            expiresAt: result.data.expiresAt,
+            user: result.data.user
+        });
+
+        window.location.href = getIndexPath();
+    } catch (err) {
+        const msg = err?.message || 'Login gagal.';
+        errorMessage.textContent = msg;
+        errorMessage.classList.add('show');
+        passwordInput.value = '';
+        passwordInput.focus();
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+        }
+        // keep username filled
+        if (usernameInput && !usernameInput.value) usernameInput.value = username;
+    }
+}

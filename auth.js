@@ -1,13 +1,16 @@
-const PASSWORD = "Adkor*2027!";
-const SUPER_ADMIN_PASSWORD = "SuperAdmin@2027!";
 const SESSION_KEY = "dof_auth_session";
 const SESSION_DURATION = 24 * 60 * 60 * 1000;
 
-function setSession(isSuperAdmin = false) {
+function setSession(sessionPayload) {
+    // sessionPayload: { token, expiresAt, user: { id, username, name, role } }
+    const isSuperAdmin = (sessionPayload?.user?.role === 'super_admin');
     const sessionData = {
         authenticated: true,
+        token: sessionPayload?.token || null,
+        expiresAt: sessionPayload?.expiresAt || null,
+        user: sessionPayload?.user || null,
         isSuperAdmin: isSuperAdmin,
-        role: isSuperAdmin ? 'super_admin' : 'user',
+        role: sessionPayload?.user?.role || (isSuperAdmin ? 'super_admin' : 'user'),
         timestamp: Date.now()
     };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
@@ -21,7 +24,22 @@ function getSession() {
         const session = JSON.parse(sessionData);
         const now = Date.now();
         
+        // Expired by client timer (fallback)
         if (now - session.timestamp > SESSION_DURATION) {
+            clearSession();
+            return null;
+        }
+
+        // Expired by server expiry (preferred)
+        if (session.expiresAt) {
+            const exp = new Date(session.expiresAt);
+            if (!isNaN(exp.getTime()) && now > exp.getTime()) {
+                clearSession();
+                return null;
+            }
+        }
+
+        if (!session.token) {
             clearSession();
             return null;
         }
@@ -42,17 +60,43 @@ function isAuthenticated() {
     return session !== null && session.authenticated === true;
 }
 
+function getAuthToken() {
+    const session = getSession();
+    return session?.token || null;
+}
+
 function getLoginPath() {
     const currentPath = window.location.pathname;
-    if (currentPath.includes('/permintaan/') || currentPath.includes('/backdate/')) {
+    if (currentPath.includes('/permintaan/') || currentPath.includes('/backdate/') || currentPath.includes('/admin/')) {
         return '../login.html';
     }
     return 'login.html';
 }
 
+function getAdminPath() {
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/permintaan/') || currentPath.includes('/backdate/')) {
+        return '../admin/admin.html';
+    }
+    if (currentPath.includes('/admin/')) {
+        return 'admin.html';
+    }
+    return 'admin/admin.html';
+}
+
 function checkAuth() {
     if (!isAuthenticated()) {
         window.location.href = getLoginPath();
+        return false;
+    }
+    return true;
+}
+
+function requireSuperAdmin() {
+    if (!checkAuth()) return false;
+    if (!isSuperAdmin()) {
+        alert('Akses ditolak. Halaman ini hanya untuk Super Admin.');
+        window.location.href = getIndexPathSafe();
         return false;
     }
     return true;
@@ -68,7 +112,35 @@ function getUserRole() {
     return session ? (session.role || 'user') : 'user';
 }
 
+function getIndexPathSafe() {
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/permintaan/') || currentPath.includes('/backdate/') || currentPath.includes('/admin/')) {
+        return '../index.html';
+    }
+    return 'index.html';
+}
+
 function logout() {
+    // Best effort call logout API (non-blocking)
+    const token = getAuthToken();
+    if (token) {
+        fetch(getApiUrlSafe(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Auth-Token': token
+            },
+            body: new URLSearchParams({ action: 'logout' }).toString()
+        }).catch(() => {});
+    }
     clearSession();
     window.location.href = getLoginPath();
+}
+
+function getApiUrlSafe() {
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/permintaan/') || currentPath.includes('/backdate/') || currentPath.includes('/admin/')) {
+        return '../api.php';
+    }
+    return 'api.php';
 }

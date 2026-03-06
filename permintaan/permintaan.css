@@ -443,6 +443,42 @@ tbody td {
     padding-right: 40px;
 }
 
+/* Edit and Cancel button styling */
+#editModeBtn {
+    padding: 8px 16px;
+    background: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#editModeBtn:hover {
+    background: #1565c0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#editModeBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Cancel button state (when in edit mode) */
+#editModeBtn.cancel-btn {
+    background: #dc3545;
+}
+
+#editModeBtn.cancel-btn:hover {
+    background: #c82333;
+}
+
 .detail-content {
     display: flex;
     flex-direction: column;
@@ -475,6 +511,81 @@ tbody td {
     font-size: 1rem;
     line-height: 1.5;
     word-break: break-word;
+}
+
+/* Edit mode input styles - lebih simpel */
+.edit-input {
+    width: 100% !important;
+    padding: 8px 12px !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    font-size: 0.95rem !important;
+    font-family: inherit !important;
+    background: white !important;
+    color: #333 !important;
+    transition: border-color 0.2s ease !important;
+    margin-top: 4px !important;
+    box-sizing: border-box !important;
+}
+
+.edit-input:focus {
+    outline: none !important;
+    border-color: #1976d2 !important;
+}
+
+.edit-input:hover:not(:disabled) {
+    border-color: #999 !important;
+}
+
+.edit-input:disabled {
+    background: #f5f5f5 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6 !important;
+}
+
+/* Select dropdown styling */
+.edit-input[type="select"],
+.edit-input select,
+select.edit-input {
+    cursor: pointer !important;
+    appearance: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    padding-right: 40px !important;
+}
+
+/* Textarea styling */
+textarea.edit-input {
+    min-height: 80px !important;
+    resize: vertical !important;
+    line-height: 1.5 !important;
+}
+
+/* Input type text styling */
+input[type="text"].edit-input,
+input[type="email"].edit-input {
+    height: auto !important;
+}
+
+/* Datetime input styling */
+input[type="datetime-local"].edit-input {
+    cursor: pointer !important;
+}
+
+/* Edit mode detail item styling - lebih simpel */
+.detail-item.editing {
+    padding: 16px 20px !important;
+    background: transparent !important;
+    border-left: 2px solid #1976d2 !important;
+    margin-bottom: 0 !important;
+    border-radius: 0 !important;
+}
+
+.detail-item.editing label {
+    color: #1976d2 !important;
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
 }
 
 .status-flag-container {
@@ -566,6 +677,34 @@ tbody td {
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.save-edit-sticky {
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    margin-bottom: 0;
+    font-size: 16px;
+    z-index: 10;
+    background: #28a745 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.save-edit-sticky:hover {
+    background: #218838 !important;
+    box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.2);
+}
+
+.save-edit-sticky:active {
+    background: #1e7e34 !important;
+    box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.15);
 }
 
 .save-status-btn:hover:not(:disabled),

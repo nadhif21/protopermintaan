@@ -158,7 +158,14 @@ async function loadData() {
                 return '';
             };
 
-            const originalRowNumber = row.rowNumber || (index + 2);
+            // Ensure rowNumber is an integer
+            const originalRowNumber = row.rowNumber ? parseInt(row.rowNumber, 10) : (index + 2);
+            
+            // Get Status Surat (col_g) - try multiple sources
+            // Note: In API headers, index 6 is 'Pilih Permintaan', index 7 is 'Status Surat'
+            // But in database, col_g is Status Surat
+            const statusSurat = row['Status Surat'] || row['col_g'] || getColumnValue(7) || '';
+            const pilihPermintaan = row['Pilih Permintaan'] || row['pilih_permintaan'] || getColumnValue(6) || '';
             
             return {
                 id: index,
@@ -170,13 +177,13 @@ async function loadData() {
                 D: getColumnValue(3),
                 E: getColumnValue(4),
                 F: getColumnValue(5),
-                G: getColumnValue(6),
-                H: getColumnValue(7),
-                I: getColumnValue(8),
-                J: getColumnValue(9),
-                K: getColumnValue(10),
-                L: getColumnValue(11),
-                pilihPermintaan: findColumnValue(row, 'Pilih Permintaan'),
+                G: statusSurat, // Status Surat (col_g) - NOT Pilih Permintaan!
+                H: getColumnValue(8), // Skip index 7 (Status Surat) since we put it in G
+                I: getColumnValue(9),
+                J: getColumnValue(10),
+                K: getColumnValue(11),
+                L: getColumnValue(12),
+                pilihPermintaan: pilihPermintaan || findColumnValue(row, 'Pilih Permintaan'),
                 timestamp: findColumnValue(row, 'Timestamp'),
                 status: (findColumnValue(row, 'Status') || '').trim(),
                 flag: (findColumnValue(row, 'Flag') || '').trim(),
@@ -756,45 +763,58 @@ function showDetail(rowId) {
     const isCompleted = (currentStatus === 'Closed' || currentStatus === 'Cancelled') && 
                         currentFlag && currentPetugas;
     
-    let maxColIndex = spreadsheetHeaders.length;
-    if (isCompleted && waktuSelesaiColIndex !== -1) {
-        maxColIndex = waktuSelesaiColIndex + 1;
-    }
+    // Use original row data from API which has proper field names
+    // This is more reliable than using column letters (A, B, C, etc.)
+    const originalRow = row._originalRow || {};
     
-    const columns = [];
-    for (let i = 0; i < maxColIndex; i++) {
-        columns.push(String.fromCharCode(65 + i));
-    }
+    // Define the order of fields to display (excluding special fields)
+    // Note: 'Status' and 'Status Surat' are different fields
+    // - 'Status Surat' = status dokumen (Draft, Review, Approved, Rejected)
+    // - 'Status' = status permintaan (Open, Closed, Cancelled)
+    const fieldsToDisplay = [
+        'Timestamp',
+        'NPK',
+        'Nama Lengkap',
+        'Unit Kerja :',
+        'No Telepon (HP)',
+        'No Surat',
+        'Pilih Permintaan',
+        'Status Surat',  // Status dokumen (Draft, Review, Approved, Rejected)
+        'Alasan Permintaan/Permintaan',
+        'Email Address',
+        'Jenis Surat',
+        'Isi Penjelasan Singkat Permintaanya'
+    ];
     
-    detailContent.innerHTML = columns.map((col) => {
-        const colIndex = col.charCodeAt(0) - 65;
-        let headerName = spreadsheetHeaders[colIndex] || `Kolom ${col}`;
-        if (headerName === 'Pilih Permintaan') {
-            headerName = 'Jenis Permintaan';
-        }
-        if (headerName && headerName.toLowerCase().includes('timestamp')) {
-            headerName = 'Tanggal Minta';
+    // Build detail HTML from original row data
+    let detailHtml = '';
+    fieldsToDisplay.forEach(fieldName => {
+        // Skip fields that will be shown separately
+        if (fieldName === 'Status' || fieldName === 'Flag' || fieldName === 'Petugas' || 
+            fieldName === 'Waktu Selesai' || fieldName === 'Keterangan' || fieldName === 'Persetujuan') {
+            return;
         }
         
-        if (colIndex === statusColIndex || colIndex === flagColIndex || 
-            colIndex === petugasColIndex || colIndex === keteranganColIndex ||
-            colIndex === persetujuanColIndex) {
-            return '';
+        let displayName = fieldName;
+        if (fieldName === 'Pilih Permintaan') {
+            displayName = 'Jenis Permintaan';
+        }
+        if (fieldName && fieldName.toLowerCase().includes('timestamp')) {
+            displayName = 'Tanggal Minta';
         }
         
-        let value = row[col];
+        // Get value from original row (which has proper field names from API)
+        let value = originalRow[fieldName] || '';
         
         if (!value || value === '') {
-            if (colIndex === waktuSelesaiColIndex && isCompleted) {
-                return '';
-            }
-            return '';
+            return; // Skip empty fields
         }
         
-        const isTimestamp = headerName && (
-            headerName.toLowerCase().includes('timestamp') || 
-            (headerName.toLowerCase().includes('waktu') && !headerName.toLowerCase().includes('selesai')) ||
-            headerName.toLowerCase().includes('tanggal')
+        // Format value based on field type
+        const isTimestamp = fieldName && (
+            fieldName.toLowerCase().includes('timestamp') || 
+            (fieldName.toLowerCase().includes('waktu') && !fieldName.toLowerCase().includes('selesai')) ||
+            fieldName.toLowerCase().includes('tanggal')
         );
         
         if (isTimestamp) {
@@ -803,82 +823,81 @@ function showDetail(rowId) {
             value = escapeHtml(value);
         }
         
-        return `
+        detailHtml += `
             <div class="detail-item">
-                <label>${escapeHtml(headerName)}</label>
+                <label>${escapeHtml(displayName)}</label>
                 <div class="value">${value}</div>
             </div>
         `;
-    }).filter(item => item !== '').join('');
+    });
     
-    // Tambahkan persetujuan untuk data kuning/merah (hanya sekali)
-    if (currentFlag && (currentFlag.toLowerCase() === 'kuning' || currentFlag.toLowerCase() === 'merah')) {
-        detailContent.innerHTML += `
-            <div class="detail-item">
-                <label>Persetujuan</label>
-                <div class="value">${formatPersetujuan(currentPersetujuan, currentFlag)}</div>
-            </div>
-        `;
-    }
+    detailContent.innerHTML = detailHtml;
     
-    if (isCompleted) {
-        const statusHeader = spreadsheetHeaders[statusColIndex] || 'Status';
-        const flagHeader = spreadsheetHeaders[flagColIndex] || 'Flag';
-        const petugasHeader = spreadsheetHeaders[petugasColIndex] || 'Petugas';
-        
-        detailContent.innerHTML += `
-            <div class="detail-item">
-                <label>${escapeHtml(statusHeader)}</label>
-                <div class="value">${formatStatus(currentStatus)}</div>
-            </div>
-            <div class="detail-item">
-                <label>${escapeHtml(flagHeader)}</label>
-                <div class="value">${formatFlag(currentFlag)}</div>
-            </div>
-            <div class="detail-item">
-                <label>${escapeHtml(petugasHeader)}</label>
-                <div class="value">${escapeHtml(currentPetugas)}</div>
-            </div>
-        `;
-        
-        if (currentWaktuSelesai) {
-            const waktuSelesaiHeader = spreadsheetHeaders[waktuSelesaiColIndex] || 'Waktu Selesai';
-            let waktuSelesaiValue = formatTimestamp(currentWaktuSelesai);
-            if (!waktuSelesaiValue || waktuSelesaiValue === currentWaktuSelesai || !waktuSelesaiValue.includes(':')) {
-                try {
-                    const date = new Date(currentWaktuSelesai);
-                    if (!isNaN(date.getTime())) {
-                        const day = String(date.getDate()).padStart(2, '0');
-                        const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const year = date.getFullYear();
-                        const hours = String(date.getHours()).padStart(2, '0');
-                        const minutes = String(date.getMinutes()).padStart(2, '0');
-                        const seconds = String(date.getSeconds()).padStart(2, '0');
-                        waktuSelesaiValue = `${day}-${month}-${year}<br>${hours}:${minutes}:${seconds}`;
-                    } else {
-                        waktuSelesaiValue = escapeHtml(currentWaktuSelesai);
-                    }
-                } catch (e) {
+    // Selalu tampilkan semua field yang bisa diedit (Status, Flag, Petugas, Keterangan, Persetujuan, Waktu Selesai)
+    // Pastikan label 'Status' (bukan 'Status Surat') untuk status permintaan (Open, Closed, Cancelled)
+    const statusHeader = 'Status'; // Hardcode untuk memastikan label benar
+    const flagHeader = spreadsheetHeaders[flagColIndex] || 'Flag';
+    const petugasHeader = spreadsheetHeaders[petugasColIndex] || 'Petugas';
+    const keteranganHeader = spreadsheetHeaders[keteranganColIndex] || 'Keterangan';
+    const persetujuanHeader = spreadsheetHeaders[persetujuanColIndex] || 'Persetujuan';
+    const waktuSelesaiHeader = spreadsheetHeaders[waktuSelesaiColIndex] || 'Waktu Selesai';
+    
+    detailContent.innerHTML += `
+        <div class="detail-item">
+            <label>${escapeHtml(statusHeader)}</label>
+            <div class="value">${formatStatus(currentStatus)}</div>
+        </div>
+        <div class="detail-item">
+            <label>${escapeHtml(flagHeader)}</label>
+            <div class="value">${formatFlag(currentFlag)}</div>
+        </div>
+        <div class="detail-item">
+            <label>${escapeHtml(petugasHeader)}</label>
+            <div class="value">${escapeHtml(currentPetugas || '-')}</div>
+        </div>
+        <div class="detail-item">
+            <label>${escapeHtml(keteranganHeader)}</label>
+            <div class="value">${escapeHtml(currentKeterangan || '-')}</div>
+        </div>
+        <div class="detail-item">
+            <label>${escapeHtml(persetujuanHeader)}</label>
+            <div class="value">${currentPersetujuan ? formatPersetujuan(currentPersetujuan, currentFlag) : '-'}</div>
+        </div>
+    `;
+    
+    if (currentWaktuSelesai) {
+        let waktuSelesaiValue = formatTimestamp(currentWaktuSelesai);
+        if (!waktuSelesaiValue || waktuSelesaiValue === currentWaktuSelesai || !waktuSelesaiValue.includes(':')) {
+            try {
+                const date = new Date(currentWaktuSelesai);
+                if (!isNaN(date.getTime())) {
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const year = date.getFullYear();
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    const seconds = String(date.getSeconds()).padStart(2, '0');
+                    waktuSelesaiValue = `${day}-${month}-${year}<br>${hours}:${minutes}:${seconds}`;
+                } else {
                     waktuSelesaiValue = escapeHtml(currentWaktuSelesai);
                 }
+            } catch (e) {
+                waktuSelesaiValue = escapeHtml(currentWaktuSelesai);
             }
-            detailContent.innerHTML += `
-                <div class="detail-item">
-                    <label>${escapeHtml(waktuSelesaiHeader)}</label>
-                    <div class="value">${waktuSelesaiValue}</div>
-                </div>
-            `;
         }
-        
-        if (currentKeterangan) {
-            const keteranganHeader = spreadsheetHeaders[keteranganColIndex] || 'Keterangan';
-            detailContent.innerHTML += `
-                <div class="detail-item">
-                    <label>${escapeHtml(keteranganHeader)}</label>
-                    <div class="value">${escapeHtml(currentKeterangan)}</div>
-                </div>
-            `;
-        }
+        detailContent.innerHTML += `
+            <div class="detail-item">
+                <label>${escapeHtml(waktuSelesaiHeader)}</label>
+                <div class="value">${waktuSelesaiValue}</div>
+            </div>
+        `;
+    } else {
+        detailContent.innerHTML += `
+            <div class="detail-item">
+                <label>${escapeHtml(waktuSelesaiHeader)}</label>
+                <div class="value">-</div>
+            </div>
+        `;
     }
 
     const statusSelect = document.getElementById('statusSelect');
@@ -1481,6 +1500,555 @@ function showDetail(rowId) {
         }
     };
 
+    // Setup edit mode button
+    const editModeBtn = document.getElementById('editModeBtn');
+    let isEditMode = false;
+    let originalData = null;
+    let saveEditBtn = null;
+    
+    if (editModeBtn) {
+        editModeBtn.style.display = 'block';
+        editModeBtn.textContent = 'Edit';
+        editModeBtn.classList.remove('cancel-btn');
+    }
+    
+    function enterEditMode() {
+        if (!editModeBtn) return;
+        isEditMode = true;
+        editModeBtn.textContent = 'Batal';
+        editModeBtn.classList.add('cancel-btn');
+        originalData = { ...row };
+        // Ensure Status Surat is stored in originalData
+        if (row.G) {
+            originalData.G = row.G;
+        }
+        
+        // Hide status-flag-container and show save edit button
+        const statusFlagContainer = document.querySelector('.status-flag-container');
+        if (statusFlagContainer) {
+            statusFlagContainer.style.display = 'none';
+        }
+        
+        // Convert all detail items to input fields
+        const detailItems = detailContent.querySelectorAll('.detail-item');
+        detailItems.forEach(item => {
+            const label = item.querySelector('label');
+            const valueDiv = item.querySelector('.value');
+            if (!label || !valueDiv) return;
+            
+            const fieldName = label.textContent.trim();
+            let currentValue = '';
+            
+            // Get value based on field type
+            if (fieldName === 'Status') {
+                currentValue = (row.status || '').trim();
+            } else if (fieldName === 'Flag') {
+                currentValue = (row.flag || '').trim();
+            } else if (fieldName === 'Petugas') {
+                currentValue = (row.petugas || '').trim();
+            } else if (fieldName === 'Keterangan') {
+                currentValue = (row.keterangan || '').trim();
+            } else if (fieldName === 'Persetujuan') {
+                currentValue = (row.persetujuan || '').trim();
+            } else if (fieldName === 'Waktu Selesai') {
+                currentValue = (row.waktuSelesai || '').trim();
+            } else if (fieldName === 'Status Surat') {
+                // Get from originalRow first (which has proper field names from API)
+                currentValue = (row._originalRow?.['Status Surat'] || 
+                                row.G || 
+                                '').trim();
+                if (!currentValue || currentValue === '') {
+                    // Try to get from valueDiv as fallback
+                    currentValue = valueDiv.textContent.trim();
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = currentValue;
+                    currentValue = (tempDiv.textContent || tempDiv.innerText || '').trim();
+                }
+            } else {
+                // For other fields, try originalRow first, then valueDiv
+                if (row._originalRow && row._originalRow[fieldName]) {
+                    currentValue = (row._originalRow[fieldName] || '').trim();
+                } else {
+                    // Fallback to valueDiv
+                    currentValue = valueDiv.textContent.trim();
+                    // Remove HTML tags if any
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = currentValue;
+                    currentValue = tempDiv.textContent || tempDiv.innerText || '';
+                }
+            }
+            
+            // Create appropriate input based on field type
+            let input;
+            
+            if (fieldName === 'Status') {
+                // Create select for Status
+                input = document.createElement('select');
+                input.className = 'edit-input';
+                input.setAttribute('data-field', fieldName);
+                
+                const options = ['Open', 'Closed', 'Cancelled'];
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt;
+                    if (opt === currentValue || currentValue.includes(opt)) {
+                        option.selected = true;
+                    }
+                    input.appendChild(option);
+                });
+            } else if (fieldName === 'Flag') {
+                // Create select for Flag
+                input = document.createElement('select');
+                input.className = 'edit-input';
+                input.setAttribute('data-field', fieldName);
+                
+                const options = ['', 'Hijau', 'Kuning', 'Merah'];
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt || '-';
+                    if (opt === currentValue || currentValue.includes(opt)) {
+                        option.selected = true;
+                    }
+                    input.appendChild(option);
+                });
+            } else if (fieldName === 'Petugas') {
+                // Create select for Petugas (with predefined options)
+                input = document.createElement('select');
+                input.className = 'edit-input';
+                input.setAttribute('data-field', fieldName);
+                
+                const options = ['', 'Jalal', 'Bayu', 'Ilma'];
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt || '-';
+                    if (opt === currentValue || currentValue.includes(opt)) {
+                        option.selected = true;
+                    }
+                    input.appendChild(option);
+                });
+            } else if (fieldName === 'Persetujuan') {
+                // Create select for Persetujuan
+                input = document.createElement('select');
+                input.className = 'edit-input';
+                input.setAttribute('data-field', fieldName);
+                
+                const options = ['', 'Disetujui', 'Ditolak'];
+                // Check if current value contains approval/rejection keywords
+                const currentValueLower = currentValue.toLowerCase();
+                const isApproved = currentValueLower.includes('disetujui') || 
+                                  currentValueLower.includes('approved') ||
+                                  currentValueLower.includes('setuju');
+                const isRejected = currentValueLower.includes('ditolak') || 
+                                  currentValueLower.includes('rejected') ||
+                                  currentValueLower.includes('tidak setuju');
+                
+                let selectedValue = '';
+                if (isApproved) {
+                    selectedValue = 'Disetujui';
+                } else if (isRejected) {
+                    selectedValue = 'Ditolak';
+                }
+                
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt || '-';
+                    if (opt === selectedValue) {
+                        option.selected = true;
+                    }
+                    input.appendChild(option);
+                });
+            } else if (fieldName === 'Status Surat') {
+                // Create select for Status Surat (opsi berbeda dari Status)
+                input = document.createElement('select');
+                input.className = 'edit-input';
+                input.setAttribute('data-field', fieldName);
+                
+                // Status Surat options: Draft, Review, Approved, Rejected
+                const options = ['Draft', 'Review', 'Approved', 'Rejected'];
+                const currentValueLower = (currentValue || '').toLowerCase().trim();
+                
+                // Mapping untuk backward compatibility dengan nilai lama
+                let mappedValue = currentValueLower;
+                if (currentValueLower === 'open') {
+                    mappedValue = 'draft';
+                } else if (currentValueLower === 'closed') {
+                    mappedValue = 'approved';
+                } else if (currentValueLower === 'cancelled') {
+                    mappedValue = 'rejected';
+                }
+                
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt;
+                    if (opt.toLowerCase() === mappedValue || opt.toLowerCase() === currentValueLower) {
+                        option.selected = true;
+                    }
+                    input.appendChild(option);
+                });
+                
+                // Set default to first option if no match found
+                if (!options.some(opt => opt.toLowerCase() === mappedValue || opt.toLowerCase() === currentValueLower)) {
+                    input.selectedIndex = 0; // Default to 'Draft'
+                }
+            } else if (fieldName === 'Keterangan') {
+                // Create textarea for Keterangan
+                input = document.createElement('textarea');
+                input.value = currentValue;
+                input.className = 'edit-input';
+                input.setAttribute('data-field', fieldName);
+            } else if (fieldName === 'Waktu Selesai') {
+                // Create datetime-local input for timestamp
+                input = document.createElement('input');
+                input.type = 'datetime-local';
+                input.className = 'edit-input';
+                input.setAttribute('data-field', fieldName);
+                
+                // Convert current value to datetime-local format
+                if (currentValue) {
+                    try {
+                        const date = new Date(currentValue);
+                        if (!isNaN(date.getTime())) {
+                            const year = date.getFullYear();
+                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                            const day = String(date.getDate()).padStart(2, '0');
+                            const hours = String(date.getHours()).padStart(2, '0');
+                            const minutes = String(date.getMinutes()).padStart(2, '0');
+                            input.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                        } else {
+                            input.value = currentValue;
+                        }
+                    } catch (e) {
+                        input.value = currentValue;
+                    }
+                }
+            } else {
+                // Create regular text input for other fields
+                input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentValue;
+                input.className = 'edit-input';
+                input.setAttribute('data-field', fieldName);
+                
+                // Set specific input types based on field name
+                if (fieldName && fieldName.toLowerCase().includes('email')) {
+                    input.type = 'email';
+                } else if (fieldName && (fieldName.toLowerCase().includes('telepon') || 
+                          fieldName.toLowerCase().includes('hp') ||
+                          fieldName.toLowerCase().includes('phone'))) {
+                    input.type = 'tel';
+                }
+            }
+            
+            valueDiv.innerHTML = '';
+            valueDiv.appendChild(input);
+            
+            // Add editing class to detail item for better styling
+            item.classList.add('editing');
+        });
+        
+        // Show save button at the bottom - make it sticky
+        if (!saveEditBtn) {
+            saveEditBtn = document.createElement('button');
+            saveEditBtn.textContent = '💾 Simpan Perubahan';
+            saveEditBtn.className = 'save-status-btn save-edit-sticky';
+            saveEditBtn.id = 'saveEditStickyBtn';
+            saveEditBtn.onclick = saveEditMode;
+            detailContent.appendChild(saveEditBtn);
+        } else {
+            saveEditBtn.style.display = 'block';
+        }
+    }
+    
+    function exitEditMode() {
+        if (!editModeBtn) return;
+        isEditMode = false;
+        editModeBtn.textContent = 'Edit';
+        editModeBtn.classList.remove('cancel-btn');
+        if (saveEditBtn) saveEditBtn.style.display = 'none';
+        
+        // Remove editing class from all detail items
+        const detailItems = detailContent.querySelectorAll('.detail-item');
+        detailItems.forEach(item => {
+            item.classList.remove('editing');
+        });
+        
+        // Show status-flag-container again
+        const statusFlagContainer = document.querySelector('.status-flag-container');
+        if (statusFlagContainer) {
+            statusFlagContainer.style.display = '';
+        }
+        
+        // Restore original display
+        showDetail(rowId);
+    }
+    
+    if (editModeBtn) {
+        editModeBtn.onclick = () => {
+            if (!isEditMode) {
+                enterEditMode();
+            } else {
+                exitEditMode();
+            }
+        };
+    }
+    
+    async function saveEditMode() {
+        if (!isEditMode) return;
+        
+        const inputs = detailContent.querySelectorAll('.edit-input');
+        const updates = {};
+        
+        inputs.forEach(input => {
+            const fieldName = input.getAttribute('data-field');
+            let inputValue;
+            
+            // Get value based on input type
+            if (input.tagName === 'SELECT') {
+                inputValue = input.value; // Don't trim select values, empty string is valid
+            } else if (input.tagName === 'TEXTAREA') {
+                inputValue = input.value.trim();
+            } else if (input.type === 'datetime-local') {
+                inputValue = input.value; // Don't trim datetime, empty is valid
+                // Allow empty waktu_selesai to set it to NULL
+                // We'll send a special marker to indicate we want to clear it
+                if (!inputValue || inputValue.trim() === '') {
+                    // Send empty string to clear the value
+                    inputValue = '';
+                }
+            } else {
+                inputValue = input.value.trim();
+            }
+            
+            // Get old value for comparison
+            let oldValue = '';
+            if (fieldName === 'Status') {
+                oldValue = (row.status || '').trim();
+            } else if (fieldName === 'Flag') {
+                oldValue = (row.flag || '').trim();
+            } else if (fieldName === 'Petugas') {
+                oldValue = (row.petugas || '').trim();
+            } else if (fieldName === 'Keterangan') {
+                oldValue = (row.keterangan || '').trim();
+            } else if (fieldName === 'Status Surat') {
+                // Get old value from row.G (column G) or from originalData
+                // Also try to get from _originalRow if available
+                oldValue = (row.G || originalData?.G || row._originalRow?.['Status Surat'] || row._originalRow?.G || '').trim();
+            } else if (fieldName === 'Persetujuan') {
+                // For Persetujuan, compare with normalized value
+                const currentPersetujuan = (row.persetujuan || '').trim();
+                const isApproved = currentPersetujuan.toLowerCase().includes('disetujui') || 
+                                  currentPersetujuan.toLowerCase().includes('approved') ||
+                                  currentPersetujuan.toLowerCase().includes('setuju');
+                const isRejected = currentPersetujuan.toLowerCase().includes('ditolak') || 
+                                  currentPersetujuan.toLowerCase().includes('rejected') ||
+                                  currentPersetujuan.toLowerCase().includes('tidak setuju');
+                
+                if (inputValue === 'Disetujui' && isApproved) {
+                    return; // No change
+                } else if (inputValue === 'Ditolak' && isRejected) {
+                    return; // No change
+                } else if (inputValue === '' && !isApproved && !isRejected) {
+                    return; // No change
+                }
+                oldValue = currentPersetujuan;
+            } else if (fieldName === 'Waktu Selesai') {
+                oldValue = (row.waktuSelesai || '').trim();
+                // If user clears the datetime field, we want to update it to NULL
+                // So we should always include it in updates if it's being edited
+                if (!inputValue || inputValue.trim() === '') {
+                    // User wants to clear the value
+                    updates[fieldName] = '';
+                    return; // Skip comparison, we want to update
+                }
+            } else {
+                // Try to get from originalRow first (which has proper field names)
+                if (row._originalRow && row._originalRow[fieldName]) {
+                    oldValue = (row._originalRow[fieldName] || '').trim();
+                } else {
+                    // Fallback to column letter mapping
+                    oldValue = originalData[getColumnLetterForField(fieldName)] || '';
+                }
+            }
+            
+            // For Persetujuan, always update if dropdown value changed
+            if (fieldName === 'Persetujuan') {
+                updates[fieldName] = inputValue;
+            } else if (fieldName === 'Status Surat') {
+                // Always update Status Surat if user selected a value
+                // Even if it's the same, we want to ensure it's saved
+                if (inputValue && inputValue.trim() !== '') {
+                    updates['Status Surat'] = inputValue; // Explicitly use 'Status Surat' as key
+                    console.log('Adding Status Surat to updates:', inputValue);
+                }
+            } else if (inputValue !== oldValue) {
+                updates[fieldName] = inputValue;
+            }
+        });
+        
+        if (Object.keys(updates).length === 0) {
+            alert('Tidak ada perubahan yang disimpan.');
+            return;
+        }
+        
+        if (!confirm(`Simpan ${Object.keys(updates).length} perubahan?`)) {
+            return;
+        }
+        
+        try {
+            // Get row number before update
+            const rowNumberToUpdate = row.originalRowNumber || row.rowNumber;
+            console.log('Updating with rowNumber:', rowNumberToUpdate, 'rowId:', rowId);
+            console.log('Updates to send:', updates);
+            
+            // Save updates via API
+            await savePermintaanEdits(rowNumberToUpdate, updates);
+            showNotification('Data berhasil diupdate!', 'success');
+            
+            // Close edit mode first
+            isEditMode = false;
+            if (editModeBtn) editModeBtn.textContent = '✏️ Edit';
+            if (saveEditBtn) saveEditBtn.style.display = 'none';
+            
+            // Reload data to get fresh data from server
+            await loadData();
+            
+            // Wait a bit for data to be fully loaded
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // Find the updated row by rowNumber (not by id, because id might change after reload)
+            const updatedRow = allData.find(r => {
+                const rn = parseInt(r.originalRowNumber || r.rowNumber, 10);
+                const targetRn = parseInt(rowNumberToUpdate, 10);
+                return rn === targetRn;
+            });
+            
+            if (updatedRow) {
+                // Re-open detail view with updated data
+                console.log('Reopening detail for updated row:', updatedRow);
+                console.log('Updated row.G (Status Surat):', updatedRow.G);
+                // Force close and reopen to ensure fresh data
+                closePopup(); // Use proper close function to reset overflow
+                // Small delay before reopening
+                setTimeout(() => {
+                    showDetail(updatedRow.id);
+                }, 200);
+            } else {
+                // If row not found, try to find by original rowId
+                const rowById = allData.find(r => r.id === rowId);
+                if (rowById) {
+                    closePopup(); // Use proper close function
+                    setTimeout(() => {
+                        showDetail(rowById.id);
+                    }, 200);
+                } else {
+                    // If still not found, just close the popup
+                    closePopup();
+                }
+            }
+        } catch (error) {
+            console.error('Error saving:', error);
+            showNotification('Error: ' + error.message, 'error');
+        }
+    }
+    
+    function getColumnLetterForField(fieldName) {
+        for (let i = 0; i < spreadsheetHeaders.length; i++) {
+            if (spreadsheetHeaders[i] === fieldName) {
+                return String.fromCharCode(65 + i);
+            }
+        }
+        return null;
+    }
+    
+    async function savePermintaanEdits(rowNumber, updates) {
+        // Map field names to database columns (menggunakan kolom yang jelas)
+        const fieldToColMap = {
+            'Timestamp': 'timestamp_data',
+            'NPK': 'npk',
+            'Nama Lengkap': 'nama_lengkap',
+            'Unit Kerja :': 'unit_kerja',
+            'No Telepon (HP)': 'no_telepon',
+            'No Surat': 'no_surat',
+            'Pilih Permintaan': 'pilih_permintaan',
+            'Status Surat': 'status_surat',
+            'Alasan Permintaan/Permintaan': 'alasan_permintaan',
+            'Email Address': 'email_address',
+            'Jenis Surat': 'jenis_surat',
+            'Isi Penjelasan Singkat Permintaanya': 'isi_penjelasan',
+            'Status': 'status',
+            'Flag': 'flag',
+            'Petugas': 'petugas',
+            'Keterangan': 'keterangan',
+            'Persetujuan': 'persetujuan',
+            'Waktu Selesai': 'waktu_selesai'
+        };
+        
+        const updateParams = {};
+        Object.entries(updates).forEach(([fieldName, fieldValue]) => {
+            console.log('Processing update for field:', fieldName, 'value:', fieldValue);
+            const colName = fieldToColMap[fieldName];
+            if (colName) {
+                console.log('Mapped to column:', colName);
+                // Convert datetime-local to MySQL format if needed
+                if (fieldName === 'Waktu Selesai') {
+                    if (fieldValue && fieldValue.trim() !== '') {
+                        // datetime-local format: YYYY-MM-DDTHH:mm
+                        // Send as-is, PHP will convert it using convertToMySQLDateTime
+                        updateParams[colName] = fieldValue;
+                    } else {
+                        // Send special marker to indicate we want to clear it (set to NULL)
+                        updateParams[colName] = '__NULL__';
+                    }
+                } else {
+                    updateParams[colName] = fieldValue;
+                }
+            }
+        });
+        
+        if (Object.keys(updateParams).length === 0) {
+            throw new Error('Tidak ada field yang valid untuk diupdate');
+        }
+        
+        // Debug: log what we're sending
+        console.log('Updating rowNumber:', rowNumber);
+        console.log('Update params:', updateParams);
+        
+        // Use existing batchUpdate but with new endpoint for field updates
+        const url = new URL(API_URL, window.location.origin);
+        url.searchParams.append('action', 'updatePermintaanFields');
+        // Ensure rowNumber is an integer
+        url.searchParams.append('rowNumber', parseInt(rowNumber, 10));
+        
+        Object.entries(updateParams).forEach(([key, value]) => {
+            url.searchParams.append(key, value);
+        });
+        
+        console.log('Request URL:', url.toString());
+        
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache'
+        });
+        
+        if (!response.ok) {
+            throw new Error('HTTP Error: ' + response.status);
+        }
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal mengupdate data');
+        }
+        
+        return result;
+    }
+    
+    
     const popup = document.getElementById('detailPopup');
     popup.classList.add('show');
     document.body.style.overflow = 'hidden';
