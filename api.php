@@ -114,6 +114,34 @@ try {
             handleUpdatePermintaanFields($conn);
             break;
             
+        case 'getUnitKerja':
+            handleGetUnitKerja($conn);
+            break;
+            
+        case 'getPilihPermintaanOptions':
+            handleGetPilihPermintaanOptions($conn);
+            break;
+            
+        case 'addPilihPermintaanOption':
+            handleAddPilihPermintaanOption($conn);
+            break;
+            
+        case 'updatePilihPermintaanOption':
+            handleUpdatePilihPermintaanOption($conn);
+            break;
+            
+        case 'deletePilihPermintaanOption':
+            handleDeletePilihPermintaanOption($conn);
+            break;
+            
+        case 'getPetugas':
+            handleGetPetugas($conn);
+            break;
+            
+        case 'submitPermintaan':
+            handleSubmitPermintaan($conn);
+            break;
+            
         case 'insertBackdate':
             handleInsertBackdate($conn);
             break;
@@ -850,8 +878,9 @@ function handleDeletePerjanjian($conn) {
 
 // Handler untuk updatePermintaanFields (update semua field permintaan)
 function handleUpdatePermintaanFields($conn) {
-    // Allow access without auth for backward compatibility
-    // Auth is optional but recommended
+    // Hanya super admin yang bisa edit
+    requireSuperAdmin($conn);
+    
     $rowNumber = intval($_REQUEST['rowNumber'] ?? 0);
     
     if ($rowNumber <= 0) {
@@ -1078,4 +1107,236 @@ function handleInsertBackdate($conn) {
     $stmt->close();
     
     sendJSONResponse(true, ['message' => 'Data backdate berhasil disimpan', 'rowNumber' => $maxRow]);
+}
+
+// Handler untuk getUnitKerja
+function handleGetUnitKerja($conn) {
+    $sql = "SELECT `id`, `nama_unit` FROM `unit_kerja` WHERE `is_active` = 1 ORDER BY `nama_unit` ASC";
+    $result = $conn->query($sql);
+    
+    if (!$result) {
+        throw new Exception("Query error: " . $conn->error);
+    }
+    
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = [
+            'id' => intval($row['id']),
+            'nama_unit' => $row['nama_unit']
+        ];
+    }
+    
+    sendJSONResponse(true, $data);
+}
+
+// Handler untuk getPilihPermintaanOptions
+function handleGetPilihPermintaanOptions($conn) {
+    $sql = "SELECT `id`, `nama_opsi`, `bagian_target`, `urutan` FROM `pilih_permintaan_options` WHERE `is_active` = 1 ORDER BY `urutan` ASC, `id` ASC";
+    $result = $conn->query($sql);
+    
+    if (!$result) {
+        throw new Exception("Query error: " . $conn->error);
+    }
+    
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = [
+            'id' => intval($row['id']),
+            'nama_opsi' => $row['nama_opsi'],
+            'bagian_target' => $row['bagian_target'],
+            'urutan' => intval($row['urutan'])
+        ];
+    }
+    
+    sendJSONResponse(true, $data);
+}
+
+// Handler untuk addPilihPermintaanOption
+function handleAddPilihPermintaanOption($conn) {
+    $namaOpsi = trim(getRequestParam('nama_opsi', ''));
+    $bagianTarget = getRequestParam('bagian_target', 'bagian_2');
+    
+    if ($namaOpsi === '') {
+        throw new Exception("Nama opsi wajib diisi.");
+    }
+    
+    // Get max urutan
+    $maxResult = $conn->query("SELECT MAX(`urutan`) as max_urutan FROM `pilih_permintaan_options`");
+    $maxRow = $maxResult->fetch_assoc();
+    $urutan = ($maxRow['max_urutan'] ?? 0) + 1;
+    
+    $sql = "INSERT INTO `pilih_permintaan_options` (`nama_opsi`, `bagian_target`, `urutan`, `is_active`) VALUES (?, ?, ?, 1)";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('ssi', $namaOpsi, $bagianTarget, $urutan);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    $stmt->close();
+    
+    sendJSONResponse(true, ['message' => 'Opsi berhasil ditambahkan']);
+}
+
+// Handler untuk updatePilihPermintaanOption
+function handleUpdatePilihPermintaanOption($conn) {
+    $id = intval(getRequestParam('id', 0));
+    $bagianTarget = getRequestParam('bagian_target', '');
+    
+    if ($id <= 0) {
+        throw new Exception("ID tidak valid.");
+    }
+    
+    if ($bagianTarget === '') {
+        throw new Exception("Bagian target wajib diisi.");
+    }
+    
+    $sql = "UPDATE `pilih_permintaan_options` SET `bagian_target` = ? WHERE `id` = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('si', $bagianTarget, $id);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    $stmt->close();
+    
+    sendJSONResponse(true, ['message' => 'Opsi berhasil diupdate']);
+}
+
+// Handler untuk deletePilihPermintaanOption
+function handleDeletePilihPermintaanOption($conn) {
+    $id = intval(getRequestParam('id', 0));
+    
+    if ($id <= 0) {
+        throw new Exception("ID tidak valid.");
+    }
+    
+    // Soft delete (set is_active = 0)
+    $sql = "UPDATE `pilih_permintaan_options` SET `is_active` = 0 WHERE `id` = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('i', $id);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    $stmt->close();
+    
+    sendJSONResponse(true, ['message' => 'Opsi berhasil dihapus']);
+}
+
+// Handler untuk getPetugas
+function handleGetPetugas($conn) {
+    $sql = "SELECT `id`, `nama`, `npk`, `jabatan`, `no_wa` FROM `petugas` WHERE `is_active` = 1 ORDER BY `nama` ASC";
+    $result = $conn->query($sql);
+    
+    if (!$result) {
+        throw new Exception("Query error: " . $conn->error);
+    }
+    
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = [
+            'id' => intval($row['id']),
+            'nama' => $row['nama'],
+            'npk' => $row['npk'] ?? '',
+            'jabatan' => $row['jabatan'] ?? '',
+            'no_wa' => $row['no_wa']
+        ];
+    }
+    
+    sendJSONResponse(true, $data);
+}
+
+// Handler untuk submitPermintaan
+function handleSubmitPermintaan($conn) {
+    // Get form data
+    $npk = trim(getRequestParam('npk', ''));
+    $namaLengkap = trim(getRequestParam('nama_lengkap', ''));
+    $unitKerjaId = intval(getRequestParam('unit_kerja_id', 0));
+    $noTelepon = trim(getRequestParam('no_telepon', ''));
+    $pilihPermintaan = trim(getRequestParam('pilih_permintaan', ''));
+    $dataSurat = trim(getRequestParam('data_surat', ''));
+    $statusSurat = trim(getRequestParam('status_surat', ''));
+    $jenisSurat = trim(getRequestParam('jenis_surat', ''));
+    $noSurat = trim(getRequestParam('no_surat', ''));
+    $alasanPermintaan = trim(getRequestParam('alasan_permintaan', ''));
+    $keteranganPermintaan = trim(getRequestParam('keterangan_permintaan', ''));
+    $isiPenjelasan = trim(getRequestParam('isi_penjelasan', ''));
+    $petugasId = intval(getRequestParam('petugas_id', 0));
+    
+    // Validation - basic required fields
+    if ($npk === '' || $namaLengkap === '' || $unitKerjaId <= 0 || $noTelepon === '' || 
+        $pilihPermintaan === '' || $isiPenjelasan === '' || $petugasId <= 0) {
+        throw new Exception("Semua field wajib harus diisi.");
+    }
+    
+    // Get selected option to determine which fields are required
+    $optionResult = $conn->query("SELECT `bagian_target` FROM `pilih_permintaan_options` WHERE `nama_opsi` = '" . $conn->real_escape_string($pilihPermintaan) . "' AND `is_active` = 1 LIMIT 1");
+    $optionRow = $optionResult ? $optionResult->fetch_assoc() : null;
+    $bagianTarget = $optionRow['bagian_target'] ?? 'bagian_2';
+    
+    // Validate bagian 2 fields if needed
+    if ($bagianTarget === 'bagian_2') {
+        if ($statusSurat === '' || $jenisSurat === '' || $alasanPermintaan === '') {
+            throw new Exception("Field bagian 2 wajib diisi untuk pilihan ini.");
+        }
+    }
+    
+    // Get unit kerja name
+    $unitResult = $conn->query("SELECT `nama_unit` FROM `unit_kerja` WHERE `id` = $unitKerjaId LIMIT 1");
+    $unitRow = $unitResult->fetch_assoc();
+    $unitKerja = $unitRow['nama_unit'] ?? '';
+    
+    // Get max row_number
+    $maxResult = $conn->query("SELECT MAX(`row_number`) as max_row FROM `permintaan`");
+    $maxRow = $maxResult->fetch_assoc();
+    $rowNumber = ($maxRow['max_row'] ?? 0) + 1;
+    
+    // Get timestamp
+    $timestamp = date('Y-m-d H:i:s');
+    
+    // Get petugas name
+    $petugasResult = $conn->query("SELECT `nama` FROM `petugas` WHERE `id` = $petugasId LIMIT 1");
+    $petugasRow = $petugasResult->fetch_assoc();
+    $petugasNama = $petugasRow['nama'] ?? '';
+    
+    // Insert into permintaan table
+    $sql = "INSERT INTO `permintaan` (
+        `row_number`, `timestamp_data`, `npk`, `nama_lengkap`, `unit_kerja`, 
+        `no_telepon`, `pilih_permintaan`, `status_surat`, `jenis_surat`, 
+        `no_surat`, `alasan_permintaan`, `isi_penjelasan`, `petugas`, 
+        `status`, `timestamp`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Open', ?)";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('isssssssssssss', 
+        $rowNumber, $timestamp, $npk, $namaLengkap, $unitKerja,
+        $noTelepon, $pilihPermintaan, $statusSurat, $jenisSurat,
+        $noSurat, $alasanPermintaan, $isiPenjelasan, $petugasNama,
+        $timestamp
+    );
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $insertId = $conn->insert_id;
+    $stmt->close();
+    
+    sendJSONResponse(true, [
+        'id' => $insertId,
+        'rowNumber' => $rowNumber
+    ]);
 }

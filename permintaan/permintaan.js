@@ -1500,20 +1500,31 @@ function showDetail(rowId) {
         }
     };
 
-    // Setup edit mode button
+    // Setup edit mode button - hanya untuk super admin
     const editModeBtn = document.getElementById('editModeBtn');
     let isEditMode = false;
     let originalData = null;
     let saveEditBtn = null;
     
     if (editModeBtn) {
-        editModeBtn.style.display = 'block';
-        editModeBtn.textContent = 'Edit';
-        editModeBtn.classList.remove('cancel-btn');
+        // Cek apakah user adalah super admin
+        if (isSuperAdmin()) {
+            editModeBtn.style.display = 'block';
+            editModeBtn.textContent = 'Edit';
+            editModeBtn.classList.remove('cancel-btn');
+        } else {
+            // Sembunyikan tombol Edit untuk non-super admin
+            editModeBtn.style.display = 'none';
+        }
     }
     
     function enterEditMode() {
         if (!editModeBtn) return;
+        // Cek permission - hanya super admin yang bisa edit
+        if (!isSuperAdmin()) {
+            alert('Akses ditolak. Hanya Super Admin yang dapat mengedit data.');
+            return;
+        }
         isEditMode = true;
         editModeBtn.textContent = 'Batal';
         editModeBtn.classList.add('cancel-btn');
@@ -1798,6 +1809,11 @@ function showDetail(rowId) {
     }
     
     async function saveEditMode() {
+        // Cek permission - hanya super admin yang bisa save edit
+        if (!isSuperAdmin()) {
+            alert('Akses ditolak. Hanya Super Admin yang dapat menyimpan perubahan.');
+            return;
+        }
         if (!isEditMode) return;
         
         const inputs = detailContent.querySelectorAll('.edit-input');

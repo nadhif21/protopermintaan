@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Permintaan DOF</title>
+    <link rel="stylesheet" href="form-permintaan.css">
+</head>
+<body>
+    <div class="form-container">
+        <div class="form-header">
+            <h1>Daftar Permintaan DOF</h1>
+        </div>
+
+        <!-- Deskripsi Penting -->
+        <div class="important-notice">
+            <div class="notice-header">
+                <span class="notice-icon">⚠️</span>
+                <strong>PENTING !!</strong>
+            </div>
+            <div class="notice-content">
+                <p>Permintaan Revisi DOF terbatas pada hal-hal yang tidak mengubah substansi surat, tidak ubah nilai keuangan, tidak mengubah hal-hal yang terkait status kepersonaliaan dan tidak hal-hal terkait kebijakan Perusahaan.</p>
+                <p>Setiap perubahan yang dimintakan adalah menjadi tanggung jawab masing-masing Unit Kerja/Personal yang meminta perubahan atau pembatalan. Departemen Administrasi Korporasi tidak bertanggung jawab atas perubahan atau pembatalan yang telah dimintakan.</p>
+            </div>
+        </div>
+
+        <form id="permintaanForm">
+            <!-- Bagian 1: Data Diri -->
+            <div class="form-section active" id="bagian1">
+
+                <div class="form-group">
+                    <label for="npk">NPK <span class="required">*</span></label>
+                    <input type="text" id="npk" name="npk" required placeholder="Masukkan NPK">
+                </div>
+
+                <div class="form-group">
+                    <label for="nama_lengkap">Nama Lengkap <span class="required">*</span></label>
+                    <input type="text" id="nama_lengkap" name="nama_lengkap" required placeholder="Masukkan Nama Lengkap">
+                </div>
+
+                <div class="form-group">
+                    <label for="unit_kerja">Unit Kerja <span class="required">*</span></label>
+                    <select id="unit_kerja" name="unit_kerja" required>
+                        <option value="">Pilih Unit Kerja</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="no_telepon">No Telepon (HP) <span class="required">*</span></label>
+                    <input type="tel" id="no_telepon" name="no_telepon" required placeholder="Masukkan No Telepon">
+                </div>
+
+                <div class="form-group">
+                    <label>Pilih Permintaan <span class="required">*</span></label>
+                    <div id="pilihPermintaanContainer" class="radio-group">
+                        <!-- Options will be loaded dynamically -->
+                    </div>
+                </div>
+
+                <div class="form-navigation">
+                    <button type="button" class="btn-next" onclick="nextSection()">Lanjut</button>
+                </div>
+            </div>
+
+            <!-- Bagian 2: Data Surat -->
+            <div class="form-section" id="bagian2">
+
+                <div class="form-group">
+                    <label>Data Surat</label>
+                    <input type="text" id="data_surat" name="data_surat" placeholder="Deskripsi (opsional)">
+                </div>
+
+                <div class="form-group">
+                    <label>Status Surat <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="status_surat" value="Drafter">
+                            <span>Drafter</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="status_surat" value="Reviewer">
+                            <span>Reviewer</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="status_surat" value="Approver">
+                            <span>Approver</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="status_surat" value="Sudah disetujui Approver">
+                            <span>Sudah disetujui Approver</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Jenis Surat <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="jenis_surat" value="Internal">
+                            <span>Internal</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="jenis_surat" value="Eksternal">
+                            <span>Eksternal</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="no_surat">No Surat</label>
+                    <input type="text" id="no_surat" name="no_surat" placeholder="Teks jawaban singkat">
+                </div>
+
+                <div class="form-group">
+                    <label for="alasan_permintaan">Alasan Permintaan/Permintaan <span class="required">*</span></label>
+                    <textarea id="alasan_permintaan" name="alasan_permintaan" placeholder="Teks jawaban panjang" rows="5"></textarea>
+                </div>
+
+                <div class="form-navigation">
+                    <button type="button" class="btn-prev" onclick="prevSection()">Kembali</button>
+                    <button type="button" class="btn-next" onclick="nextSection()">Lanjut</button>
+                </div>
+            </div>
+
+            <!-- Bagian 3: Keterangan -->
+            <div class="form-section" id="bagian3">
+
+                <div class="form-group">
+                    <label>Keterangan Permintaan</label>
+                    <input type="text" id="keterangan_permintaan" name="keterangan_permintaan" placeholder="Deskripsi (opsional)">
+                </div>
+
+                <div class="form-group">
+                    <label for="isi_penjelasan">Isi Penjelasan Singkat Permintaanya <span class="required">*</span></label>
+                    <textarea id="isi_penjelasan" name="isi_penjelasan" required placeholder="Teks jawaban panjang" rows="5"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="petugas">Petugas <span class="required">*</span></label>
+                    <select id="petugas" name="petugas" required>
+                        <option value="">Pilih Petugas</option>
+                    </select>
+                </div>
+
+                <div class="form-navigation">
+                    <button type="button" class="btn-prev" onclick="prevSection()">Kembali</button>
+                    <button type="submit" class="btn-submit">Kirim Permintaan</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Success Modal -->
+        <div id="successModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Permintaan Berhasil Dikirim!</h2>
+                </div>
+                <div class="modal-body">
+                    <p>Permintaan Anda telah berhasil dikirim dengan nomor:</p>
+                    <p class="request-number" id="requestNumber"></p>
+                    <p>Silakan hubungi petugas melalui WhatsApp untuk follow-up.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="whatsappBtn" class="btn-whatsapp">📱 Hubungi Petugas via WhatsApp</button>
+                    <button type="button" class="btn-close" onclick="closeSuccessModal()">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="form-permintaan.js"></script>
+</body>
+</html>
