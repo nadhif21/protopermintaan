@@ -161,6 +161,10 @@ try {
             handleGetPetugas($conn);
             break;
             
+        case 'changePassword':
+            handleChangePassword($conn);
+            break;
+            
         case 'submitPermintaan':
             handleSubmitPermintaan($conn);
             break;
@@ -344,15 +348,15 @@ function handleLogin($conn) {
     // If not found or doesn't contain @, try username (for admin/super_admin)
     if (!$user) {
         $sql = "SELECT " . $selectColumns . " FROM `users` WHERE `username` = ? LIMIT 1";
-        $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            throw new Exception("Prepare error: " . $conn->error);
-        }
-        $stmt->bind_param('s', $username);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $user = $result ? $result->fetch_assoc() : null;
-        $stmt->close();
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
     }
 
     if (!$user) {
@@ -389,7 +393,7 @@ function handleLogin($conn) {
                     $updateStmt->close();
                 }
             } else {
-                auditLog($conn, intval($user['id']), 'login_failed', 'user', ['reason' => 'bad_password']);
+        auditLog($conn, intval($user['id']), 'login_failed', 'user', ['reason' => 'bad_password']);
                 throw new Exception("Username/email atau password salah.");
             }
         } else {
@@ -496,6 +500,89 @@ function handleLogout($conn) {
         }
     }
     sendJSONResponse(true, ['message' => 'Logout berhasil']);
+}
+
+function handleChangePassword($conn) {
+    $session = requireAuth($conn);
+    
+    $oldPassword = getRequestParam('oldPassword', '');
+    $newPassword = getRequestParam('newPassword', '');
+    
+    if (empty($oldPassword) || empty($newPassword)) {
+        throw new Exception("Password lama dan password baru wajib diisi.");
+    }
+    
+    if (strlen($newPassword) < 6) {
+        throw new Exception("Password baru minimal 6 karakter.");
+    }
+    
+    $userId = intval($session['user_id']);
+    
+    // Get current user password
+    $sql = "SELECT `password_hash`, `password` FROM `users` WHERE `id` = ? LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$user) {
+        throw new Exception("User tidak ditemukan.");
+    }
+    
+    // Check old password (plain text comparison)
+    $storedPassword = $user['password_hash'] ?? $user['password'] ?? '';
+    $storedPassword = trim($storedPassword);
+    $oldPassword = trim($oldPassword);
+    
+    // Verify old password
+    $passwordValid = false;
+    
+    // Try plain text comparison first
+    if ($storedPassword === $oldPassword) {
+        $passwordValid = true;
+    } else {
+        // If stored password looks like a hash, try to verify
+        if (strpos($storedPassword, '$2y$') === 0 || strpos($storedPassword, '$2a$') === 0) {
+            if (password_verify($oldPassword, $storedPassword)) {
+                $passwordValid = true;
+            }
+        }
+    }
+    
+    if (!$passwordValid) {
+        auditLog($conn, $userId, 'change_password_failed', 'user', ['reason' => 'wrong_old_password']);
+        throw new Exception("Password lama salah.");
+    }
+    
+    // Check if new password is same as old password
+    if ($storedPassword === trim($newPassword)) {
+        throw new Exception("Password baru harus berbeda dengan password lama.");
+    }
+    
+    // Update password (store as plain text as per user requirement)
+    $newPasswordTrimmed = trim($newPassword);
+    $updateSql = "UPDATE `users` SET `password_hash` = ? WHERE `id` = ?";
+    $updateStmt = $conn->prepare($updateSql);
+    if (!$updateStmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $updateStmt->bind_param('si', $newPasswordTrimmed, $userId);
+    
+    if (!$updateStmt->execute()) {
+        $updateStmt->close();
+        throw new Exception("Gagal mengubah password: " . $conn->error);
+    }
+    $updateStmt->close();
+    
+    // Log password change
+    auditLog($conn, $userId, 'change_password', 'user', ['success' => true]);
+    
+    sendJSONResponse(true, ['message' => 'Password berhasil diubah']);
 }
 
 function handleListUsers($conn) {
@@ -1297,7 +1384,7 @@ function handleGetData($conn) {
             $sql = "SELECT * FROM `permintaan` WHERE 1=0";
         } else {
             // For admin/super_admin, show all data
-            $sql = "SELECT * FROM `permintaan` ORDER BY `timestamp` DESC, `id` DESC";
+        $sql = "SELECT * FROM `permintaan` ORDER BY `timestamp` DESC, `id` DESC";
         }
     }
     
@@ -2116,24 +2203,24 @@ function handleSubmitPermintaan($conn) {
             $timestamp, $userId, $petugasId, $petugasNoWa
         );
     } else {
-        $sql = "INSERT INTO `permintaan` (
-            `row_number`, `timestamp_data`, `npk`, `nama_lengkap`, `unit_kerja`, 
-            `no_telepon`, `pilih_permintaan`, `status_surat`, `jenis_surat`, 
-            `no_surat`, `alasan_permintaan`, `isi_penjelasan`, `petugas`, 
-            `status`, `timestamp`
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Open', ?)";
-        
-        $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            throw new Exception("Prepare error: " . $conn->error);
-        }
-        
-        $stmt->bind_param('isssssssssssss', 
-            $rowNumber, $timestamp, $npk, $namaLengkap, $unitKerja,
-            $noTelepon, $pilihPermintaan, $statusSurat, $jenisSurat,
-            $noSurat, $alasanPermintaan, $isiPenjelasan, $petugasNama,
-            $timestamp
-        );
+    $sql = "INSERT INTO `permintaan` (
+        `row_number`, `timestamp_data`, `npk`, `nama_lengkap`, `unit_kerja`, 
+        `no_telepon`, `pilih_permintaan`, `status_surat`, `jenis_surat`, 
+        `no_surat`, `alasan_permintaan`, `isi_penjelasan`, `petugas`, 
+        `status`, `timestamp`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Open', ?)";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('isssssssssssss', 
+        $rowNumber, $timestamp, $npk, $namaLengkap, $unitKerja,
+        $noTelepon, $pilihPermintaan, $statusSurat, $jenisSurat,
+        $noSurat, $alasanPermintaan, $isiPenjelasan, $petugasNama,
+        $timestamp
+    );
     }
     
     if (!$stmt->execute()) {

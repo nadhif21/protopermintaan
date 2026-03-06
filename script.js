@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (adminCardLink) {
         adminCardLink.style.display = isSuperAdmin() ? 'block' : 'none';
     }
-
+    
     // Tampilkan menu Approval Akun untuk admin dan super_admin
     const approvalCardLink = document.getElementById('approvalCardLink');
     if (approvalCardLink) {
