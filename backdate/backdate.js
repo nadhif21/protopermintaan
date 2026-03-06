@@ -1,4 +1,4 @@
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwctc3dZjMF9mo_JJse1AAo-osjXqPJzqFAJQFaU_KUrmKfPrLEwKCztErJDimg8975/exec';
+const API_URL = '../api.php';
 
 let allData = [];
 let filteredData = [];
@@ -239,15 +239,12 @@ function parseTimestamp(timestamp) {
 
 async function loadData() {
     try {
-        if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL') {
-            throw new Error('URL Apps Script belum dikonfigurasi. Silakan isi APPS_SCRIPT_URL di script.js');
-        }
-
         allData = [];
         filteredData = [];
         
-        const url = new URL(APPS_SCRIPT_URL);
+        const url = new URL(API_URL, window.location.origin);
         url.searchParams.append('action', 'getData');
+        url.searchParams.append('table', 'backdate');
         url.searchParams.append('_t', Date.now());
         
         let response;
@@ -259,14 +256,11 @@ async function loadData() {
             });
         } catch (fetchError) {
             console.error('Fetch error details:', fetchError);
-            if (fetchError.message.includes('CORS') || fetchError.message.includes('Failed to fetch')) {
-                throw new Error('CORS Error: Pastikan Apps Script sudah di-deploy sebagai Web App dengan "Who has access: Anyone". Silakan update deployment di Apps Script Editor.');
-            }
-            throw new Error('Tidak dapat terhubung ke Apps Script: ' + fetchError.message);
+            throw new Error('Tidak dapat terhubung ke server: ' + fetchError.message);
         }
 
         if (!response) {
-            throw new Error('Tidak dapat terhubung ke Apps Script. Pastikan URL benar dan Apps Script sudah di-deploy.');
+            throw new Error('Tidak dapat terhubung ke server.');
         }
 
         if (!response.ok) {
@@ -281,7 +275,7 @@ async function loadData() {
         }
 
         if (!result.success) {
-            throw new Error(result.error || 'Error dari Apps Script');
+            throw new Error(result.error || 'Error dari server');
         }
 
         const headers = result.headers || (result.data.length > 0 ? Object.keys(result.data[0]) : []);
@@ -1081,6 +1075,12 @@ function showDetail(rowId) {
                 updateData.timestamp = new Date().toISOString();
             }
             
+            // Convert waktuSelesai to timestamp for backdate
+            if (updateData.waktuSelesai) {
+                updateData.timestamp = updateData.waktuSelesai;
+                delete updateData.waktuSelesai;
+            }
+            
             if (Object.keys(updateData).length === 0) {
                 saveBtn.disabled = false;
                 saveBtn.textContent = 'Simpan';
@@ -1126,8 +1126,9 @@ async function batchUpdate(rowNumber, updateData) {
         throw new Error('RowNumber tidak valid: ' + rowNumber);
     }
     
-    const url = new URL(APPS_SCRIPT_URL);
+    const url = new URL(API_URL, window.location.origin);
     url.searchParams.append('action', 'batchUpdate');
+    url.searchParams.append('table', 'backdate');
     url.searchParams.append('rowNumber', rowNumber);
     
     if (updateData.status !== undefined) {
@@ -1243,7 +1244,7 @@ function updatePagination() {
 
 async function savePerjanjianData(nomorSurat, data) {
     try {
-        const url = new URL(APPS_SCRIPT_URL);
+        const url = new URL(API_URL, window.location.origin);
         url.searchParams.append('action', 'savePerjanjian');
         url.searchParams.append('unitKerja', data.unitKerja);
         url.searchParams.append('noSP', data.noSP);
@@ -1275,7 +1276,7 @@ async function savePerjanjianData(nomorSurat, data) {
 
 async function getPerjanjianData(nomorSurat) {
     try {
-        const url = new URL(APPS_SCRIPT_URL);
+        const url = new URL(API_URL, window.location.origin);
         url.searchParams.append('action', 'getPerjanjian');
         url.searchParams.append('key', nomorSurat);
         url.searchParams.append('_t', Date.now());
@@ -1312,7 +1313,7 @@ async function getPerjanjianData(nomorSurat) {
 
 async function deletePerjanjianData(nomorSurat, rowNumber) {
     try {
-        const url = new URL(APPS_SCRIPT_URL);
+        const url = new URL(API_URL, window.location.origin);
         url.searchParams.append('action', 'deletePerjanjian');
         url.searchParams.append('rowNumber', rowNumber);
         url.searchParams.append('key', nomorSurat);

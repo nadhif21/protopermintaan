@@ -310,7 +310,7 @@
     </div>
 
     <script>
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVP3PEif421kqpXg7vwKeO-OlTQnTTKIwJhTPirVI3xQk5ONGrLsPpjVVHdj69z8GYOw/exec';
+        const API_URL = '../api.php';
         
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -408,8 +408,9 @@
         
         async function processApproval(rowId, action) {
             try {
-                const url = new URL(APPS_SCRIPT_URL);
+                const url = new URL(API_URL, window.location.origin);
                 url.searchParams.append('action', 'batchUpdate');
+                url.searchParams.append('table', 'permintaan');
                 url.searchParams.append('rowNumber', rowId);
                 url.searchParams.append('persetujuan', action === 'approve' ? 'Disetujui' : 'Ditolak');
                 
@@ -450,8 +451,9 @@
             // Load data
             (async () => {
                 try {
-                    const url = new URL(APPS_SCRIPT_URL);
+                    const url = new URL(API_URL, window.location.origin);
                     url.searchParams.append('action', 'getData');
+                    url.searchParams.append('table', 'permintaan');
                     url.searchParams.append('_t', Date.now());
                     
                     const response = await fetch(url.toString(), {
@@ -538,8 +540,9 @@
                             await processApproval(rowNumber, 'approve');
                             
                             // Reload data untuk menampilkan hasil terbaru
-                            const url = new URL(APPS_SCRIPT_URL);
+                            const url = new URL(API_URL, window.location.origin);
                             url.searchParams.append('action', 'getData');
+                            url.searchParams.append('table', 'permintaan');
                             url.searchParams.append('_t', Date.now());
                             
                             const response = await fetch(url.toString(), {
@@ -594,8 +597,9 @@
                             await processApproval(rowNumber, 'reject');
                             
                             // Reload data untuk menampilkan hasil terbaru
-                            const url = new URL(APPS_SCRIPT_URL);
+                            const url = new URL(API_URL, window.location.origin);
                             url.searchParams.append('action', 'getData');
+                            url.searchParams.append('table', 'permintaan');
                             url.searchParams.append('_t', Date.now());
                             
                             const response = await fetch(url.toString(), {

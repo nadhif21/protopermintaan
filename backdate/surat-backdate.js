@@ -1,4 +1,4 @@
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwctc3dZjMF9mo_JJse1AAo-osjXqPJzqFAJQFaU_KUrmKfPrLEwKCztErJDimg8975/exec';
+const API_URL = '../api.php';
 const PERJANJIAN_SHEET_NAME = 'LIST NO PERJANJIAN BACKDATE';
 
 let allData = [];
@@ -61,14 +61,10 @@ function setupEventListeners() {
 
 async function loadData() {
     try {
-        if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL') {
-            throw new Error('URL Apps Script belum dikonfigurasi');
-        }
-
         allData = [];
         filteredData = [];
         
-        const url = new URL(APPS_SCRIPT_URL);
+        const url = new URL(API_URL, window.location.origin);
         url.searchParams.append('action', 'getAllPerjanjian');
         url.searchParams.append('_t', Date.now());
         
@@ -81,7 +77,7 @@ async function loadData() {
             });
         } catch (fetchError) {
             console.error('Fetch error details:', fetchError);
-            throw new Error('Tidak dapat terhubung ke Apps Script: ' + fetchError.message);
+            throw new Error('Tidak dapat terhubung ke server: ' + fetchError.message);
         }
 
         if (!response.ok) {
@@ -92,7 +88,7 @@ async function loadData() {
         const result = await response.json();
         
         if (!result.success) {
-            throw new Error(result.error || 'Error dari Apps Script');
+            throw new Error(result.error || 'Error dari server');
         }
 
         allData = (result.data || []).map((item, index) => ({
