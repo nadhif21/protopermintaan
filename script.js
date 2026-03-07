@@ -11,52 +11,58 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Tampilkan menu Form Permintaan untuk user
     const formPermintaanCardLink = document.getElementById('formPermintaanCardLink');
+    const quickAccessForm = document.getElementById('quickAccessForm');
     if (formPermintaanCardLink) {
         const role = getUserRole();
         formPermintaanCardLink.style.display = (role === 'user') ? 'block' : 'none';
     }
-    
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            if (confirm('Apakah Anda yakin ingin logout?')) {
-                logout();
-            }
-        });
+    if (quickAccessForm) {
+        const role = getUserRole();
+        quickAccessForm.style.display = (role === 'user') ? 'flex' : 'none';
     }
 
+    // Backdate card and quick access - open submenu in sidebar
+    // Note: The actual toggle is handled by sidebar.js
     const backdateCard = document.getElementById('backdateCard');
-    const backdatePopup = document.getElementById('backdatePopup');
-    const backdateCloseBtn = document.querySelector('.backdate-close-btn');
+    const quickAccessBackdate = document.getElementById('quickAccessBackdate');
+
+    function openBackdateSubmenu() {
+        const backdateMenu = document.getElementById('backdateMenu');
+        const backdateSubmenu = document.getElementById('backdateSubmenu');
+        if (backdateMenu && backdateSubmenu) {
+            backdateMenu.classList.add('active');
+            backdateSubmenu.classList.add('active');
+        }
+    }
 
     if (backdateCard) {
         backdateCard.addEventListener('click', function(e) {
             e.preventDefault();
-            if (backdatePopup) {
-                backdatePopup.classList.add('show');
-            }
+            openBackdateSubmenu();
         });
     }
 
-    if (backdateCloseBtn) {
-        backdateCloseBtn.addEventListener('click', function() {
-            if (backdatePopup) {
-                backdatePopup.classList.remove('show');
-            }
+    if (quickAccessBackdate) {
+        quickAccessBackdate.addEventListener('click', function(e) {
+            e.preventDefault();
+            openBackdateSubmenu();
         });
     }
 
-    if (backdatePopup) {
-        backdatePopup.addEventListener('click', function(e) {
-            if (e.target === backdatePopup) {
-                backdatePopup.classList.remove('show');
+    // Header Logout Button
+    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
+    if (headerLogoutBtn) {
+        headerLogoutBtn.addEventListener('click', function() {
+            if (typeof logout === 'function') {
+                logout();
+            } else {
+                // Fallback if logout function is not available
+                if (confirm('Apakah Anda yakin ingin logout?')) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userData');
+                    window.location.href = 'login.html';
+                }
             }
         });
     }
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && backdatePopup && backdatePopup.classList.contains('show')) {
-            backdatePopup.classList.remove('show');
-        }
-    });
 });

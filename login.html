@@ -3,41 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Data Permintaan DOF</title>
+    <title>Login - DOF Admin</title>
     <link rel="stylesheet" href="login.css">
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-box">
-            <div class="login-header">
-                <span class="login-icon">🔒</span>
-                <h1>Data Permintaan DOF</h1>
-                <p>Masukkan password untuk melanjutkan</p>
+    <div class="auth-wrapper">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <div class="auth-logo-icon">DOF</div>
+                    <div class="auth-logo-text">DOF Admin</div>
+                </div>
             </div>
             
-            <form id="loginForm">
-                <div class="input-group">
-                    <label for="username">Username atau Email</label>
-                    <input type="text" id="username" placeholder="Masukkan username atau email" required autocomplete="username">
-                </div>
-                <div class="input-group">
-                    <label for="password">Password</label>
-                    <div class="password-wrapper">
-                        <input type="password" id="password" placeholder="Masukkan password" required autofocus>
-                        <button type="button" id="togglePassword" class="toggle-password" title="Tampilkan/Sembunyikan password">
-                            <span class="eye-icon">👁️</span>
-                        </button>
-                    </div>
-                    <div id="errorMessage" class="error-message"></div>
+            <div class="auth-box">
+                <div class="auth-box-header">
+                    <span class="auth-icon">🔒</span>
+                    <h1>Masuk ke Akun</h1>
+                    <p>Masukkan username atau email dan password untuk melanjutkan</p>
                 </div>
                 
-                <button type="submit" class="login-btn">
-                    <span>Masuk</span>
-                </button>
-            </form>
-            
-            <div class="register-footer">
-                <p>Belum punya akun? <a href="register.html">Daftar di sini</a></p>
+                <form id="loginForm">
+                    <div class="input-group">
+                        <label for="username">Username atau Email</label>
+                        <input type="text" id="username" placeholder="Masukkan username atau email" required autocomplete="username">
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" placeholder="Masukkan password" required autofocus>
+                            <button type="button" id="togglePassword" class="toggle-password" title="Tampilkan/Sembunyikan password">
+                                <span class="eye-icon">👁️</span>
+                            </button>
+                        </div>
+                        <div id="errorMessage" class="error-message"></div>
+                    </div>
+                    
+                    <button type="submit" class="auth-btn">
+                        <span>Masuk</span>
+                    </button>
+                </form>
+                
+                <div class="auth-footer">
+                    <p>Belum punya akun? <a href="register.html">Daftar di sini</a></p>
+                </div>
             </div>
         </div>
     </div>

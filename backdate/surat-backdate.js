@@ -20,11 +20,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupLogout() {
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            if (confirm('Apakah Anda yakin ingin logout?')) {
+    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
+    if (headerLogoutBtn) {
+        headerLogoutBtn.addEventListener('click', function() {
+            if (typeof logout === 'function') {
                 logout();
+            } else {
+                if (confirm('Apakah Anda yakin ingin logout?')) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userData');
+                    window.location.href = '../login.html';
+                }
             }
         });
     }

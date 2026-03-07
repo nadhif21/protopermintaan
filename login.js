@@ -78,7 +78,7 @@ async function doLogin(username, password) {
     const errorMessage = document.getElementById('errorMessage');
     const passwordInput = document.getElementById('password');
     const usernameInput = document.getElementById('username');
-    const submitBtn = document.querySelector('.login-btn');
+        const submitBtn = document.querySelector('.auth-btn');
 
     try {
         if (submitBtn) {

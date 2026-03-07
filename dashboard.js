@@ -1,0 +1,227 @@
+// Dashboard Statistics Script
+let dashboardData = {
+    total: 0,
+    open: 0,
+    closed: 0,
+    cancelled: 0,
+    recentActivity: []
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!checkAuth()) {
+        return;
+    }
+
+    loadDashboardData();
+});
+
+async function loadDashboardData() {
+    try {
+        const apiUrl = 'api.php';
+        const token = getAuthToken();
+        
+        const url = new URL(apiUrl, window.location.origin);
+        url.searchParams.append('action', 'getData');
+        url.searchParams.append('table', 'permintaan');
+        url.searchParams.append('_t', Date.now());
+        
+        const fetchHeaders = {};
+        if (token) {
+            fetchHeaders['X-Auth-Token'] = token;
+        }
+        
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: fetchHeaders,
+            mode: 'cors',
+            cache: 'no-cache'
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP Error ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const data = result.data || [];
+            const headers = result.headers || (data.length > 0 ? Object.keys(data[0]) : []);
+            
+            // Helper function to find column value
+            function findColumnValue(row, columnName) {
+                const keys = Object.keys(row);
+                const searchName = columnName.toLowerCase().trim();
+                
+                if (searchName === 'status') {
+                    let key = keys.find(k => {
+                        const kLower = k.toLowerCase().trim();
+                        return kLower === 'status' && kLower !== 'status surat';
+                    });
+                    if (key) return row[key] || '';
+                    key = keys.find(k => {
+                        const kLower = k.toLowerCase().trim();
+                        return kLower === 'status' && !kLower.includes('surat');
+                    });
+                    if (key) return row[key] || '';
+                }
+                
+                let key = keys.find(k => k.toLowerCase().trim() === searchName);
+                if (key) return row[key] || '';
+                
+                key = keys.find(k => {
+                    const kLower = k.toLowerCase();
+                    return kLower.includes(searchName) && !(searchName === 'status' && kLower.includes('surat'));
+                });
+                return key ? (row[key] || '') : '';
+            }
+            
+            // Calculate statistics
+            dashboardData.total = data.length;
+            dashboardData.open = data.filter(row => {
+                const status = (findColumnValue(row, 'Status') || '').trim().toLowerCase();
+                return status === 'open';
+            }).length;
+            dashboardData.closed = data.filter(row => {
+                const status = (findColumnValue(row, 'Status') || '').trim().toLowerCase();
+                return status === 'closed';
+            }).length;
+            dashboardData.cancelled = data.filter(row => {
+                const status = (findColumnValue(row, 'Status') || '').trim().toLowerCase();
+                return status === 'cancelled';
+            }).length;
+
+            // Get recent activity (last 5) - sorted by timestamp
+            const sortedData = [...data].sort((a, b) => {
+                const timestampA = findColumnValue(a, 'Timestamp') || '';
+                const timestampB = findColumnValue(b, 'Timestamp') || '';
+                const dateA = timestampA ? new Date(timestampA) : new Date(0);
+                const dateB = timestampB ? new Date(timestampB) : new Date(0);
+                return dateB - dateA;
+            });
+
+            const recentData = sortedData.slice(0, 5).map((row, index) => {
+                const status = (findColumnValue(row, 'Status') || '').trim();
+                const nama = findColumnValue(row, 'Nama Lengkap') || 
+                            findColumnValue(row, 'NAMA LENGKAP') || 
+                            findColumnValue(row, 'Nama') ||
+                            (headers.length > 1 ? (row[headers[1]] || '') : '') ||
+                            'Unknown';
+                const idPermintaan = findColumnValue(row, 'ID Permintaan') || 
+                                    findColumnValue(row, 'ID PERMINTAAN') ||
+                                    (headers.length > 0 ? (row[headers[0]] || '') : '') ||
+                                    `#${index + 1}`;
+                const timestamp = findColumnValue(row, 'Timestamp') || 
+                                 findColumnValue(row, 'timestamp') || 
+                                 '';
+                
+                return {
+                    id: idPermintaan,
+                    nama: nama,
+                    status: status,
+                    timestamp: timestamp
+                };
+            });
+            
+            dashboardData.recentActivity = recentData;
+            
+            updateDashboard();
+        }
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        // Show error in UI
+        const activityContainer = document.getElementById('recentActivityList');
+        if (activityContainer) {
+            activityContainer.innerHTML = '<div class="activity-empty">Gagal memuat data</div>';
+        }
+    }
+}
+
+function updateDashboard() {
+    // Update statistics cards
+    const totalEl = document.getElementById('statTotal');
+    const openEl = document.getElementById('statOpen');
+    const closedEl = document.getElementById('statClosed');
+    const cancelledEl = document.getElementById('statCancelled');
+
+    if (totalEl) totalEl.textContent = dashboardData.total.toLocaleString('id-ID');
+    if (openEl) openEl.textContent = dashboardData.open.toLocaleString('id-ID');
+    if (closedEl) closedEl.textContent = dashboardData.closed.toLocaleString('id-ID');
+    if (cancelledEl) cancelledEl.textContent = dashboardData.cancelled.toLocaleString('id-ID');
+
+    // Update recent activity
+    const activityContainer = document.getElementById('recentActivityList');
+    if (activityContainer && dashboardData.recentActivity.length > 0) {
+        activityContainer.innerHTML = dashboardData.recentActivity.map(item => {
+            const statusClass = getStatusClass(item.status);
+            const statusText = getStatusText(item.status);
+            const timeAgo = formatTimeAgo(item.timestamp);
+            
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon ${statusClass}">${getStatusIcon(item.status)}</div>
+                    <div class="activity-content">
+                        <div class="activity-title">Permintaan ${item.id}</div>
+                        <div class="activity-subtitle">${item.nama}</div>
+                        <div class="activity-time">${timeAgo} • <span class="activity-status ${statusClass}">${statusText}</span></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else if (activityContainer) {
+        activityContainer.innerHTML = '<div class="activity-empty">Tidak ada aktivitas terbaru</div>';
+    }
+}
+
+function getStatusClass(status) {
+    const s = (status || '').trim().toLowerCase();
+    if (s === 'open') return 'status-open';
+    if (s === 'closed') return 'status-closed';
+    if (s === 'cancelled') return 'status-cancelled';
+    return 'status-default';
+}
+
+function getStatusText(status) {
+    const s = (status || '').trim().toLowerCase();
+    if (s === 'open') return 'PENDING';
+    if (s === 'closed') return 'APPROVED';
+    if (s === 'cancelled') return 'REJECTED';
+    return 'UNKNOWN';
+}
+
+function getStatusIcon(status) {
+    const s = (status || '').trim().toLowerCase();
+    if (s === 'open') {
+        return '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="18" cy="18" r="1"/><path d="M18 15v3"/></svg>';
+    }
+    if (s === 'closed') {
+        return '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+    }
+    if (s === 'cancelled') {
+        return '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    }
+    return '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+}
+
+function formatTimeAgo(timestamp) {
+    if (!timestamp) return 'Tidak diketahui';
+    
+    try {
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) return 'Tidak diketahui';
+        
+        const now = new Date();
+        const diff = now - date;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+        
+        if (minutes < 1) return 'Baru saja';
+        if (minutes < 60) return `${minutes} menit yang lalu`;
+        if (hours < 24) return `${hours} jam yang lalu`;
+        if (days < 7) return `${days} hari yang lalu`;
+        
+        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    } catch (e) {
+        return 'Tidak diketahui';
+    }
+}

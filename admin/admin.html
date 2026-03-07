@@ -4,33 +4,173 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Super Admin - Data Permintaan DOF</title>
-    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../layout.css">
     <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="../icons.css">
 </head>
 <body>
-    <div class="container admin-container">
-        <header>
-            <div class="header-content">
-                <span class="header-icon">🛡️</span>
-                <h1>Panel Super Admin</h1>
-                <div class="header-actions">
-                    <a href="../index.html" class="btn-link" title="Kembali ke menu">🏠</a>
-                    <button id="logoutBtn" class="logout-btn" title="Logout">🚪</button>
+    <!-- Sidebar Overlay for Mobile -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">DOF</div>
+            <div class="sidebar-logo-text">DOF Admin</div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="../index.html" class="sidebar-nav-item">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                </span>
+                <span>Dashboard</span>
+            </a>
+            <a href="../permintaan/permintaan.html" class="sidebar-nav-item">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </span>
+                <span>Data Permintaan</span>
+            </a>
+            <a href="admin.html" class="sidebar-nav-item active">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
+                <span>User Management</span>
+            </a>
+            <a href="../form-permintaan.html" class="sidebar-nav-item" id="formPermintaanMenuLink" style="display:none;">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                </span>
+                <span>Form Permintaan</span>
+            </a>
+            <a href="../profile.html" class="sidebar-nav-item">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
+                <span>Profile</span>
+            </a>
+            <div class="sidebar-nav-item sidebar-nav-parent" id="backdateMenu" style="cursor: pointer;">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <span>Backdate</span>
+                <span class="sidebar-nav-arrow">▼</span>
+            </div>
+            <div class="sidebar-submenu" id="backdateSubmenu">
+                <a href="../backdate/backdate.html" class="sidebar-submenu-item">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    </span>
+                    <span>Data Permintaan Backdate</span>
+                </a>
+                <a href="../backdate/surat-backdate.html" class="sidebar-submenu-item">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </span>
+                    <span>Data Surat Yang Backdate</span>
+                </a>
+                <a href="../backdate/form-backdate.html" class="sidebar-submenu-item">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                    </span>
+                    <span>Input Data Backdate</span>
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="sidebar-user-avatar" id="sidebarUserAvatar">U</div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name" id="sidebarUserName">User</div>
+                    <div class="sidebar-user-role" id="sidebarUserRole">User</div>
                 </div>
             </div>
-            <div class="subheader">
-                <div id="currentUserInfo" class="current-user"></div>
-                <div class="hint">Fitur ini hanya untuk Super Admin.</div>
-            </div>
-        </header>
+        </div>
+    </aside>
 
-        <main class="admin-main">
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+        <!-- Mobile Menu Toggle -->
+        <button id="mobileMenuToggle" class="mobile-menu-toggle">☰</button>
+
+        <!-- Content Header -->
+        <div class="content-header">
+            <div>
+                <h1>System Administration</h1>
+                <p>Manage core system functions and user privileges.</p>
+            </div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <button id="openCreateUserBtn" class="btn-add-user">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <line x1="20" y1="8" x2="20" y2="14"></line>
+                        <line x1="23" y1="11" x2="17" y2="11"></line>
+                    </svg>
+                    <span>Add New User</span>
+                </button>
+                <button id="headerLogoutBtn" class="header-logout-btn">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content admin-main">
+            <!-- PIN Approval Section (Super Admin Only) -->
+            <section class="panel panel-pin">
+                <div class="panel-header">
+                    <div class="panel-title-with-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <div>
+                            <h2>PIN Approval Settings</h2>
+                            <p class="panel-description">Security layer for administrative overrides</p>
+                        </div>
+                    </div>
+                    <button id="editPinBtn" class="btn btn-outline">Edit PIN</button>
+                </div>
+                <div class="panel-content pin-content">
+                    <div class="pin-display">
+                        <label class="pin-label">CURRENT SYSTEM PIN</label>
+                        <div class="pin-input-wrapper">
+                            <input type="text" id="approvalPinInput" maxlength="4" pattern="[0-9]{4}" placeholder="0000" readonly class="pin-input" value="••••">
+                            <span class="pin-status-badge">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Active PIN
+                            </span>
+                        </div>
+                    </div>
+                    <div id="pinError" class="error-box" style="display: none;"></div>
+                    <div class="form-actions pin-actions" style="display: none;" id="pinEditActions">
+                        <button id="savePinBtn" class="btn btn-primary">Simpan PIN</button>
+                        <button id="cancelEditPinBtn" class="btn">Batal</button>
+                    </div>
+                </div>
+            </section>
+
             <section class="panel">
                 <div class="panel-header">
-                    <h2>Manajemen User</h2>
+                    <div class="panel-title-with-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <h2>User Management</h2>
+                    </div>
                     <div class="panel-actions">
                         <button id="refreshUsersBtn" class="btn">Refresh</button>
-                        <button id="openCreateUserBtn" class="btn btn-primary">+ Buat User</button>
                     </div>
                 </div>
 
@@ -38,18 +178,15 @@
                     <table class="admin-table" id="usersTable">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Username</th>
-                                <th>Nama</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Dibuat</th>
-                                <th>Update</th>
-                                <th>Aksi</th>
+                                <th>USER</th>
+                                <th>ROLE</th>
+                                <th>STATUS</th>
+                                <th>LAST LOGIN</th>
+                                <th>ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody id="usersTbody">
-                            <tr><td colspan="8" class="loading">Memuat...</td></tr>
+                            <tr><td colspan="5" class="loading">Memuat...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -57,8 +194,18 @@
 
             <section class="panel">
                 <div class="panel-header">
-                    <h2>Pendaftaran User Baru</h2>
+                    <div class="panel-title-with-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <h2>Pending Registrations</h2>
+                    </div>
                     <div class="panel-actions">
+                        <span id="pendingCountBadge" class="badge-pending-count" style="display: none;">0 PENDING</span>
                         <button id="refreshRegistrationsBtn" class="btn">Refresh</button>
                         <select id="statusFilter" class="btn">
                             <option value="">Semua Status</option>
@@ -73,49 +220,22 @@
                     <table class="admin-table" id="registrationsTable">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Nama</th>
-                                <th>NPK</th>
-                                <th>Nomor Telepon</th>
-                                <th>Email</th>
-                                <th>Unit Kerja</th>
-                                <th>Status</th>
-                                <th>Dibuat</th>
-                                <th>Aksi</th>
+                                <th>APPLICANT</th>
+                                <th>REQUESTED ROLE</th>
+                                <th>DATE</th>
+                                <th>APPROVAL ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody id="registrationsTbody">
-                            <tr><td colspan="9" class="loading">Memuat...</td></tr>
+                            <tr><td colspan="4" class="loading">Memuat...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- PIN Approval Section (Super Admin Only) -->
-            <section class="panel" id="pinApprovalPanel">
-                <div class="panel-header">
-                    <h2>🔐 Pengaturan PIN Approval</h2>
-                    <div class="panel-actions">
-                        <button id="refreshPinBtn" class="btn">Refresh</button>
-                    </div>
-                </div>
-                <div class="panel-content">
-                    <div class="form-group">
-                        <label for="approvalPinInput">PIN Approval (4 digit)</label>
-                        <input type="text" id="approvalPinInput" maxlength="4" pattern="[0-9]{4}" placeholder="0000" readonly style="font-size: 24px; letter-spacing: 8px; text-align: center; width: 200px; padding: 12px; background-color: #f5f5f5;">
-                        <div class="help-text">Klik "Edit PIN" untuk mengubah PIN approval</div>
-                    </div>
-                    <div id="pinError" class="error-box" style="display: none;"></div>
-                    <div class="form-actions">
-                        <button id="editPinBtn" class="btn btn-primary">Edit PIN</button>
-                        <button id="savePinBtn" class="btn btn-primary" style="display: none;">Simpan PIN</button>
-                        <button id="cancelEditPinBtn" class="btn" style="display: none;">Batal</button>
-                    </div>
-                </div>
-            </section>
-
         </main>
     </div>
+
 
     <!-- Modal Reject Registration -->
     <div id="rejectModal" class="modal">
@@ -221,7 +341,30 @@
         </div>
     </div>
 
+    <!-- Modal Reset Password -->
+    <div id="resetPasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Reset Password</h3>
+                <button id="closeResetPasswordModal" class="icon-btn" title="Tutup">✕</button>
+            </div>
+            <form id="resetPasswordForm" class="form">
+                <div class="form-row">
+                    <label>Masukkan password baru:</label>
+                    <input type="password" id="resetPasswordInput" placeholder="Password baru" required autofocus>
+                    <div class="form-hint">Password akan direset dan semua session user akan dicabut.</div>
+                </div>
+                <div id="resetPasswordError" class="error-box"></div>
+                <div class="form-actions">
+                    <button type="button" id="cancelResetPasswordBtn" class="btn">Batal</button>
+                    <button type="submit" class="btn btn-primary">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="../auth.js"></script>
+    <script src="../sidebar.js"></script>
     <script src="admin.js"></script>
 </body>
 </html>

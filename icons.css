@@ -1,0 +1,142 @@
+/* Simple SVG Icons Styles */
+.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.icon svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Sidebar Icons */
+.sidebar-nav-icon,
+.sidebar-submenu-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.sidebar-nav-icon svg,
+.sidebar-submenu-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Dashboard Stat Icons */
+.stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    background: #f5f7fa;
+}
+
+.stat-icon svg {
+    width: 32px;
+    height: 32px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.stat-pending .stat-icon {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.stat-approved .stat-icon {
+    background: #d4edda;
+    color: #155724;
+}
+
+.stat-rejected .stat-icon {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.stat-card:not(.stat-pending):not(.stat-approved):not(.stat-rejected) .stat-icon {
+    background: #f5f7fa;
+    color: #667eea;
+}
+
+/* Quick Access Icons */
+.quick-access-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    flex-shrink: 0;
+}
+
+.quick-access-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: white;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Activity Icons */
+.activity-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: #f5f7fa;
+}
+
+.activity-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.activity-icon.status-open {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.activity-icon.status-closed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.activity-icon.status-cancelled {
+    background: #f8d7da;
+    color: #721c24;
+}

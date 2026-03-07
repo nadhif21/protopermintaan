@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCurrentUser();
     bindCreateUserModal();
     bindEditUserModal();
+    bindResetPasswordModal();
     bindRefreshButtons();
     bindRegistrations();
     bindPinApproval();
@@ -18,10 +19,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function bindLogout() {
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (!logoutBtn) return;
-    logoutBtn.addEventListener('click', () => {
-        if (confirm('Apakah Anda yakin ingin logout?')) logout();
+    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
+    if (!headerLogoutBtn) return;
+    headerLogoutBtn.addEventListener('click', () => {
+        if (typeof logout === 'function') {
+            logout();
+        } else {
+            if (confirm('Apakah Anda yakin ingin logout?')) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userData');
+                window.location.href = '../login.html';
+            }
+        }
     });
 }
 
@@ -169,37 +178,86 @@ function clearEditUserError() {
 async function loadUsers() {
     const tbody = document.getElementById('usersTbody');
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="8" class="loading">Memuat...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="loading">Memuat...</td></tr>`;
 
     try {
         const users = await apiGet('listUsers');
         tbody.innerHTML = users.map(u => userRowHtml(u)).join('');
         bindUserRowActions();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="8" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
+    }
+}
+
+function getInitials(name) {
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+}
+
+function formatLastLogin(updatedAt) {
+    if (!updatedAt) return '-';
+    const date = new Date(updatedAt);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 60) {
+        return `${diffMins} ${diffMins === 1 ? 'min' : 'mins'} ago`;
+    } else if (diffHours < 24) {
+        return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+    } else {
+        return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
     }
 }
 
 function userRowHtml(u) {
     const statusBadge = u.isActive
-        ? `<span class="badge badge-active">Aktif</span>`
-        : `<span class="badge badge-inactive">Nonaktif</span>`;
-    const roleBadge = `<span class="badge badge-role">${escapeHtml(u.role)}</span>`;
+        ? `<span class="badge badge-active">Active</span>`
+        : `<span class="badge badge-inactive">Inactive</span>`;
+    const roleBadge = `<span class="badge badge-role">${escapeHtml(u.role.toUpperCase())}</span>`;
+    const initials = getInitials(u.name || u.username);
+    const email = u.email || `${u.username}@company.com`;
+    const lastLogin = formatLastLogin(u.updatedAt);
 
     return `
         <tr data-user-id="${u.id}">
-            <td>${u.id}</td>
-            <td>${escapeHtml(u.username)}</td>
-            <td>${escapeHtml(u.name)}</td>
+            <td>
+                <div class="user-cell">
+                    <div class="user-avatar">${initials}</div>
+                    <div class="user-info">
+                        <div class="user-name">${escapeHtml(u.name || u.username)}</div>
+                        <div class="user-email">${escapeHtml(email)}</div>
+                    </div>
+                </div>
+            </td>
             <td>${roleBadge}</td>
             <td>${statusBadge}</td>
-            <td>${escapeHtml(formatDateTime(u.createdAt))}</td>
-            <td>${escapeHtml(formatDateTime(u.updatedAt))}</td>
+            <td>${lastLogin}</td>
             <td>
                 <div class="row-actions">
-                    <button class="btn-small" data-action="edit">Edit</button>
-                    <button class="btn-small" data-action="reset">Reset Password</button>
-                    <button class="btn-small btn-danger" data-action="delete" title="Hapus user">Hapus</button>
+                    <button class="btn-icon-action" data-action="edit" title="Edit">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="btn-icon-action" data-action="reset" title="Reset Password">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+                        </svg>
+                    </button>
+                    <button class="btn-icon-action btn-icon-danger" data-action="delete" title="Delete">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
                 </div>
             </td>
         </tr>
@@ -280,15 +338,77 @@ async function deleteUserFlow(userId) {
     }
 }
 
+let currentResetPasswordUserId = null;
+
+function bindResetPasswordModal() {
+    const modal = document.getElementById('resetPasswordModal');
+    const closeBtn = document.getElementById('closeResetPasswordModal');
+    const cancelBtn = document.getElementById('cancelResetPasswordBtn');
+    const form = document.getElementById('resetPasswordForm');
+
+    const close = () => {
+        modal?.classList.remove('show');
+        document.body.style.overflow = 'auto';
+        clearResetPasswordError();
+        form?.reset();
+        currentResetPasswordUserId = null;
+    };
+
+    closeBtn?.addEventListener('click', close);
+    cancelBtn?.addEventListener('click', close);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal?.classList.contains('show')) close();
+    });
+
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentResetPasswordUserId) return;
+        
+        const newPassword = document.getElementById('resetPasswordInput')?.value?.trim() || '';
+        if (!newPassword) {
+            showResetPasswordError('Password baru wajib diisi.');
+            return;
+        }
+
+        try {
+            await apiPost('resetUserPassword', { id: currentResetPasswordUserId, newPassword: newPassword });
+            close();
+            alert('Password berhasil direset. Semua session user tersebut dicabut.');
+        } catch (e) {
+            showResetPasswordError(e.message);
+        }
+    });
+}
+
+function showResetPasswordError(msg) {
+    const el = document.getElementById('resetPasswordError');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+}
+
+function clearResetPasswordError() {
+    const el = document.getElementById('resetPasswordError');
+    if (!el) return;
+    el.textContent = '';
+    el.classList.remove('show');
+}
+
 async function resetPasswordFlow(userId) {
-    const newPassword = prompt('Masukkan password baru:');
-    if (newPassword === null) return;
-    if (!newPassword.trim()) {
-        alert('Password baru wajib diisi.');
-        return;
+    currentResetPasswordUserId = userId;
+    const modal = document.getElementById('resetPasswordModal');
+    if (modal) {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        const input = document.getElementById('resetPasswordInput');
+        if (input) {
+            setTimeout(() => input.focus(), 100);
+        }
     }
-    await apiPost('resetUserPassword', { id: userId, newPassword: newPassword.trim() });
-    alert('Password berhasil direset. Semua session user tersebut dicabut.');
 }
 
 async function createUser() {
@@ -390,34 +510,48 @@ function escapeHtml(text) {
 async function loadRegistrations(status = '') {
     const tbody = document.getElementById('registrationsTbody');
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="9" class="loading">Memuat...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="loading">Memuat...</td></tr>`;
 
     try {
         const params = status ? { status } : {};
         const registrations = await apiGet('listRegistrations', params);
         tbody.innerHTML = registrations.map(r => registrationRowHtml(r)).join('');
         bindRegistrationRowActions();
+        
+        // Update pending count badge
+        const pendingCount = registrations.filter(r => r.status === 'pending').length;
+        const pendingBadge = document.getElementById('pendingCountBadge');
+        if (pendingBadge) {
+            if (pendingCount > 0) {
+                pendingBadge.textContent = `${pendingCount} PENDING`;
+                pendingBadge.style.display = 'inline-flex';
+            } else {
+                pendingBadge.style.display = 'none';
+            }
+        }
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="9" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
     }
 }
 
+function formatDateShort(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+}
+
 function registrationRowHtml(r) {
-    let statusBadge = '';
-    if (r.status === 'pending') {
-        statusBadge = `<span class="badge badge-pending">Pending</span>`;
-    } else if (r.status === 'approved') {
-        statusBadge = `<span class="badge badge-active">Approved</span>`;
-    } else if (r.status === 'rejected') {
-        statusBadge = `<span class="badge badge-inactive">Rejected</span>`;
-    }
+    const email = r.email || `${r.nama?.toLowerCase().replace(/\s+/g, '.')}@external.io`;
+    const requestedRole = r.requestedRole || 'User';
+    const date = formatDateShort(r.createdAt);
 
     let actions = '';
     if (r.status === 'pending') {
         actions = `
             <div class="row-actions">
-                <button class="btn-small btn-primary" data-action="approve" title="Setujui dan kirim notifikasi WhatsApp">✓ Setujui</button>
-                <button class="btn-small btn-danger" data-action="reject" title="Tolak pendaftaran">✕ Tolak</button>
+                <button class="btn btn-approve" data-action="approve">Approve</button>
+                <button class="btn btn-reject" data-action="reject">Reject</button>
             </div>
         `;
     } else {
@@ -426,14 +560,22 @@ function registrationRowHtml(r) {
 
     return `
         <tr data-registration-id="${r.id}">
-            <td>${r.id}</td>
-            <td>${escapeHtml(r.nama)}</td>
-            <td>${escapeHtml(r.npk)}</td>
-            <td>${escapeHtml(r.nomorTelepon)}</td>
-            <td>${escapeHtml(r.email)}</td>
-            <td>${escapeHtml(r.unitKerja)}</td>
-            <td>${statusBadge}</td>
-            <td>${escapeHtml(formatDateTime(r.createdAt))}</td>
+            <td>
+                <div class="applicant-cell">
+                    <div class="applicant-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </div>
+                    <div class="applicant-info">
+                        <div class="applicant-name">${escapeHtml(r.nama)}</div>
+                        <div class="applicant-email">${escapeHtml(email)}</div>
+                    </div>
+                </div>
+            </td>
+            <td>${escapeHtml(requestedRole)}</td>
+            <td>${date}</td>
             <td>${actions}</td>
         </tr>
     `;
@@ -553,7 +695,6 @@ function bindPinApproval() {
     const editPinBtn = document.getElementById('editPinBtn');
     const savePinBtn = document.getElementById('savePinBtn');
     const cancelEditPinBtn = document.getElementById('cancelEditPinBtn');
-    const refreshPinBtn = document.getElementById('refreshPinBtn');
     const pinError = document.getElementById('pinError');
     
     if (!pinInput || !editPinBtn || !savePinBtn) return;
@@ -567,15 +708,17 @@ function bindPinApproval() {
     
     // Edit PIN button - enable edit mode
     editPinBtn.addEventListener('click', () => {
-        originalPin = pinInput.value; // Store current value
+        // Get actual PIN value from data attribute or use masked value
+        originalPin = pinInput.getAttribute('data-pin-value') || pinInput.value.replace(/•/g, '') || '';
+        pinInput.value = originalPin; // Show actual value when editing
         pinInput.readOnly = false;
         pinInput.style.backgroundColor = '#ffffff';
         pinInput.style.cursor = 'text';
         pinInput.focus();
         
         editPinBtn.style.display = 'none';
-        savePinBtn.style.display = 'inline-block';
-        cancelEditPinBtn.style.display = 'inline-block';
+        const pinEditActions = document.getElementById('pinEditActions');
+        if (pinEditActions) pinEditActions.style.display = 'flex';
         
         if (pinError) {
             pinError.style.display = 'none';
@@ -585,14 +728,15 @@ function bindPinApproval() {
     // Cancel edit button - restore original value
     if (cancelEditPinBtn) {
         cancelEditPinBtn.addEventListener('click', () => {
-            pinInput.value = originalPin; // Restore original value
+            // Restore masked display
+            pinInput.value = '••••';
             pinInput.readOnly = true;
             pinInput.style.backgroundColor = '#f5f5f5';
             pinInput.style.cursor = 'not-allowed';
             
             editPinBtn.style.display = 'inline-block';
-            savePinBtn.style.display = 'none';
-            cancelEditPinBtn.style.display = 'none';
+            const pinEditActions = document.getElementById('pinEditActions');
+            if (pinEditActions) pinEditActions.style.display = 'none';
             
             if (pinError) {
                 pinError.style.display = 'none';
@@ -672,8 +816,8 @@ function bindPinApproval() {
             pinInput.style.cursor = 'not-allowed';
             
             editPinBtn.style.display = 'inline-block';
-            savePinBtn.style.display = 'none';
-            cancelEditPinBtn.style.display = 'none';
+            const pinEditActions = document.getElementById('pinEditActions');
+            if (pinEditActions) pinEditActions.style.display = 'none';
             
             // Force reload PIN after a short delay to ensure DB is updated
             setTimeout(() => {
@@ -740,7 +884,9 @@ async function loadApprovalPin() {
             
             if (pinValue && pinValue.length === 4) {
                 console.log('Setting PIN value to:', pinValue);
-                pinInput.value = pinValue;
+                // Mask PIN for display
+                pinInput.value = '••••';
+                pinInput.setAttribute('data-pin-value', pinValue);
                 
                 // Ensure input is readonly after loading
                 pinInput.readOnly = true;
@@ -749,12 +895,9 @@ async function loadApprovalPin() {
                 
                 // Ensure buttons are in correct state
                 const editPinBtn = document.getElementById('editPinBtn');
-                const savePinBtn = document.getElementById('savePinBtn');
-                const cancelEditPinBtn = document.getElementById('cancelEditPinBtn');
-                
                 if (editPinBtn) editPinBtn.style.display = 'inline-block';
-                if (savePinBtn) savePinBtn.style.display = 'none';
-                if (cancelEditPinBtn) cancelEditPinBtn.style.display = 'none';
+                const pinEditActions = document.getElementById('pinEditActions');
+                if (pinEditActions) pinEditActions.style.display = 'none';
             } else {
                 console.warn('PIN value is invalid:', pinValue);
                 console.warn('Full result:', result);

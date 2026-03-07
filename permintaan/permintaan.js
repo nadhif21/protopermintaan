@@ -7,7 +7,8 @@ let spreadsheetHeaders = [];
 let currentFilters = {
     jenis: '',
     bulan: '',
-    tahun: ''
+    tahun: '',
+    status: ''
 };
 
 // Pagination state
@@ -66,11 +67,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupLogout() {
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            if (confirm('Apakah Anda yakin ingin logout?')) {
+    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
+    if (headerLogoutBtn) {
+        headerLogoutBtn.addEventListener('click', function() {
+            if (typeof logout === 'function') {
                 logout();
+            } else {
+                if (confirm('Apakah Anda yakin ingin logout?')) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userData');
+                    window.location.href = '../login.html';
+                }
             }
         });
     }
@@ -78,48 +85,102 @@ function setupLogout() {
 
 function setupEventListeners() {
     const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
     searchInput.addEventListener('input', (e) => {
         searchTerm = e.target.value.toLowerCase();
         filterAndDisplayData();
     });
+    }
 
-    document.getElementById('jenisFilter').addEventListener('change', (e) => {
+    const jenisFilter = document.getElementById('jenisFilter');
+    if (jenisFilter) {
+        jenisFilter.addEventListener('change', (e) => {
         currentFilters.jenis = e.target.value;
         filterAndDisplayData();
     });
+    }
 
-    document.getElementById('bulanFilter').addEventListener('change', (e) => {
+    const bulanFilter = document.getElementById('bulanFilter');
+    if (bulanFilter) {
+        bulanFilter.addEventListener('change', (e) => {
         currentFilters.bulan = e.target.value;
         filterAndDisplayData();
     });
+    }
 
-    document.getElementById('tahunFilter').addEventListener('change', (e) => {
+    const tahunFilter = document.getElementById('tahunFilter');
+    if (tahunFilter) {
+        tahunFilter.addEventListener('change', (e) => {
         currentFilters.tahun = e.target.value;
         filterAndDisplayData();
     });
+    }
 
-    document.getElementById('refreshBtn').addEventListener('click', () => {
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
         loadData();
+        });
+    }
+
+    // Status filter buttons
+    const statusFilterBtns = document.querySelectorAll('.status-filter-btn');
+    statusFilterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Remove active class from all buttons
+            statusFilterBtns.forEach(b => b.classList.remove('active'));
+            // Add active class to clicked button
+            this.classList.add('active');
+            // Set filter
+            currentFilters.status = this.getAttribute('data-status') || '';
+            filterAndDisplayData();
+        });
     });
 
     // Pagination event listeners
-    document.getElementById('paginationFirst').addEventListener('click', () => goToPage(1));
-    document.getElementById('paginationPrev').addEventListener('click', () => goToPage(currentPage - 1));
-    document.getElementById('paginationNext').addEventListener('click', () => goToPage(currentPage + 1));
-    document.getElementById('paginationLast').addEventListener('click', () => goToPage(getTotalPages()));
-    document.getElementById('paginationSizeSelect').addEventListener('change', (e) => {
+    const paginationFirst = document.getElementById('paginationFirst');
+    if (paginationFirst) {
+        paginationFirst.addEventListener('click', () => goToPage(1));
+    }
+
+    const paginationPrev = document.getElementById('paginationPrev');
+    if (paginationPrev) {
+        paginationPrev.addEventListener('click', () => goToPage(currentPage - 1));
+    }
+
+    const paginationNext = document.getElementById('paginationNext');
+    if (paginationNext) {
+        paginationNext.addEventListener('click', () => goToPage(currentPage + 1));
+    }
+
+    const paginationLast = document.getElementById('paginationLast');
+    if (paginationLast) {
+        paginationLast.addEventListener('click', () => goToPage(getTotalPages()));
+    }
+
+    const paginationSizeSelect = document.getElementById('paginationSizeSelect');
+    if (paginationSizeSelect) {
+        paginationSizeSelect.addEventListener('change', (e) => {
         itemsPerPage = parseInt(e.target.value);
         currentPage = 1;
         applyPagination();
         displayData();
     });
+    }
 
-    document.querySelector('.close-btn').addEventListener('click', closePopup);
-    document.getElementById('detailPopup').addEventListener('click', (e) => {
+    const closeBtn = document.querySelector('.close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closePopup);
+    }
+
+    const detailPopup = document.getElementById('detailPopup');
+    if (detailPopup) {
+        detailPopup.addEventListener('click', (e) => {
         if (e.target.id === 'detailPopup') {
             closePopup();
         }
     });
+    }
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -258,12 +319,18 @@ async function loadData() {
         filterAndDisplayData();
     } catch (error) {
         console.error('Error loading data:', error);
-        document.getElementById('tableBody').innerHTML = 
-            '<tr><td colspan="8" class="loading">' +
+        const tableBody = document.getElementById('tableBody');
+        if (tableBody) {
+            tableBody.innerHTML = 
+                '<tr><td colspan="8" class="loading">' +
             '<strong style="color: #dc3545;">Error: ' + escapeHtml(error.message) + '</strong>' +
             '</td></tr>';
-        document.getElementById('cardsContainer').innerHTML = 
+        }
+        const cardsContainer = document.getElementById('cardsContainer');
+        if (cardsContainer) {
+            cardsContainer.innerHTML = 
             '<div class="loading"><strong style="color: #dc3545;">Error: ' + escapeHtml(error.message) + '</strong></div>';
+        }
     }
 }
 
@@ -306,6 +373,7 @@ function findColumnValue(row, columnName) {
 }
 
 function setupFilterOptions() {
+    // Setup jenis filter jika elemen ada
     const jenisSet = new Set();
     allData.forEach(row => {
         if (row.pilihPermintaan) {
@@ -314,13 +382,20 @@ function setupFilterOptions() {
     });
     
     const jenisFilter = document.getElementById('jenisFilter');
+    if (jenisFilter) {
+        // Clear existing options except the first one
+        while (jenisFilter.options.length > 1) {
+            jenisFilter.remove(1);
+        }
     Array.from(jenisSet).sort().forEach(jenis => {
         const option = document.createElement('option');
         option.value = jenis;
         option.textContent = jenis;
         jenisFilter.appendChild(option);
     });
+    }
 
+    // Setup tahun filter jika elemen ada
     const tahunSet = new Set();
     allData.forEach(row => {
         if (row.timestamp) {
@@ -332,12 +407,18 @@ function setupFilterOptions() {
     });
     
     const tahunFilter = document.getElementById('tahunFilter');
+    if (tahunFilter) {
+        // Clear existing options except the first one
+        while (tahunFilter.options.length > 1) {
+            tahunFilter.remove(1);
+        }
     Array.from(tahunSet).sort((a, b) => b - a).forEach(tahun => {
         const option = document.createElement('option');
         option.value = tahun;
         option.textContent = tahun;
         tahunFilter.appendChild(option);
     });
+    }
 }
 
 function extractYear(timestamp) {
@@ -396,6 +477,13 @@ function filterAndDisplayData() {
             }
         }
 
+        if (currentFilters.status) {
+            const rowStatus = (row.status || '').trim();
+            if (rowStatus !== currentFilters.status) {
+                return false;
+            }
+        }
+
         if (searchTerm) {
             const searchable = [
                 row.A, row.B, row.C, row.D, row.F, row.G
@@ -423,13 +511,21 @@ function displayData() {
     const isMobile = window.innerWidth <= 768;
     
     if (filteredData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="loading">Tidak ada data yang ditemukan</td></tr>';
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" class="loading">Tidak ada data yang ditemukan</td></tr>';
+        }
+        if (cardsContainer) {
         cardsContainer.innerHTML = '<div class="loading">Tidak ada data yang ditemukan</div>';
+        }
+        if (paginationContainer) {
         paginationContainer.style.display = 'none';
+        }
         return;
     }
 
+    if (paginationContainer) {
     paginationContainer.style.display = 'flex';
+    }
     
     if (isMobile) {
         displayCards();
@@ -495,19 +591,19 @@ function getPersetujuanColumnIndex() {
 function formatStatus(status) {
     if (!status) return '<span class="status-badge status-empty">-</span>';
     const statusLower = status.toLowerCase();
-    if (statusLower === 'open') {
+    if (statusLower === 'open' || statusLower === 'pending') {
         return '<span class="status-badge status-open">Open</span>';
-    } else if (statusLower === 'closed') {
+    } else if (statusLower === 'closed' || statusLower === 'approved') {
         return '<span class="status-badge status-closed">Closed</span>';
-    } else if (statusLower === 'cancelled') {
+    } else if (statusLower === 'cancelled' || statusLower === 'rejected') {
         return '<span class="status-badge status-cancelled">Cancelled</span>';
     }
     return `<span class="status-badge">${escapeHtml(status)}</span>`;
 }
 
 function formatFlag(flag) {
-    if (!flag) return '<span class="flag-badge flag-empty">-</span>';
-    const flagLower = flag.toLowerCase();
+    if (!flag || flag.trim() === '') return '<span class="flag-badge flag-empty">-</span>';
+    const flagLower = flag.toLowerCase().trim();
     if (flagLower === 'hijau') {
         return '<span class="flag-badge flag-hijau">Hijau</span>';
     } else if (flagLower === 'kuning') {
@@ -515,7 +611,65 @@ function formatFlag(flag) {
     } else if (flagLower === 'merah') {
         return '<span class="flag-badge flag-merah">Merah</span>';
     }
-    return `<span class="flag-badge">${escapeHtml(flag)}</span>`;
+    return `<span class="flag-badge flag-empty">-</span>`;
+}
+
+function formatTanggalMinta(timestamp) {
+    if (!timestamp) return '';
+    
+    try {
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) {
+            // Coba parse format lain
+            const parts = timestamp.toString().split(/[\s-:]/);
+            if (parts.length >= 3) {
+                // Format: DD-MM-YYYY HH:mm:ss
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                const year = parts[2];
+                const time = parts.length >= 6 ? `${parts[3]}:${parts[4]}:${parts[5]}` : '';
+                
+                if (time) {
+                    return `<div>${day}-${month}-${year}</div><div>${time}</div>`;
+                }
+                return `<div>${day}-${month}-${year}</div>`;
+            }
+            return escapeHtml(timestamp);
+        }
+        
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        
+        return `<div>${day}-${month}-${year}</div><div>${hours}:${minutes}:${seconds}</div>`;
+    } catch (e) {
+        return escapeHtml(timestamp);
+    }
+}
+
+function findColumnValueFromRow(row, columnName) {
+    if (!row || !columnName) return '';
+    
+    // Cek di _originalRow terlebih dahulu
+    if (row._originalRow) {
+        const value = findColumnValue(row._originalRow, columnName);
+        if (value && value.trim() !== '') return value.trim();
+    }
+    
+    // Cek di spreadsheetHeaders
+    for (let i = 0; i < spreadsheetHeaders.length; i++) {
+        const header = spreadsheetHeaders[i];
+        if (header && header.toLowerCase().includes(columnName.toLowerCase())) {
+            const colLetter = String.fromCharCode(65 + i);
+            const value = row[colLetter];
+            if (value && value.toString().trim() !== '') return value.toString().trim();
+        }
+    }
+    
+    return '';
 }
 
 function formatPersetujuan(persetujuan, flag) {
@@ -540,32 +694,42 @@ function displayTable() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     
-    const displayColumns = [0, 6, 1, 2, 3, 5];
-    const statusColIndex = getStatusColumnIndex();
+    // Kolom sesuai gambar: Tanggal Minta, Jenis Permintaan, NPK, Nama Lengkap, Unit Kerja, No Surat
+    // Mapping: Timestamp (0), Pilih Permintaan (6), NPK (1), Nama Lengkap (2), Unit Kerja (3), No Surat (cari)
     
     tbody.innerHTML = paginatedData.map((row) => {
-        const cells = displayColumns.map(index => {
-            let headerName = spreadsheetHeaders[index] || `Kolom ${String.fromCharCode(65 + index)}`;
-            if (headerName === 'Pilih Permintaan') {
-                headerName = 'Jenis Permintaan';
-            }
-            if (headerName && headerName.toLowerCase().includes('timestamp')) {
-                headerName = 'Tanggal Minta';
-            }
-            const colLetter = String.fromCharCode(65 + index);
-            let value = row[colLetter] || '';
-            value = formatValueForDisplay(value, headerName);
-            return highlightText(value);
-        });
-
+        // 1. Tanggal Minta - format dengan tanggal dan waktu di 2 baris
+        const timestamp = row.timestamp || row.A || '';
+        const tanggalMinta = formatTanggalMinta(timestamp);
+        
+        // 2. Jenis Permintaan (Pilih Permintaan)
+        const jenisPermintaan = row.pilihPermintaan || row.G || '';
+        
+        // 3. NPK
+        const npk = findColumnValueFromRow(row, 'NPK') || row.B || '';
+        
+        // 4. Nama Lengkap
+        const namaLengkap = findColumnValueFromRow(row, 'Nama Lengkap') || row.C || '';
+        
+        // 5. Unit Kerja
+        const unitKerja = findColumnValueFromRow(row, 'Unit Kerja') || row.D || '';
+        
+        // 6. No Surat
+        const noSurat = findColumnValueFromRow(row, 'No Surat') || findColumnValueFromRow(row, 'Nomor Surat') || '';
+        
         const statusCell = formatStatus(row.status);
         const flagCell = formatFlag(row.flag);
 
         return `
             <tr data-row-id="${row.id}" class="data-row">
-                ${cells.map(cell => `<td>${cell}</td>`).join('')}
-                <td onclick="event.stopPropagation()">${statusCell}</td>
-                <td onclick="event.stopPropagation()">${flagCell}</td>
+                <td>${tanggalMinta}</td>
+                <td>${highlightText(escapeHtml(jenisPermintaan))}</td>
+                <td>${highlightText(escapeHtml(npk))}</td>
+                <td>${highlightText(escapeHtml(namaLengkap))}</td>
+                <td>${highlightText(escapeHtml(unitKerja))}</td>
+                <td>${highlightText(escapeHtml(noSurat))}</td>
+                <td onclick="event.stopPropagation()" style="text-align: center;">${statusCell}</td>
+                <td onclick="event.stopPropagation()" style="text-align: center;">${flagCell}</td>
             </tr>
         `;
     }).join('');
@@ -728,12 +892,23 @@ function formatValueForDisplay(value, headerName) {
 }
 
 function updateResultCount() {
-    document.getElementById('resultCount').textContent = filteredData.length;
+    const resultCount = document.getElementById('resultCount');
+    if (resultCount) {
+        resultCount.textContent = filteredData.length;
+    }
 }
 
 function updateTableHeaders() {
     const thead = document.querySelector('#dataTable thead tr');
     if (!thead || spreadsheetHeaders.length === 0) return;
+    
+    // Jangan update header jika sudah ada header di HTML (untuk layout baru)
+    // Hanya update jika header masih menggunakan format lama
+    const existingHeaders = thead.querySelectorAll('th');
+    if (existingHeaders.length > 0 && existingHeaders[0].textContent.includes('ID PERMINTAAN')) {
+        // Header sudah di-set di HTML, skip update
+        return;
+    }
     
     const displayColumns = [0, 6, 1, 2, 3, 5];
     
@@ -747,6 +922,13 @@ function updateTableHeaders() {
         }
         return `<th>${escapeHtml(headerName)}</th>`;
     }).join('') + '<th>Status</th><th>Flag</th>';
+    
+    // Show action header if user is admin
+    const actionHeader = document.getElementById('actionHeader');
+    if (actionHeader) {
+        const userRole = getUserRole();
+        actionHeader.style.display = (userRole === 'admin' || userRole === 'super_admin') ? 'table-cell' : 'none';
+    }
 }
 
 function showDetail(rowId) {
