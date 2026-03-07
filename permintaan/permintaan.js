@@ -252,12 +252,28 @@ async function loadData() {
             throw new Error(result.error || 'Error dari server');
         }
 
+        // Debug: Log response untuk troubleshooting
+        console.log('Data loaded from API:', {
+            success: result.success,
+            dataCount: result.data ? result.data.length : 0,
+            headers: result.headers ? result.headers.length : 0,
+            firstRow: result.data && result.data.length > 0 ? result.data[0] : null
+        });
+
         const headers = result.headers || (result.data.length > 0 ? Object.keys(result.data[0]) : []);
         spreadsheetHeaders = headers;
         updateTableHeaders();
         
         allData = [];
         filteredData = [];
+        
+        // Check if data is empty
+        if (!result.data || result.data.length === 0) {
+            console.warn('No data returned from API. This might be because:');
+            console.warn('1. No data exists in database');
+            console.warn('2. User does not have any data (user_id mismatch)');
+            console.warn('3. Filter is too restrictive');
+        }
         
         allData = result.data.map((row, index) => {
             const getColumnValue = (position) => {
@@ -277,31 +293,34 @@ async function loadData() {
             const statusSurat = row['Status Surat'] || row['col_g'] || getColumnValue(7) || '';
             const pilihPermintaan = row['Pilih Permintaan'] || row['pilih_permintaan'] || getColumnValue(6) || '';
             
+            // Direct mapping from API response (more reliable)
             return {
                 id: index,
                 rowNumber: originalRowNumber,
                 originalRowNumber: originalRowNumber,
-                A: getColumnValue(0),
-                B: getColumnValue(1),
-                C: getColumnValue(2),
-                D: getColumnValue(3),
-                E: getColumnValue(4),
-                F: getColumnValue(5),
+                // Map directly from API response keys
+                A: row['Timestamp'] || getColumnValue(0) || '',
+                B: row['NPK'] || getColumnValue(1) || '',
+                C: row['Nama Lengkap'] || getColumnValue(2) || '',
+                D: row['Unit Kerja :'] || row['Unit Kerja'] || getColumnValue(3) || '',
+                E: row['No Telepon (HP)'] || row['No Telepon'] || getColumnValue(4) || '',
+                F: row['No Surat'] || getColumnValue(5) || '',
                 G: statusSurat, // Status Surat (col_g) - NOT Pilih Permintaan!
-                H: getColumnValue(8), // Skip index 7 (Status Surat) since we put it in G
-                I: getColumnValue(9),
-                J: getColumnValue(10),
-                K: getColumnValue(11),
-                L: getColumnValue(12),
+                H: row['Email Address'] || getColumnValue(8) || '',
+                I: row['Jenis Surat'] || getColumnValue(9) || '',
+                J: row['Isi Penjelasan Singkat Permintaanya'] || getColumnValue(10) || '',
+                K: getColumnValue(11) || '',
+                L: getColumnValue(12) || '',
                 pilihPermintaan: pilihPermintaan || findColumnValue(row, 'Pilih Permintaan'),
-                timestamp: findColumnValue(row, 'Timestamp'),
-                status: (findColumnValue(row, 'Status') || '').trim(),
-                flag: (findColumnValue(row, 'Flag') || '').trim(),
-                petugas: (findColumnValue(row, 'Petugas') || '').trim(),
-                waktuSelesai: (findColumnValue(row, 'Waktu Selesai') || '').trim(),
-                keterangan: (findColumnValue(row, 'Keterangan') || '').trim(),
-                persetujuan: (findColumnValue(row, 'Persetujuan') || '').trim(),
-                alasanPermintaan: findColumnValue(row, 'Alasan Permintaan/Permintaan') || 
+                timestamp: row['Timestamp'] || findColumnValue(row, 'Timestamp') || '',
+                status: (row['Status'] || findColumnValue(row, 'Status') || '').trim(),
+                flag: (row['Flag'] || findColumnValue(row, 'Flag') || '').trim(),
+                petugas: (row['Petugas'] || findColumnValue(row, 'Petugas') || '').trim(),
+                waktuSelesai: (row['Waktu Selesai'] || findColumnValue(row, 'Waktu Selesai') || '').trim(),
+                keterangan: (row['Keterangan'] || findColumnValue(row, 'Keterangan') || '').trim(),
+                persetujuan: (row['Persetujuan'] || findColumnValue(row, 'Persetujuan') || '').trim(),
+                alasanPermintaan: row['Alasan Permintaan/Permintaan'] || 
+                                 findColumnValue(row, 'Alasan Permintaan/Permintaan') || 
                                  findColumnValue(row, 'ALASAN PERMINTAAN/PERMINTAAN') ||
                                  findColumnValue(row, 'Alasan Permintaan') ||
                                  findColumnValue(row, 'ALASAN PERMINTAAN') ||
@@ -1369,12 +1388,12 @@ function showDetail(rowId) {
         const selectedPetugas = petugasSelect.value;
         const selectedKeterangan = keteranganInput.value.trim();
         
-        // Jika sudah ditolak dan status adalah Cancelled, tidak bisa diubah
+        // Jika sudah ditolak dan status adalah Cancelled, status tidak bisa diubah
+        // Tapi tetap bisa simpan field lain (petugas, keterangan, waktu selesai, flag)
         if (isRejected && currentStatus === 'Cancelled' && selectedStatus !== 'Cancelled') {
             statusSelect.value = 'Cancelled';
-            saveBtn.disabled = true;
-            saveBtn.classList.add('disabled');
-            return;
+            // Jangan disable save button, tetap izinkan simpan field lain
+            // Hanya reset status ke Cancelled
         }
         
         const statusChanged = selectedStatus !== currentStatus;
@@ -1384,6 +1403,35 @@ function showDetail(rowId) {
         
         const isClosedOrCancelled = selectedStatus === 'Closed' || selectedStatus === 'Cancelled';
         
+        // Jika sudah ditolak (Cancelled), tetap izinkan simpan field lain tanpa validasi flag yang ketat
+        if (isRejected && currentStatus === 'Cancelled') {
+            // Cek apakah ada perubahan pada field yang bisa disimpan
+            let hasChanges = false;
+            if (petugasChanged || keteranganChanged || flagChanged) {
+                hasChanges = true;
+            }
+            // Cek juga waktu selesai jika ada input
+            const waktuSelesaiInput = detailContent.querySelector('input[data-field="Waktu Selesai"]');
+            if (waktuSelesaiInput) {
+                const selectedWaktuSelesai = waktuSelesaiInput.value;
+                const currentWaktuSelesaiValue = currentWaktuSelesai || '';
+                const waktuSelesaiChanged = selectedWaktuSelesai !== currentWaktuSelesaiValue;
+                if (waktuSelesaiChanged) {
+                    hasChanges = true;
+                }
+            }
+            
+            if (hasChanges) {
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('disabled');
+            } else {
+                saveBtn.disabled = true;
+                saveBtn.classList.add('disabled');
+            }
+            return; // Early return untuk yang sudah ditolak
+        }
+        
+        // Validasi normal untuk yang belum ditolak
         // Validasi: flag harus dipilih terlebih dahulu
         if (!selectedFlag || selectedFlag.trim() === '') {
             saveBtn.disabled = true;
@@ -1712,10 +1760,17 @@ function showDetail(rowId) {
     saveBtn.onclick = async () => {
         if (saveBtn.disabled) return;
         
-        // Jika sudah ditolak dan status adalah Cancelled, tidak bisa diubah
+        // Jika sudah ditolak dan status adalah Cancelled, cek apakah user mencoba ubah status
+        // Jika hanya mengubah field lain (petugas, keterangan, waktu selesai, flag), izinkan
         if (isRejected && currentStatus === 'Cancelled') {
-            showNotification('Status tidak dapat diubah karena permintaan sudah ditolak.', 'error');
-            return;
+            const selectedStatus = statusSelect.value;
+            // Hanya blokir jika user mencoba ubah status dari Cancelled
+            if (selectedStatus !== 'Cancelled') {
+                statusSelect.value = 'Cancelled';
+                showNotification('Status tidak dapat diubah karena permintaan sudah ditolak. Field lain tetap bisa disimpan.', 'error');
+                // Jangan return, tetap izinkan simpan field lain
+            }
+            // Jika status tetap Cancelled, izinkan simpan field lain
         }
         
         const newStatus = statusSelect.value;
@@ -1731,11 +1786,11 @@ function showDetail(rowId) {
             const isClosedOrCancelled = newStatus === 'Closed' || newStatus === 'Cancelled';
             
             const updateData = {};
-            if (newStatus !== currentStatus) {
-                updateData.status = newStatus;
-            }
             
-            if (isClosedOrCancelled) {
+            // Jika sudah ditolak (Cancelled), tetap izinkan simpan field lain
+            if (isRejected && currentStatus === 'Cancelled') {
+                // Jangan ubah status, tetap Cancelled
+                // Tapi izinkan simpan field lain
                 if (newFlag !== currentFlag) {
                     updateData.flag = newFlag;
                 }
@@ -1748,14 +1803,48 @@ function showDetail(rowId) {
                     updateData.keterangan = newKeterangan;
                 }
                 
-                if (!currentWaktuSelesai) {
+                // Cek waktu selesai
+                const waktuSelesaiInput = detailContent.querySelector('input[data-field="Waktu Selesai"]');
+                if (waktuSelesaiInput) {
+                    const newWaktuSelesai = waktuSelesaiInput.value;
+                    if (newWaktuSelesai && newWaktuSelesai.trim() !== '') {
+                        updateData.waktuSelesai = newWaktuSelesai;
+                    } else if (currentWaktuSelesai && !newWaktuSelesai) {
+                        // User ingin clear waktu selesai
+                        updateData.waktuSelesai = '';
+                    }
+                } else if (!currentWaktuSelesai) {
+                    // Auto set waktu selesai jika belum ada
                     updateData.waktuSelesai = new Date().toISOString();
                 }
-            }
-            
-            // Jika ditolak (rejected), set status menjadi Cancelled
-            if (isRejected) {
-                updateData.status = 'Cancelled';
+            } else {
+                // Normal flow untuk yang belum ditolak
+                if (newStatus !== currentStatus) {
+                    updateData.status = newStatus;
+                }
+                
+                if (isClosedOrCancelled) {
+                    if (newFlag !== currentFlag) {
+                        updateData.flag = newFlag;
+                    }
+                    
+                    if (newPetugas !== currentPetugas) {
+                        updateData.petugas = newPetugas;
+                    }
+                    
+                    if (newKeterangan !== currentKeterangan) {
+                        updateData.keterangan = newKeterangan;
+                    }
+                    
+                    if (!currentWaktuSelesai) {
+                        updateData.waktuSelesai = new Date().toISOString();
+                    }
+                }
+                
+                // Jika ditolak (rejected), set status menjadi Cancelled
+                if (isRejected) {
+                    updateData.status = 'Cancelled';
+                }
             }
             
             if (Object.keys(updateData).length === 0) {
@@ -2339,8 +2428,16 @@ function showDetail(rowId) {
         
         console.log('Request URL:', url.toString());
         
+        // Get auth token for authentication
+        const token = getAuthToken();
+        const fetchHeaders = {};
+        if (token) {
+            fetchHeaders['X-Auth-Token'] = token;
+        }
+        
         const response = await fetch(url.toString(), {
             method: 'GET',
+            headers: fetchHeaders,
             mode: 'cors',
             cache: 'no-cache'
         });

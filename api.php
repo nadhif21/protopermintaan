@@ -998,37 +998,41 @@ function handleRegister($conn) {
         throw new Exception("Format nomor telepon tidak valid. Gunakan format: 08xxxxxxxxxx");
     }
 
-    // Check if NPK already exists in users table (only if column exists)
+    // Check if NPK already exists in ACTIVE users table (only if column exists)
+    // Only check active users - if user is deleted/inactive, NPK can be reused
     $checkColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'npk'");
     if ($checkColumn && $checkColumn->num_rows > 0) {
-        $checkNpk = $conn->prepare("SELECT `id` FROM `users` WHERE `npk` = ? LIMIT 1");
+        $checkNpk = $conn->prepare("SELECT `id` FROM `users` WHERE `npk` = ? AND `is_active` = 1 LIMIT 1");
         if ($checkNpk) {
             $checkNpk->bind_param('s', $npk);
             $checkNpk->execute();
             $result = $checkNpk->get_result();
             if ($result && $result->num_rows > 0) {
                 $checkNpk->close();
-                throw new Exception("NPK sudah terdaftar.");
+                throw new Exception("NPK sudah terdaftar pada akun aktif.");
             }
             $checkNpk->close();
         }
     }
 
-    // Check if email already exists in users table (only if column exists)
+    // Check if email already exists in ACTIVE users table (only if column exists)
+    // Only check active users - if user is deleted/inactive, email can be reused
     $checkColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
     if ($checkColumn && $checkColumn->num_rows > 0) {
-        $checkEmail = $conn->prepare("SELECT `id` FROM `users` WHERE `email` = ? LIMIT 1");
+        $checkEmail = $conn->prepare("SELECT `id` FROM `users` WHERE `email` = ? AND `is_active` = 1 LIMIT 1");
         if ($checkEmail) {
             $checkEmail->bind_param('s', $email);
             $checkEmail->execute();
             $result = $checkEmail->get_result();
             if ($result && $result->num_rows > 0) {
                 $checkEmail->close();
-                throw new Exception("Email sudah terdaftar.");
+                throw new Exception("Email sudah terdaftar pada akun aktif.");
             }
             $checkEmail->close();
         }
     }
+
+    // Note: nomor_telepon tidak perlu divalidasi untuk unik - boleh sama antar user
 
     // Check if NPK already exists in pending registrations
     $checkRegNpk = $conn->prepare("SELECT `id` FROM `user_registrations` WHERE `npk` = ? AND `status` = 'pending' LIMIT 1");
@@ -1054,6 +1058,18 @@ function handleRegister($conn) {
             throw new Exception("Email sudah terdaftar dan sedang menunggu persetujuan.");
         }
         $checkRegEmail->close();
+    }
+
+    // Note: nomor_telepon tidak perlu divalidasi untuk unik di pending registrations - boleh sama
+
+    // Hapus data lama di user_registrations dengan NPK/email yang sama jika status bukan 'pending'
+    // Ini untuk mengatasi constraint UNIQUE di database yang mungkin masih ada
+    // Jika user sudah dihapus, data registrasi lama juga bisa dihapus untuk memungkinkan registrasi baru
+    $deleteOldReg = $conn->prepare("DELETE FROM `user_registrations` WHERE (`npk` = ? OR `email` = ?) AND `status` != 'pending'");
+    if ($deleteOldReg) {
+        $deleteOldReg->bind_param('ss', $npk, $email);
+        $deleteOldReg->execute();
+        $deleteOldReg->close();
     }
 
     // Insert registration (password tidak diperlukan, akan di-generate saat approval)

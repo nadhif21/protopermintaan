@@ -309,6 +309,29 @@
         if (!checkAuth()) {
             window.location.href = '../login.html';
         }
+        
+        // Setup logout button
+        function setupLogout() {
+            const headerLogoutBtn = document.getElementById('headerLogoutBtn');
+            if (headerLogoutBtn) {
+                headerLogoutBtn.addEventListener('click', function() {
+                    if (typeof logout === 'function') {
+                        logout();
+                    } else {
+                        if (confirm('Apakah Anda yakin ingin logout?')) {
+                            localStorage.removeItem('authToken');
+                            localStorage.removeItem('userData');
+                            window.location.href = '../login.html';
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Initialize logout on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setupLogout();
+        });
 
         const form = document.getElementById('backdateForm');
         const submitBtn = document.getElementById('submitBtn');

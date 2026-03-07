@@ -229,6 +229,15 @@
     background: rgba(0,0,0,.02);
 }
 
+.admin-table tbody tr[data-registration-id] {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.admin-table tbody tr[data-registration-id]:hover {
+    background: rgba(102, 126, 234, 0.05);
+}
+
 .loading{
     text-align:center;
     color:#666;
@@ -679,6 +688,164 @@
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     margin-top: 12px;
     flex-wrap: wrap;
+}
+
+/* Approve Modal Styles */
+.approve-modal-body {
+    padding: 20px 0;
+}
+
+.approve-info-section {
+    margin-bottom: 20px;
+}
+
+.approve-info-section h4 {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 8px;
+}
+
+.detail-label {
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.detail-value {
+    font-size: 0.95rem;
+    color: #333;
+    font-weight: 600;
+}
+
+.approve-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 8px;
+    color: #856404;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.approve-warning svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    stroke: #856404;
+}
+
+/* Confirm Approve Modal Styles */
+.confirm-modal-body {
+    padding: 20px 0;
+    text-align: center;
+}
+
+.confirm-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    color: #ff9800;
+}
+
+.confirm-message {
+    margin-bottom: 20px;
+}
+
+.confirm-message h4 {
+    margin: 0 0 12px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.confirm-message p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #666;
+    line-height: 1.6;
+}
+
+/* Success Approve Modal Styles */
+.success-modal-body {
+    padding: 20px 0;
+    text-align: center;
+}
+
+.success-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    color: #4caf50;
+}
+
+.success-message {
+    margin-bottom: 24px;
+}
+
+.success-message h4 {
+    margin: 0 0 8px 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.success-message p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #666;
+    line-height: 1.6;
+}
+
+.success-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-whatsapp {
+    background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+    color: white;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-whatsapp:hover {
+    background: linear-gradient(135deg, #128c7e 0%, #25d366 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+/* Detail Modal Actions */
+#detailModalActions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+#detailModalActions .btn-whatsapp {
+    margin-right: auto;
 }
 
 @media (max-width: 768px){

@@ -51,6 +51,9 @@ function bindRegistrations() {
     document.getElementById('statusFilter')?.addEventListener('change', (e) => {
         loadRegistrations(e.target.value);
     });
+    bindDetailModal();
+    bindConfirmApproveModal();
+    bindSuccessApproveModal();
     bindRejectModal();
 }
 
@@ -278,7 +281,6 @@ function bindUserRowActions() {
                 await resetPasswordFlow(userId);
             } else if (action === 'edit') {
                 await editUserFlow(tr, userId);
-                await loadUsers();
             } else if (action === 'delete') {
                 await deleteUserFlow(userId);
             }
@@ -378,6 +380,7 @@ function bindResetPasswordModal() {
             await apiPost('resetUserPassword', { id: currentResetPasswordUserId, newPassword: newPassword });
             close();
             alert('Password berhasil direset. Semua session user tersebut dicabut.');
+            await loadUsers(); // Refresh user list after reset
         } catch (e) {
             showResetPasswordError(e.message);
         }
@@ -583,15 +586,32 @@ function registrationRowHtml(r) {
 
 function bindRegistrationRowActions() {
     const tbody = document.getElementById('registrationsTbody');
+    
+    // Click on row to show detail
+    tbody?.querySelectorAll('tr[data-registration-id]').forEach(tr => {
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', (e) => {
+            // Don't trigger if clicking on buttons
+            if (e.target.closest('button')) return;
+            
+            const registrationId = parseInt(tr?.getAttribute('data-registration-id') || '0');
+            if (registrationId) {
+                openDetailModal(registrationId);
+            }
+        });
+    });
+    
+    // Click on approve/reject buttons for confirmation
     tbody?.querySelectorAll('button[data-action]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
+            e.stopPropagation(); // Prevent row click
             const action = btn.getAttribute('data-action');
             const tr = e.target.closest('tr');
             const registrationId = parseInt(tr?.getAttribute('data-registration-id') || '0');
             if (!registrationId) return;
 
             if (action === 'approve') {
-                await approveRegistration(registrationId);
+                await confirmApprove(registrationId);
             } else if (action === 'reject') {
                 openRejectModal(registrationId);
             }
@@ -599,27 +619,268 @@ function bindRegistrationRowActions() {
     });
 }
 
-async function approveRegistration(id) {
-    if (!confirm('Setujui pendaftaran ini? Akun user akan dibuat dan notifikasi WhatsApp akan dikirim.')) {
-        return;
-    }
+let currentDetailId = null;
+let currentDetailRegistration = null;
 
-    try {
-        const result = await apiPost('approveRegistration', { id });
-        
-        if (result.whatsappUrl) {
-            const openWhatsApp = confirm('Pendaftaran berhasil disetujui! Buka WhatsApp untuk mengirim notifikasi?');
-            if (openWhatsApp) {
-                window.open(result.whatsappUrl, '_blank');
-            }
-        } else {
-            alert('Pendaftaran berhasil disetujui!');
+function bindDetailModal() {
+    const modal = document.getElementById('detailRegistrationModal');
+    const closeBtn = document.getElementById('closeDetailModal');
+    const closeDetailBtn = document.getElementById('closeDetailBtn');
+    const approveBtn = document.getElementById('approveFromDetailBtn');
+    const rejectBtn = document.getElementById('rejectFromDetailBtn');
+
+    const close = () => {
+        modal?.classList.remove('show');
+        document.body.style.overflow = 'auto';
+        currentDetailId = null;
+        approveBtn.style.display = 'none';
+        rejectBtn.style.display = 'none';
+    };
+
+    closeBtn?.addEventListener('click', close);
+    closeDetailBtn?.addEventListener('click', close);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal?.classList.contains('show')) close();
+    });
+
+    approveBtn?.addEventListener('click', async () => {
+        if (!currentDetailId) return;
+        close();
+        await confirmApprove(currentDetailId);
+    });
+
+    rejectBtn?.addEventListener('click', () => {
+        if (!currentDetailId) return;
+        close();
+        openRejectModal(currentDetailId);
+    });
+
+    // WhatsApp button in detail modal
+    const whatsappBtn = document.getElementById('whatsappDetailBtn');
+    whatsappBtn?.addEventListener('click', () => {
+        if (!currentDetailRegistration || !currentDetailRegistration.nomorTelepon || currentDetailRegistration.nomorTelepon === '-') {
+            alert('Nomor telepon tidak tersedia.');
+            return;
         }
         
-        await loadRegistrations();
+        // Generate WhatsApp message
+        const message = generateWhatsAppMessage(currentDetailRegistration);
+        const whatsappUrl = `https://wa.me/${currentDetailRegistration.nomorTelepon.replace(/^0/, '62')}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+    });
+}
+
+function generateWhatsAppMessage(registration) {
+    const baseUrl = window.location.origin;
+    const detailUrl = `${baseUrl}/admin/admin.html`;
+    
+    let message = `Halo ${registration.nama || 'Applicant'},\n\n`;
+    message += `Terima kasih telah mendaftar. Data pendaftaran Anda:\n\n`;
+    message += `Nama: ${registration.nama || '-'}\n`;
+    message += `NPK: ${registration.npk || '-'}\n`;
+    message += `Email: ${registration.email || '-'}\n`;
+    message += `Unit Kerja: ${registration.unitKerja || '-'}\n\n`;
+    message += `Silakan tunggu proses approval dari admin.\n\n`;
+    message += `Terima kasih.`;
+    
+    return message;
+}
+
+async function openDetailModal(id) {
+    currentDetailId = id;
+    const modal = document.getElementById('detailRegistrationModal');
+    if (!modal) return;
+
+    // Fetch registration details
+    try {
+        const registrations = await apiGet('listRegistrations', {});
+        const registration = registrations.find(r => r.id === id);
+        
+        if (!registration) {
+            alert('Data registrasi tidak ditemukan.');
+            return;
+        }
+
+        // Populate modal with registration details
+        // Handle both camelCase and snake_case from API
+        const nomorTelepon = registration.nomorTelepon || registration.nomor_telepon || '-';
+        const unitKerja = registration.unitKerja || registration.unit_kerja || '-';
+        
+        document.getElementById('detailName').textContent = registration.nama || '-';
+        document.getElementById('detailNpk').textContent = registration.npk || '-';
+        document.getElementById('detailEmail').textContent = registration.email || '-';
+        document.getElementById('detailPhone').textContent = nomorTelepon;
+        document.getElementById('detailUnitKerja').textContent = unitKerja;
+        document.getElementById('detailRole').textContent = registration.requestedRole || registration.requested_role || 'User';
+        
+        // Format date
+        const date = registration.createdAt ? formatDateShort(registration.createdAt) : '-';
+        document.getElementById('detailDate').textContent = date;
+
+        // Store registration data for WhatsApp button
+        currentDetailRegistration = {
+            id: registration.id,
+            nama: registration.nama,
+            npk: registration.npk,
+            email: registration.email,
+            nomorTelepon: nomorTelepon,
+            unitKerja: unitKerja
+        };
+
+        // Show approve/reject buttons only if status is pending
+        const approveBtn = document.getElementById('approveFromDetailBtn');
+        const rejectBtn = document.getElementById('rejectFromDetailBtn');
+        const whatsappBtn = document.getElementById('whatsappDetailBtn');
+        
+        if (registration.status === 'pending') {
+            approveBtn.style.display = 'inline-block';
+            rejectBtn.style.display = 'inline-block';
+        } else {
+            approveBtn.style.display = 'none';
+            rejectBtn.style.display = 'none';
+        }
+        
+        // Show WhatsApp button if nomor telepon exists and is valid
+        if (nomorTelepon && nomorTelepon !== '-') {
+            whatsappBtn.style.display = 'inline-flex';
+        } else {
+            whatsappBtn.style.display = 'none';
+        }
+
+        // Show modal
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
     } catch (e) {
         alert('Error: ' + e.message);
     }
+}
+
+let currentConfirmApproveId = null;
+let currentWhatsAppUrl = null;
+
+function bindConfirmApproveModal() {
+    const modal = document.getElementById('confirmApproveModal');
+    const closeBtn = document.getElementById('closeConfirmApproveModal');
+    const cancelBtn = document.getElementById('cancelConfirmApproveBtn');
+    const confirmBtn = document.getElementById('confirmApproveBtn');
+
+    const close = () => {
+        modal?.classList.remove('show');
+        document.body.style.overflow = 'auto';
+        clearConfirmApproveError();
+        currentConfirmApproveId = null;
+    };
+
+    closeBtn?.addEventListener('click', close);
+    cancelBtn?.addEventListener('click', close);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal?.classList.contains('show')) close();
+    });
+
+    confirmBtn?.addEventListener('click', async () => {
+        if (!currentConfirmApproveId) return;
+        
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Memproses...';
+        clearConfirmApproveError();
+
+        try {
+            const result = await apiPost('approveRegistration', { id: currentConfirmApproveId });
+            
+            close();
+            
+            // Show success modal
+            showSuccessApproveModal(result.whatsappUrl);
+            
+            await loadRegistrations();
+        } catch (e) {
+            showConfirmApproveError(e.message);
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Ya, Setujui';
+        }
+    });
+}
+
+function bindSuccessApproveModal() {
+    const modal = document.getElementById('successApproveModal');
+    const closeBtn = document.getElementById('closeSuccessApproveModal');
+    const closeSuccessBtn = document.getElementById('closeSuccessApproveBtn');
+    const whatsappBtn = document.getElementById('openWhatsAppBtn');
+
+    const close = () => {
+        modal?.classList.remove('show');
+        document.body.style.overflow = 'auto';
+        currentWhatsAppUrl = null;
+    };
+
+    closeBtn?.addEventListener('click', close);
+    closeSuccessBtn?.addEventListener('click', close);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal?.classList.contains('show')) close();
+    });
+
+    whatsappBtn?.addEventListener('click', () => {
+        if (currentWhatsAppUrl) {
+            window.open(currentWhatsAppUrl, '_blank');
+        }
+        close();
+    });
+}
+
+function showConfirmApproveError(msg) {
+    const el = document.getElementById('confirmApproveError');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+}
+
+function clearConfirmApproveError() {
+    const el = document.getElementById('confirmApproveError');
+    if (!el) return;
+    el.textContent = '';
+    el.classList.remove('show');
+}
+
+function showSuccessApproveModal(whatsappUrl) {
+    const modal = document.getElementById('successApproveModal');
+    const whatsappBtn = document.getElementById('openWhatsAppBtn');
+    const successActions = document.getElementById('successApproveActions');
+    
+    if (!modal) return;
+    
+    currentWhatsAppUrl = whatsappUrl || null;
+    
+    // Show/hide WhatsApp button based on availability
+    if (whatsappUrl) {
+        whatsappBtn.style.display = 'inline-flex';
+    } else {
+        whatsappBtn.style.display = 'none';
+    }
+    
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+async function confirmApprove(id) {
+    currentConfirmApproveId = id;
+    const modal = document.getElementById('confirmApproveModal');
+    if (!modal) return;
+    
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
 }
 
 let currentRejectId = null;
@@ -796,21 +1057,12 @@ function bindPinApproval() {
                 throw new Error(result.error || 'Gagal menyimpan PIN');
             }
             
-            // Update PIN value immediately from response if available
-            if (result.pin) {
-                const savedPin = String(result.pin).trim().replace(/\s/g, '');
-                console.log('Updating PIN from response:', savedPin);
-                pinInput.value = savedPin;
-            } else {
-                // If no PIN in response, use the one we just saved
-                const savedPin = String(pin).trim().replace(/\s/g, '');
-                console.log('Updating PIN from input:', savedPin);
-                pinInput.value = savedPin;
-            }
-            
             alert('PIN berhasil disimpan!');
             
-            // Exit edit mode
+            // Exit edit mode and mask PIN
+            const savedPin = result.pin ? String(result.pin).trim().replace(/\s/g, '') : pin;
+            pinInput.value = '••••';
+            pinInput.setAttribute('data-pin-value', savedPin);
             pinInput.readOnly = true;
             pinInput.style.backgroundColor = '#f5f5f5';
             pinInput.style.cursor = 'not-allowed';

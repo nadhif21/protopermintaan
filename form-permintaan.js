@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPilihPermintaanOptions();
     await loadPetugas();
     setupEventListeners();
+    setupLogout();
     
     // Set default visibility bagian 2
     updateBagian2Visibility();
@@ -936,8 +937,16 @@ async function handleSubmit(e) {
             submitData.append(key, value);
         });
         
+        // Get auth token for user_id
+        const token = getAuthToken();
+        const fetchHeaders = {};
+        if (token) {
+            fetchHeaders['X-Auth-Token'] = token;
+        }
+        
         const response = await fetch(API_URL, {
             method: 'POST',
+            headers: fetchHeaders,
             body: submitData
         });
         
@@ -1008,4 +1017,21 @@ function openWhatsApp() {
     
     const waUrl = `https://wa.me/${selectedPetugas.no_wa}?text=${message}`;
     window.open(waUrl, '_blank');
+}
+
+function setupLogout() {
+    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
+    if (headerLogoutBtn) {
+        headerLogoutBtn.addEventListener('click', function() {
+            if (typeof logout === 'function') {
+                logout();
+            } else {
+                if (confirm('Apakah Anda yakin ingin logout?')) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userData');
+                    window.location.href = 'login.html';
+                }
+            }
+        });
+    }
 }
