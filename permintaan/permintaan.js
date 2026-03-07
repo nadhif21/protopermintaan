@@ -10,7 +10,8 @@ let currentFilters = {
     tahun: '',
     status: '',
     petugas: '',
-    flag: ''
+    flag: '',
+    posisiSurat: ''
 };
 
 // Pagination state
@@ -162,6 +163,15 @@ function setupEventListeners() {
     if (flagFilter) {
         flagFilter.addEventListener('change', (e) => {
             currentFilters.flag = e.target.value;
+            filterAndDisplayData();
+        });
+    }
+
+    // Posisi Surat filter
+    const posisiSuratFilter = document.getElementById('posisiSuratFilter');
+    if (posisiSuratFilter) {
+        posisiSuratFilter.addEventListener('change', (e) => {
+            currentFilters.posisiSurat = e.target.value;
             filterAndDisplayData();
         });
     }
@@ -580,6 +590,22 @@ function filterAndDisplayData() {
             const rowFlag = (row.flag || '').trim();
             if (rowFlag.toLowerCase() !== currentFilters.flag.toLowerCase()) {
                 return false;
+            }
+        }
+
+        if (currentFilters.posisiSurat) {
+            // Get Status Surat (which is now Posisi Surat)
+            const posisiSurat = (row['Status Surat'] || row.G || '').trim();
+            if (currentFilters.posisiSurat === 'Approver') {
+                // Filter untuk Approver
+                if (posisiSurat !== 'Approver') {
+                    return false;
+                }
+            } else if (currentFilters.posisiSurat === 'Bukan Approver') {
+                // Filter untuk Bukan Approver (semua selain Approver)
+                if (posisiSurat === 'Approver' || posisiSurat === '') {
+                    return false;
+                }
             }
         }
 
@@ -1110,7 +1136,7 @@ function showDetail(rowId) {
         'No Telepon (HP)',
         'No Surat',
         'Pilih Permintaan',
-        'Status Surat',  // Status dokumen (Draft, Review, Approved, Rejected)
+        'Status Surat',  // Status dokumen (Draft, Review, Approved, Rejected) - akan diganti menjadi Posisi Surat
         'Alasan Permintaan/Permintaan',
         'Email Address',
         'Jenis Surat',
@@ -1129,6 +1155,9 @@ function showDetail(rowId) {
         let displayName = fieldName;
         if (fieldName === 'Pilih Permintaan') {
             displayName = 'Jenis Permintaan';
+        }
+        if (fieldName === 'Status Surat') {
+            displayName = 'Posisi Surat';
         }
         if (fieldName && fieldName.toLowerCase().includes('timestamp')) {
             displayName = 'Tanggal Minta';
