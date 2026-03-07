@@ -849,12 +849,67 @@
 }
 
 @media (max-width: 768px){
-    .admin-table{ min-width: 980px; }
-    .admin-container .subheader{ flex-direction:column; align-items:flex-start; }
-    .success-modal { max-width: 95%; }
-    .detail-row { flex-direction: column; align-items: flex-start; gap: 4px; }
-    .detail-value { text-align: left; }
-    .panel-header { flex-direction: column; align-items: flex-start; }
-    .panel-actions { width: 100%; }
-    .btn-add-user { width: 100%; justify-content: center; }
+    .admin-table{ 
+        min-width: 980px; 
+        font-size: 0.85rem;
+    }
+    .admin-container .subheader{ 
+        flex-direction:column; 
+        align-items:flex-start; 
+        gap: 12px;
+    }
+    .success-modal { 
+        max-width: 95%; 
+        margin: 20px;
+    }
+    .detail-row { 
+        flex-direction: column; 
+        align-items: flex-start; 
+        gap: 4px; 
+    }
+    .detail-value { 
+        text-align: left; 
+    }
+    .panel-header { 
+        flex-direction: column; 
+        align-items: flex-start; 
+        gap: 12px;
+    }
+    .panel-actions { 
+        width: 100%; 
+    }
+    .btn-add-user { 
+        width: 100%; 
+        justify-content: center; 
+    }
+    .user-cell {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .user-info {
+        width: 100%;
+    }
+    .row-actions {
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+    .btn-icon-action {
+        width: 100%;
+        justify-content: center;
+    }
+    .modal-content {
+        max-width: 95%;
+        margin: 20px;
+    }
+    .form-row {
+        flex-direction: column;
+    }
+    .form-actions {
+        flex-direction: column;
+    }
+    .form-actions button {
+        width: 100%;
+    }
 }

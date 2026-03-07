@@ -343,6 +343,19 @@
         padding: 30px 20px;
     }
 
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+    }
+
+    .avatar-icon {
+        font-size: 40px;
+    }
+
+    .profile-header h2 {
+        font-size: 1.5rem;
+    }
+
     .profile-info {
         padding: 20px;
     }
@@ -355,6 +368,31 @@
 
     .info-item label {
         min-width: auto;
+        font-size: 0.9rem;
+    }
+
+    .info-item .value {
+        font-size: 0.95rem;
+    }
+
+    button, .btn {
+        min-height: 44px;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-content {
+        padding: 16px;
+    }
+
+    .profile-header {
+        padding: 24px 16px;
+    }
+
+    .profile-info {
+        padding: 16px;
+    }
     }
 
     .info-value {

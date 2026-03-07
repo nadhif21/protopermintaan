@@ -602,6 +602,39 @@ select.form-input {
     }
 
     .card-value {
+        font-size: 0.9rem;
+        width: 100%;
+    }
+
+    .search-container {
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+    }
+
+    .search-input {
+        width: 100%;
+        font-size: 1rem;
+        min-height: 44px;
+    }
+
+    button, .btn {
+        min-height: 44px;
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+
+    .pagination-container {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .pagination-controls {
+        justify-content: center;
+    }
+}
+
+    .card-value {
         font-size: 0.95rem;
         text-align: left;
         width: 100%;

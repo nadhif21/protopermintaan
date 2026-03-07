@@ -577,9 +577,13 @@
             margin: 0;
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             body {
                 padding: 16px;
+            }
+
+            .approval-container {
+                max-width: 100%;
             }
 
             .pin-card,
@@ -587,8 +591,22 @@
                 padding: 20px;
             }
 
-            .action-buttons {
-                flex-direction: column;
+            .pin-icon-wrapper {
+                width: 60px;
+                height: 60px;
+            }
+
+            .pin-icon-wrapper svg {
+                width: 36px;
+                height: 36px;
+            }
+
+            .pin-card h2 {
+                font-size: 1.25rem;
+            }
+
+            .pin-card p {
+                font-size: 0.9rem;
             }
 
             .pin-input {
@@ -597,8 +615,85 @@
                 font-size: 20px;
             }
 
+            .action-buttons {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .btn {
+                width: 100%;
+                min-height: 44px;
+            }
+
+            .details-header {
+                padding: 20px;
+            }
+
+            .details-header h2 {
+                font-size: 1.1rem;
+            }
+
+            .detail-info-wrapper {
+                padding: 20px;
+            }
+
+            .detail-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .detail-item label {
+                min-width: auto;
+                font-size: 0.85rem;
+            }
+
+            .detail-item .value {
+                text-align: left;
+                font-size: 0.95rem;
+            }
+
             .modal-content {
-                max-width: 100%;
+                max-width: 95%;
+                margin: 20px;
+            }
+
+            .modal-header {
+                padding: 16px 20px;
+            }
+
+            .modal-body {
+                padding: 20px;
+            }
+
+            .modal-footer {
+                padding: 16px 20px;
+                flex-direction: column;
+            }
+
+            .modal-footer .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+
+            .pin-card,
+            .details-card {
+                padding: 16px;
+            }
+
+            .pin-input {
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+            }
+
+            .pin-input-group {
+                gap: 8px;
             }
         }
     </style>
