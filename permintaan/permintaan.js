@@ -8,7 +8,9 @@ let currentFilters = {
     jenis: '',
     bulan: '',
     tahun: '',
-    status: ''
+    status: '',
+    petugas: '',
+    flag: ''
 };
 
 // Pagination state
@@ -136,6 +138,33 @@ function setupEventListeners() {
             filterAndDisplayData();
         });
     });
+
+    // Jenis Permintaan filter
+    const jenisPermintaanFilter = document.getElementById('jenisPermintaanFilter');
+    if (jenisPermintaanFilter) {
+        jenisPermintaanFilter.addEventListener('change', (e) => {
+            currentFilters.jenis = e.target.value;
+            filterAndDisplayData();
+        });
+    }
+
+    // Petugas filter
+    const petugasFilter = document.getElementById('petugasFilter');
+    if (petugasFilter) {
+        petugasFilter.addEventListener('change', (e) => {
+            currentFilters.petugas = e.target.value;
+            filterAndDisplayData();
+        });
+    }
+
+    // Flag filter
+    const flagFilter = document.getElementById('flagFilter');
+    if (flagFilter) {
+        flagFilter.addEventListener('change', (e) => {
+            currentFilters.flag = e.target.value;
+            filterAndDisplayData();
+        });
+    }
 
     // Pagination event listeners
     const paginationFirst = document.getElementById('paginationFirst');
@@ -392,7 +421,7 @@ function findColumnValue(row, columnName) {
 }
 
 function setupFilterOptions() {
-    // Setup jenis filter jika elemen ada
+    // Setup jenis permintaan filter
     const jenisSet = new Set();
     allData.forEach(row => {
         if (row.pilihPermintaan) {
@@ -400,21 +429,43 @@ function setupFilterOptions() {
         }
     });
     
-    const jenisFilter = document.getElementById('jenisFilter');
-    if (jenisFilter) {
+    const jenisPermintaanFilter = document.getElementById('jenisPermintaanFilter');
+    if (jenisPermintaanFilter) {
         // Clear existing options except the first one
-        while (jenisFilter.options.length > 1) {
-            jenisFilter.remove(1);
+        while (jenisPermintaanFilter.options.length > 1) {
+            jenisPermintaanFilter.remove(1);
         }
-    Array.from(jenisSet).sort().forEach(jenis => {
-        const option = document.createElement('option');
-        option.value = jenis;
-        option.textContent = jenis;
-        jenisFilter.appendChild(option);
-    });
+        Array.from(jenisSet).sort().forEach(jenis => {
+            const option = document.createElement('option');
+            option.value = jenis;
+            option.textContent = jenis;
+            jenisPermintaanFilter.appendChild(option);
+        });
     }
 
-    // Setup tahun filter jika elemen ada
+    // Setup petugas filter
+    const petugasSet = new Set();
+    allData.forEach(row => {
+        if (row.petugas && row.petugas.trim() !== '') {
+            petugasSet.add(row.petugas.trim());
+        }
+    });
+    
+    const petugasFilter = document.getElementById('petugasFilter');
+    if (petugasFilter) {
+        // Clear existing options except the first one
+        while (petugasFilter.options.length > 1) {
+            petugasFilter.remove(1);
+        }
+        Array.from(petugasSet).sort().forEach(petugas => {
+            const option = document.createElement('option');
+            option.value = petugas;
+            option.textContent = petugas;
+            petugasFilter.appendChild(option);
+        });
+    }
+
+    // Setup tahun filter jika elemen ada (untuk backward compatibility)
     const tahunSet = new Set();
     allData.forEach(row => {
         if (row.timestamp) {
@@ -431,12 +482,27 @@ function setupFilterOptions() {
         while (tahunFilter.options.length > 1) {
             tahunFilter.remove(1);
         }
-    Array.from(tahunSet).sort((a, b) => b - a).forEach(tahun => {
-        const option = document.createElement('option');
-        option.value = tahun;
-        option.textContent = tahun;
-        tahunFilter.appendChild(option);
-    });
+        Array.from(tahunSet).sort((a, b) => b - a).forEach(tahun => {
+            const option = document.createElement('option');
+            option.value = tahun;
+            option.textContent = tahun;
+            tahunFilter.appendChild(option);
+        });
+    }
+
+    // Setup jenis filter jika elemen ada (untuk backward compatibility)
+    const jenisFilter = document.getElementById('jenisFilter');
+    if (jenisFilter) {
+        // Clear existing options except the first one
+        while (jenisFilter.options.length > 1) {
+            jenisFilter.remove(1);
+        }
+        Array.from(jenisSet).sort().forEach(jenis => {
+            const option = document.createElement('option');
+            option.value = jenis;
+            option.textContent = jenis;
+            jenisFilter.appendChild(option);
+        });
     }
 }
 
@@ -499,6 +565,20 @@ function filterAndDisplayData() {
         if (currentFilters.status) {
             const rowStatus = (row.status || '').trim();
             if (rowStatus !== currentFilters.status) {
+                return false;
+            }
+        }
+
+        if (currentFilters.petugas) {
+            const rowPetugas = (row.petugas || '').trim();
+            if (rowPetugas !== currentFilters.petugas) {
+                return false;
+            }
+        }
+
+        if (currentFilters.flag) {
+            const rowFlag = (row.flag || '').trim();
+            if (rowFlag.toLowerCase() !== currentFilters.flag.toLowerCase()) {
                 return false;
             }
         }

@@ -2390,21 +2390,45 @@ function handleSubmitPermintaan($conn) {
     $isiPenjelasan = trim(getRequestParam('isi_penjelasan', ''));
     $petugasId = intval(getRequestParam('petugas_id', 0));
     
-    // Validation - basic required fields
-    if ($npk === '' || $namaLengkap === '' || $unitKerjaId <= 0 || $noTelepon === '' || 
-        $pilihPermintaan === '' || $isiPenjelasan === '' || $petugasId <= 0) {
-        throw new Exception("Semua field wajib harus diisi.");
-    }
-    
     // Get selected option to determine which fields are required
     $optionResult = $conn->query("SELECT `bagian_target` FROM `pilih_permintaan_options` WHERE `nama_opsi` = '" . $conn->real_escape_string($pilihPermintaan) . "' AND `is_active` = 1 LIMIT 1");
     $optionRow = $optionResult ? $optionResult->fetch_assoc() : null;
     $bagianTarget = $optionRow['bagian_target'] ?? 'bagian_2';
     
-    // Validate bagian 2 fields if needed
-    if ($bagianTarget === 'bagian_2') {
-        if ($statusSurat === '' || $jenisSurat === '' || $alasanPermintaan === '') {
+    // Determine if this is Revisi, Pembatalan, or Perubahan Plt (skip bagian 3)
+    $skipBagian3Options = ['Revisi', 'Pembatalan', 'Perubahan Plt'];
+    $shouldSkipBagian3 = in_array($pilihPermintaan, $skipBagian3Options);
+    
+    // Validation - basic required fields (always required)
+    if ($npk === '' || $namaLengkap === '' || $unitKerjaId <= 0 || $noTelepon === '' || 
+        $pilihPermintaan === '' || $petugasId <= 0) {
+        throw new Exception("Semua field wajib harus diisi.");
+    }
+    
+    // Validate bagian 2 fields if needed (bagian_target = bagian_2 or Revisi/Pembatalan/Perubahan Plt)
+    if ($bagianTarget === 'bagian_2' || $shouldSkipBagian3) {
+        // Get posisi_surat (new field name) or fallback to status_surat (old field name)
+        $posisiSurat = trim(getRequestParam('posisi_surat', ''));
+        if ($posisiSurat === '') {
+            $posisiSurat = $statusSurat; // Fallback to old field name
+        }
+        
+        if ($posisiSurat === '' || $jenisSurat === '' || $alasanPermintaan === '') {
             throw new Exception("Field bagian 2 wajib diisi untuk pilihan ini.");
+        }
+        
+        // Validate No Surat if Posisi Surat = Approver
+        if ($posisiSurat === 'Approver') {
+            if ($noSurat === '') {
+                throw new Exception("No Surat wajib diisi jika Posisi Surat adalah Approver.");
+            }
+        }
+        
+        // isiPenjelasan is NOT required for bagian 2
+    } else {
+        // Validate bagian 3 fields (isiPenjelasan is required)
+        if ($isiPenjelasan === '') {
+            throw new Exception("Isi Penjelasan wajib diisi untuk pilihan ini.");
         }
     }
     
@@ -2466,9 +2490,15 @@ function handleSubmitPermintaan($conn) {
             throw new Exception("Prepare error: " . $conn->error);
         }
         
+        // Get posisi_surat for database (use posisi_surat if available, otherwise use status_surat)
+        $posisiSuratForDB = trim(getRequestParam('posisi_surat', ''));
+        if ($posisiSuratForDB === '') {
+            $posisiSuratForDB = $statusSurat;
+        }
+        
         $stmt->bind_param('isssssssssssssiis', 
             $rowNumber, $timestamp, $npk, $namaLengkap, $unitKerja,
-            $noTelepon, $pilihPermintaan, $statusSurat, $jenisSurat,
+            $noTelepon, $pilihPermintaan, $posisiSuratForDB, $jenisSurat,
             $noSurat, $alasanPermintaan, $isiPenjelasan, $petugasNama,
             $timestamp, $userId, $petugasId, $petugasNoWa
         );
@@ -2485,9 +2515,15 @@ function handleSubmitPermintaan($conn) {
         throw new Exception("Prepare error: " . $conn->error);
     }
     
+    // Get posisi_surat for database (use posisi_surat if available, otherwise use status_surat)
+    $posisiSuratForDB = trim(getRequestParam('posisi_surat', ''));
+    if ($posisiSuratForDB === '') {
+        $posisiSuratForDB = $statusSurat;
+    }
+    
     $stmt->bind_param('isssssssssssss', 
         $rowNumber, $timestamp, $npk, $namaLengkap, $unitKerja,
-        $noTelepon, $pilihPermintaan, $statusSurat, $jenisSurat,
+        $noTelepon, $pilihPermintaan, $posisiSuratForDB, $jenisSurat,
         $noSurat, $alasanPermintaan, $isiPenjelasan, $petugasNama,
         $timestamp
     );

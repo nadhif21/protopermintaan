@@ -5,6 +5,9 @@ let customOptions = [];
 let submittedRequestId = null;
 let selectedPetugas = null;
 
+// Opsi yang hanya perlu Bagian 2 + Petugas (Revisi, Pembatalan, Perubahan Plt)
+const SKIP_BAGIAN3_OPTIONS = ['Revisi', 'Pembatalan', 'Perubahan Plt'];
+
 // Load data saat halaman dimuat
 document.addEventListener('DOMContentLoaded', async () => {
     // Check authentication
@@ -62,21 +65,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    await loadPilihPermintaanOptions();
-    await loadPetugas();
-    setupEventListeners();
-    setupLogout();
+    try {
+        await loadPilihPermintaanOptions();
+        console.log('Pilih Permintaan options loaded:', customOptions.length);
+    } catch (error) {
+        console.error('Error loading pilih permintaan options:', error);
+    }
     
-    // Set default visibility bagian 2
-    updateBagian2Visibility();
+    try {
+        await loadPetugas();
+        console.log('Petugas loaded');
+    } catch (error) {
+        console.error('Error loading petugas:', error);
+    }
     
-    console.log('Form initialization complete');
-    console.log('Final field values:', {
-        npk: document.getElementById('npk')?.value,
-        nama: document.getElementById('nama_lengkap')?.value,
-        noTelepon: document.getElementById('no_telepon')?.value,
-        unitKerja: document.getElementById('unit_kerja')?.value
-    });
+    try {
+        setupEventListeners();
+        setupLogout();
+        
+        // Set default visibility bagian 2
+        updateBagian2Visibility();
+        
+        // Set default visibility bagian 3
+        updateBagian3Visibility();
+        
+        // Copy petugas options to bagian2 petugas select
+        copyPetugasOptions();
+        
+        // Set initial No Surat visibility
+        updateNoSuratVisibility();
+        
+        console.log('Form initialization complete');
+        console.log('Final field values:', {
+            npk: document.getElementById('npk')?.value,
+            nama: document.getElementById('nama_lengkap')?.value,
+            noTelepon: document.getElementById('no_telepon')?.value,
+            unitKerja: document.getElementById('unit_kerja')?.value,
+            pilihPermintaan: document.getElementById('pilih_permintaan')?.options.length
+        });
+    } catch (error) {
+        console.error('Error in form initialization:', error);
+    }
 });
 
 async function loadUserData() {
@@ -494,6 +523,8 @@ function renderPilihPermintaanOptions() {
         selectedPilihPermintaan = finalSelect.value;
         // Update visibility bagian 2 berdasarkan pilihan
         updateBagian2Visibility();
+        // Update visibility bagian 3 berdasarkan pilihan
+        updateBagian3Visibility();
     });
     
     console.log('Pilih Permintaan options rendered:', customOptions.length);
@@ -557,13 +588,18 @@ async function loadPetugas() {
             
             if (Array.isArray(dataArray) && dataArray.length > 0) {
                 const select = document.getElementById('petugas');
-                dataArray.forEach(petugas => {
-                    const option = document.createElement('option');
-                    option.value = petugas.id;
-                    option.textContent = petugas.nama;
-                    option.setAttribute('data-wa', petugas.no_wa);
-                    select.appendChild(option);
-                });
+                if (select) {
+                    dataArray.forEach(petugas => {
+                        const option = document.createElement('option');
+                        option.value = petugas.id;
+                        option.textContent = petugas.nama;
+                        option.setAttribute('data-wa', petugas.no_wa);
+                        select.appendChild(option);
+                    });
+                    
+                    // Copy options to bagian2 petugas select
+                    copyPetugasOptions();
+                }
             } else {
                 console.error('No valid data array found:', typeof result.data, result.data);
             }
@@ -575,12 +611,44 @@ async function loadPetugas() {
     }
 }
 
+function copyPetugasOptions() {
+    const petugasSelect = document.getElementById('petugas');
+    const petugasBagian2Select = document.getElementById('petugas_bagian2_select');
+    
+    if (!petugasSelect || !petugasBagian2Select) {
+        console.warn('Petugas select elements not found for copying');
+        return;
+    }
+    
+    // Clear existing options except first
+    while (petugasBagian2Select.options.length > 1) {
+        petugasBagian2Select.remove(1);
+    }
+    
+    // Copy options from petugas select
+    for (let i = 1; i < petugasSelect.options.length; i++) {
+        const option = petugasSelect.options[i].cloneNode(true);
+        petugasBagian2Select.appendChild(option);
+    }
+    
+    console.log('Petugas options copied to bagian2 select');
+}
+
 function setupEventListeners() {
     // Form submit
     document.getElementById('permintaanForm').onsubmit = handleSubmit;
     
     // WhatsApp button
-    document.getElementById('whatsappBtn').onclick = openWhatsApp;
+    const whatsappBtn = document.getElementById('whatsappBtn');
+    if (whatsappBtn) {
+        whatsappBtn.onclick = openWhatsApp;
+    }
+    
+    // Event listener untuk Posisi Surat (untuk show/hide No Surat)
+    const posisiSurat = document.getElementById('posisi_surat');
+    if (posisiSurat) {
+        posisiSurat.addEventListener('change', updateNoSuratVisibility);
+    }
 }
 
 async function addPilihPermintaanOption(nama) {
@@ -671,12 +739,15 @@ function nextSection() {
         
         if (!isValid) {
             // Scroll ke field pertama yang error
-            const firstErrorField = bagian1.querySelector('[style*="border-color: rgb(211, 47, 47)"]') || 
-                                   bagian1.querySelector('input[style*="border-color: #d32f2f"]') ||
-                                   bagian1.querySelector('select[style*="border-color: #d32f2f"]');
-            if (firstErrorField) {
-                firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                firstErrorField.focus();
+            const bagian1 = document.getElementById('bagian1');
+            if (bagian1) {
+                const firstErrorField = bagian1.querySelector('[style*="border-color: rgb(211, 47, 47)"]') || 
+                                       bagian1.querySelector('input[style*="border-color: #d32f2f"]') ||
+                                       bagian1.querySelector('select[style*="border-color: #d32f2f"]');
+                if (firstErrorField) {
+                    firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstErrorField.focus();
+                }
             }
             return;
         }
@@ -696,87 +767,66 @@ function nextSection() {
         console.log('Selected option:', selectedOption);
         console.log('bagian_target:', selectedOption.bagian_target);
         
+        // Opsi yang hanya perlu Bagian 2 + Petugas
+        const shouldSkipBagian3 = SKIP_BAGIAN3_OPTIONS.includes(selectedPilihPermintaan);
+        
         // Navigasi berdasarkan bagian_target
-        if (selectedOption.bagian_target === 'bagian_3') {
-            // Skip bagian 2, langsung ke bagian 3
-            console.log('Navigating to bagian 3 (skipping bagian 2)');
-            currentSection = 3;
-            showSection(3);
-        } else if (selectedOption.bagian_target === 'bagian_2') {
-            // Lanjut ke bagian 2
-            console.log('Navigating to bagian 2');
+        if (shouldSkipBagian3) {
+            // Revisi, Pembatalan, Perubahan Plt: ke Bagian 2
+            console.log('Navigating to bagian 2 (Revisi/Pembatalan/Perubahan Plt)');
             currentSection = 2;
             showSection(2);
         } else {
-            // Default: ke bagian 2
-            console.log('Default: Navigating to bagian 2');
-            currentSection = 2;
-            showSection(2);
+            // Opsi lain: langsung ke Bagian 3 (hanya Isi Penjelasan dan Petugas)
+            console.log('Navigating to bagian 3 (skip bagian 2)');
+            console.log('Selected option for bagian 3:', selectedOption);
+            currentSection = 3;
+            
+            // Pastikan bagian 2 disembunyikan dan hapus required dari field bagian 2
+            const bagian2 = document.getElementById('bagian2');
+            if (bagian2) {
+                bagian2.style.display = 'none';
+                // Hapus required dari semua field bagian 2 yang tersembunyi
+                const posisiSurat = document.getElementById('posisi_surat');
+                const jenisSurat = document.getElementById('jenis_surat');
+                const alasanPermintaan = document.getElementById('alasan_permintaan');
+                const noSurat = document.getElementById('no_surat');
+                const petugasBagian2 = document.getElementById('petugas_bagian2_select');
+                
+                if (posisiSurat) {
+                    posisiSurat.removeAttribute('required');
+                }
+                if (jenisSurat) {
+                    jenisSurat.removeAttribute('required');
+                }
+                if (alasanPermintaan) {
+                    alasanPermintaan.removeAttribute('required');
+                }
+                if (noSurat) {
+                    noSurat.removeAttribute('required');
+                }
+                if (petugasBagian2) {
+                    petugasBagian2.removeAttribute('required');
+                }
+            }
+            showSection(3);
         }
     }
     
     if (currentSection === 2) {
-        // Validasi form bagian 2
-        const statusSurat = document.getElementById('status_surat');
-        const jenisSurat = document.getElementById('jenis_surat');
-        const alasanPermintaan = document.getElementById('alasan_permintaan');
-        
-        // Reset border color
-        if (statusSurat) statusSurat.style.borderColor = '#ddd';
-        if (jenisSurat) jenisSurat.style.borderColor = '#ddd';
-        if (alasanPermintaan) alasanPermintaan.style.borderColor = '#ddd';
-        
-        let isValid = true;
-        
-        if (!statusSurat || !statusSurat.value || statusSurat.value === '') {
-            isValid = false;
-            if (statusSurat) statusSurat.style.borderColor = '#d32f2f';
+        // Bagian 2 langsung submit, tidak ada next section
+        // Validasi akan dilakukan di handleSubmit
+        const form = document.getElementById('permintaanForm');
+        if (form) {
+            form.dispatchEvent(new Event('submit', { cancelable: true }));
         }
-        
-        if (!jenisSurat || !jenisSurat.value || jenisSurat.value === '') {
-            isValid = false;
-            if (jenisSurat) jenisSurat.style.borderColor = '#d32f2f';
-        }
-        
-        if (!alasanPermintaan || !alasanPermintaan.value.trim()) {
-            isValid = false;
-            if (alasanPermintaan) alasanPermintaan.style.borderColor = '#d32f2f';
-        }
-        
-        if (!isValid) {
-            // Scroll ke field pertama yang error
-            const bagian2 = document.getElementById('bagian2');
-            const firstErrorField = bagian2.querySelector('[style*="border-color: rgb(211, 47, 47)"]') || 
-                                   bagian2.querySelector('input[style*="border-color: #d32f2f"]') ||
-                                   bagian2.querySelector('select[style*="border-color: #d32f2f"]') ||
-                                   bagian2.querySelector('textarea[style*="border-color: #d32f2f"]');
-            if (firstErrorField) {
-                firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                if (firstErrorField.tagName === 'INPUT' || firstErrorField.tagName === 'SELECT' || firstErrorField.tagName === 'TEXTAREA') {
-                    firstErrorField.focus();
-                }
-            }
-            return;
-        }
-        
-        // Lanjut ke bagian 3
-        currentSection = 3;
-        showSection(3);
     }
 }
 
 function prevSection() {
     if (currentSection === 3) {
-        // Kembali dari bagian 3
-        const selectedOption = customOptions.find(opt => opt.nama_opsi === selectedPilihPermintaan);
-        
-        if (selectedOption && selectedOption.bagian_target === 'bagian_3') {
-            // Jika bagian 2 dilewati, langsung ke bagian 1
-            currentSection = 1;
-        } else {
-            // Kembali ke bagian 2
-            currentSection = 2;
-        }
+        // Kembali dari bagian 3 - selalu ke bagian 1 (karena bagian 2 dilewati untuk opsi selain 3 tadi)
+        currentSection = 1;
         showSection(currentSection);
     } else if (currentSection === 2) {
         // Kembali ke bagian 1
@@ -788,84 +838,268 @@ function prevSection() {
 function updateBagian2Visibility() {
     const selectedOption = customOptions.find(opt => opt.nama_opsi === selectedPilihPermintaan);
     const bagian2 = document.getElementById('bagian2');
+    const petugasBagian2Group = document.getElementById('petugas_bagian2_group');
     
     if (!bagian2) return;
+    
+    const skipBagian3Options = ['Revisi', 'Pembatalan', 'Perubahan Plt'];
+    const shouldSkipBagian3 = skipBagian3Options.includes(selectedPilihPermintaan);
+    
+    // Field-field bagian 2
+    const posisiSurat = document.getElementById('posisi_surat');
+    const jenisSurat = document.getElementById('jenis_surat');
+    const alasanPermintaan = document.getElementById('alasan_permintaan');
+    const noSurat = document.getElementById('no_surat');
+    const petugasBagian2 = document.getElementById('petugas_bagian2_select');
     
     if (selectedOption && selectedOption.bagian_target === 'bagian_3') {
         // Sembunyikan bagian 2 jika tidak diperlukan
         bagian2.style.display = 'none';
+        // Hapus required dari semua field bagian 2 yang tersembunyi
+        if (posisiSurat) posisiSurat.removeAttribute('required');
+        if (jenisSurat) jenisSurat.removeAttribute('required');
+        if (alasanPermintaan) alasanPermintaan.removeAttribute('required');
+        if (noSurat) noSurat.removeAttribute('required');
+        if (petugasBagian2) petugasBagian2.removeAttribute('required');
     } else {
         // Tampilkan bagian 2 jika diperlukan
         bagian2.style.display = 'block';
+        
+        // Tampilkan petugas field untuk Revisi, Pembatalan, Perubahan Plt
+        if (shouldSkipBagian3 && petugasBagian2Group) {
+            petugasBagian2Group.style.display = 'block';
+            if (petugasBagian2) petugasBagian2.setAttribute('required', 'required');
+        } else if (petugasBagian2Group) {
+            petugasBagian2Group.style.display = 'none';
+            if (petugasBagian2) petugasBagian2.removeAttribute('required');
+        }
+        
+        // Set required untuk field bagian 2 jika diperlukan
+        if (posisiSurat) posisiSurat.setAttribute('required', 'required');
+        if (jenisSurat) jenisSurat.setAttribute('required', 'required');
+        if (alasanPermintaan) alasanPermintaan.setAttribute('required', 'required');
+    }
+}
+
+// Fungsi untuk update visibility No Surat berdasarkan Posisi Surat
+function updateNoSuratVisibility() {
+    const posisiSurat = document.getElementById('posisi_surat');
+    const noSuratGroup = document.getElementById('no_surat_group');
+    const noSuratInput = document.getElementById('no_surat');
+    
+    if (!posisiSurat || !noSuratGroup || !noSuratInput) return;
+    
+    if (posisiSurat.value === 'Approver') {
+        noSuratGroup.style.display = 'block';
+        noSuratInput.setAttribute('required', 'required');
+    } else {
+        noSuratGroup.style.display = 'none';
+        noSuratInput.removeAttribute('required');
+        noSuratInput.value = ''; // Clear value when hidden
     }
 }
 
 function showSection(section) {
+    // Update visibility bagian 2 dan 3 berdasarkan pilihan SEBELUM menyembunyikan
+    updateBagian2Visibility();
+    updateBagian3Visibility();
+    
     // Sembunyikan semua section terlebih dahulu
     document.querySelectorAll('.form-section').forEach(sec => {
         sec.classList.remove('active');
         sec.style.display = 'none';
     });
     
-    // Update visibility bagian 2 berdasarkan pilihan
-    updateBagian2Visibility();
+    // Jika menampilkan bagian 3, pastikan hapus required dari field bagian 2 yang tersembunyi
+    if (section === 3) {
+        const bagian2 = document.getElementById('bagian2');
+        if (bagian2 && bagian2.style.display === 'none') {
+            const posisiSurat = document.getElementById('posisi_surat');
+            const jenisSurat = document.getElementById('jenis_surat');
+            const alasanPermintaan = document.getElementById('alasan_permintaan');
+            const noSurat = document.getElementById('no_surat');
+            const petugasBagian2 = document.getElementById('petugas_bagian2_select');
+            
+            if (posisiSurat) posisiSurat.removeAttribute('required');
+            if (jenisSurat) jenisSurat.removeAttribute('required');
+            if (alasanPermintaan) alasanPermintaan.removeAttribute('required');
+            if (noSurat) noSurat.removeAttribute('required');
+            if (petugasBagian2) petugasBagian2.removeAttribute('required');
+        }
+    }
     
     // Tampilkan section yang dipilih
     const targetSection = document.getElementById(`bagian${section}`);
     if (targetSection) {
         targetSection.classList.add('active');
         targetSection.style.display = 'block';
+        console.log('Showing section', section, 'targetSection:', targetSection);
+    } else {
+        console.error('Target section not found:', `bagian${section}`);
+    }
+}
+
+function updateBagian3Visibility() {
+    // Opsi yang hanya perlu Bagian 2 + Petugas
+    const shouldSkipBagian3 = SKIP_BAGIAN3_OPTIONS.includes(selectedPilihPermintaan);
+    
+    const keteranganGroup = document.getElementById('keterangan_permintaan_group');
+    
+    // Sembunyikan Keterangan Permintaan untuk semua opsi (hanya tampilkan Isi Penjelasan dan Petugas)
+    if (keteranganGroup) {
+        keteranganGroup.style.display = 'none';
     }
 }
 
 async function handleSubmit(e) {
     e.preventDefault();
     
-    // Validasi bagian 3
+    // Tentukan apakah kita submit dari bagian 2 atau bagian 3
+    const bagian2 = document.getElementById('bagian2');
     const bagian3 = document.getElementById('bagian3');
-    const requiredFields = bagian3.querySelectorAll('[required]');
-    let isValid = true;
+    const isBagian2Visible = bagian2 && (bagian2.style.display !== 'none' && window.getComputedStyle(bagian2).display !== 'none');
+    const isBagian3Visible = bagian3 && (bagian3.style.display !== 'none' && window.getComputedStyle(bagian3).display !== 'none');
     
-    requiredFields.forEach(field => {
-        if (field.type === 'radio') {
-            const radioGroup = document.querySelectorAll(`input[name="${field.name}"]`);
-            const isChecked = Array.from(radioGroup).some(r => r.checked);
-            if (!isChecked) {
-                isValid = false;
-            }
-        } else if (!field.value.trim()) {
-            isValid = false;
-            field.style.borderColor = '#d32f2f';
-        } else {
-            field.style.borderColor = '#ddd';
+    // Hapus required dari semua field yang tidak terlihat untuk menghindari error "invalid form control"
+    // Jika bagian 2 terlihat, hapus required dari field bagian 3
+    if (isBagian2Visible && !isBagian3Visible) {
+        const isiPenjelasan = document.getElementById('isi_penjelasan');
+        const petugas = document.getElementById('petugas');
+        const keteranganPermintaan = document.getElementById('keterangan_permintaan');
+        if (isiPenjelasan) {
+            isiPenjelasan.removeAttribute('required');
+            isiPenjelasan.style.display = 'none'; // Sembunyikan juga untuk memastikan
         }
-    });
+        if (petugas) {
+            petugas.removeAttribute('required');
+            petugas.style.display = 'none'; // Sembunyikan juga untuk memastikan
+        }
+        if (keteranganPermintaan) {
+            keteranganPermintaan.removeAttribute('required');
+        }
+    }
     
-    // Validasi bagian 2 jika diperlukan (berdasarkan pilihan)
-    const selectedOption = customOptions.find(opt => opt.nama_opsi === selectedPilihPermintaan);
-    if (selectedOption && selectedOption.bagian_target === 'bagian_2') {
-        const bagian2 = document.getElementById('bagian2');
-        const statusSurat = document.getElementById('status_surat');
+    // Jika bagian 3 terlihat, hapus required dari field bagian 2 yang tidak terlihat
+    if (isBagian3Visible && !isBagian2Visible) {
+        const posisiSurat = document.getElementById('posisi_surat');
         const jenisSurat = document.getElementById('jenis_surat');
         const alasanPermintaan = document.getElementById('alasan_permintaan');
+        const petugasBagian2 = document.getElementById('petugas_bagian2_select');
+        const noSurat = document.getElementById('no_surat');
+        if (posisiSurat) {
+            posisiSurat.removeAttribute('required');
+        }
+        if (jenisSurat) {
+            jenisSurat.removeAttribute('required');
+        }
+        if (alasanPermintaan) {
+            alasanPermintaan.removeAttribute('required');
+        }
+        if (petugasBagian2) {
+            petugasBagian2.removeAttribute('required');
+        }
+        if (noSurat) {
+            noSurat.removeAttribute('required');
+        }
+    }
+    
+    // Juga hapus required dari no_surat jika tidak terlihat (kondisi: Posisi Surat bukan Approver)
+    const posisiSurat = document.getElementById('posisi_surat');
+    const noSurat = document.getElementById('no_surat');
+    const noSuratGroup = document.getElementById('no_surat_group');
+    if (noSurat && noSuratGroup) {
+        const isNoSuratVisible = noSuratGroup.style.display !== 'none' && window.getComputedStyle(noSuratGroup).display !== 'none';
+        if (!isNoSuratVisible || (posisiSurat && posisiSurat.value !== 'Approver')) {
+            noSurat.removeAttribute('required');
+        }
+    }
+    
+    // Validasi bagian 3 (hanya jika bagian 3 terlihat)
+    let isValid = true;
+    if (isBagian3Visible) {
+        const requiredFields = bagian3.querySelectorAll('[required]');
+        requiredFields.forEach(field => {
+            if (field.type === 'radio') {
+                const radioGroup = document.querySelectorAll(`input[name="${field.name}"]`);
+                const isChecked = Array.from(radioGroup).some(r => r.checked);
+                if (!isChecked) {
+                    isValid = false;
+                }
+            } else if (!field.value.trim()) {
+                isValid = false;
+                field.style.borderColor = '#d32f2f';
+            } else {
+                field.style.borderColor = '#ddd';
+            }
+        });
+    }
+    
+    // Validasi bagian 2 jika diperlukan (berdasarkan pilihan atau jika bagian 2 aktif)
+    const selectedOption = customOptions.find(opt => opt.nama_opsi === selectedPilihPermintaan);
+    
+    // Opsi yang hanya perlu Bagian 2 + Petugas
+    const shouldSkipBagian3 = SKIP_BAGIAN3_OPTIONS.includes(selectedPilihPermintaan);
+    
+    // Validasi bagian 2 jika bagian 2 terlihat atau jika opsi memerlukan bagian 2
+    if (isBagian2Visible || (selectedOption && selectedOption.bagian_target === 'bagian_2') || shouldSkipBagian3) {
+        const bagian2 = document.getElementById('bagian2');
+        const posisiSurat = document.getElementById('posisi_surat');
+        const jenisSurat = document.getElementById('jenis_surat');
+        const alasanPermintaan = document.getElementById('alasan_permintaan');
+        const noSurat = document.getElementById('no_surat');
+        const petugasBagian2Select = document.getElementById('petugas_bagian2_select');
         
         // Reset border color
-        if (statusSurat) statusSurat.style.borderColor = '#ddd';
+        if (posisiSurat) posisiSurat.style.borderColor = '#ddd';
         if (jenisSurat) jenisSurat.style.borderColor = '#ddd';
         if (alasanPermintaan) alasanPermintaan.style.borderColor = '#ddd';
+        if (noSurat) noSurat.style.borderColor = '#ddd';
+        if (petugasBagian2Select) petugasBagian2Select.style.borderColor = '#ddd';
         
-        if (!statusSurat || !statusSurat.value || statusSurat.value === '' ||
-            !jenisSurat || !jenisSurat.value || jenisSurat.value === '' ||
-            !alasanPermintaan || !alasanPermintaan.value.trim()) {
+        // Validasi Posisi Surat
+        if (!posisiSurat || !posisiSurat.value || posisiSurat.value === '') {
             isValid = false;
-            if (!statusSurat || !statusSurat.value || statusSurat.value === '') {
-                if (statusSurat) statusSurat.style.borderColor = '#d32f2f';
+            if (posisiSurat) posisiSurat.style.borderColor = '#d32f2f';
+        }
+        
+        // Validasi Jenis Surat
+        if (!jenisSurat || !jenisSurat.value || jenisSurat.value === '') {
+            isValid = false;
+            if (jenisSurat) jenisSurat.style.borderColor = '#d32f2f';
+        }
+        
+        // Validasi No Surat (mandatory jika Posisi Surat = Approver)
+        if (posisiSurat && posisiSurat.value === 'Approver') {
+            if (!noSurat || !noSurat.value || !noSurat.value.trim()) {
+                isValid = false;
+                if (noSurat) {
+                    noSurat.style.borderColor = '#d32f2f';
+                    noSurat.setAttribute('required', 'required');
+                }
+            } else {
+                if (noSurat) {
+                    noSurat.style.borderColor = '#ddd';
+                    noSurat.setAttribute('required', 'required');
+                }
             }
-            if (!jenisSurat || !jenisSurat.value || jenisSurat.value === '') {
-                if (jenisSurat) jenisSurat.style.borderColor = '#d32f2f';
+        } else {
+            // Jika bukan Approver, hapus required dari no_surat
+            if (noSurat) {
+                noSurat.removeAttribute('required');
             }
-            if (!alasanPermintaan || !alasanPermintaan.value.trim()) {
-                if (alasanPermintaan) alasanPermintaan.style.borderColor = '#d32f2f';
+        }
+        
+        // Validasi Alasan Permintaan
+        if (!alasanPermintaan || !alasanPermintaan.value.trim()) {
+            isValid = false;
+            if (alasanPermintaan) alasanPermintaan.style.borderColor = '#d32f2f';
+        }
+        
+        // Validasi Petugas jika Revisi, Pembatalan, atau Perubahan Plt
+        if (shouldSkipBagian3) {
+            if (!petugasBagian2Select || !petugasBagian2Select.value || petugasBagian2Select.value === '') {
+                isValid = false;
+                if (petugasBagian2Select) petugasBagian2Select.style.borderColor = '#d32f2f';
             }
         }
     }
@@ -899,36 +1133,57 @@ async function handleSubmit(e) {
     const namaValue = document.getElementById('nama_lengkap')?.value || formData.get('nama_lengkap') || '';
     const noTeleponValue = document.getElementById('no_telepon')?.value || formData.get('no_telepon') || '';
     
+    // shouldSkipBagian3 sudah dideklarasikan di atas (line 933), gunakan yang sudah ada
+    // Tentukan petugas_id dari petugas_bagian2_select jika skipBagian3, atau dari petugas jika tidak
+    let petugasId = '';
+    let selectedPetugasOption = null;
+    
+    if (shouldSkipBagian3) {
+        const petugasBagian2Select = document.getElementById('petugas_bagian2_select');
+        if (petugasBagian2Select) {
+            petugasId = petugasBagian2Select.value;
+            selectedPetugasOption = petugasBagian2Select.options[petugasBagian2Select.selectedIndex];
+        }
+    } else {
+        const petugasSelect = document.getElementById('petugas');
+        if (petugasSelect) {
+            petugasId = petugasSelect.value;
+            selectedPetugasOption = petugasSelect.options[petugasSelect.selectedIndex];
+        }
+    }
+    
+    if (!selectedPetugasOption || !selectedPetugasOption.value) {
+        const petugasField = shouldSkipBagian3 ? document.getElementById('petugas_bagian2_select') : document.getElementById('petugas');
+        if (petugasField) {
+            petugasField.style.borderColor = '#d32f2f';
+            petugasField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            petugasField.focus();
+        }
+        return;
+    }
+    
+    selectedPetugas = {
+        id: selectedPetugasOption.value,
+        nama: selectedPetugasOption.textContent,
+        no_wa: selectedPetugasOption.getAttribute('data-wa')
+    };
+    
     const data = {
         npk: npkValue,
         nama_lengkap: namaValue,
         unit_kerja_id: unitKerjaValue,
         no_telepon: noTeleponValue,
         pilih_permintaan: formData.get('pilih_permintaan'),
-        data_surat: formData.get('data_surat') || '',
-        status_surat: selectedOption && selectedOption.bagian_target === 'bagian_2' ? formData.get('status_surat') : '',
-        jenis_surat: selectedOption && selectedOption.bagian_target === 'bagian_2' ? formData.get('jenis_surat') : '',
-        no_surat: selectedOption && selectedOption.bagian_target === 'bagian_2' ? (formData.get('no_surat') || '') : '',
-        alasan_permintaan: selectedOption && selectedOption.bagian_target === 'bagian_2' ? formData.get('alasan_permintaan') : '',
+        posisi_surat: (selectedOption && selectedOption.bagian_target === 'bagian_2') || shouldSkipBagian3 ? formData.get('posisi_surat') : '',
+        jenis_surat: (selectedOption && selectedOption.bagian_target === 'bagian_2') || shouldSkipBagian3 ? formData.get('jenis_surat') : '',
+        no_surat: (selectedOption && selectedOption.bagian_target === 'bagian_2') || shouldSkipBagian3 ? (formData.get('no_surat') || '') : '',
+        alasan_permintaan: (selectedOption && selectedOption.bagian_target === 'bagian_2') || shouldSkipBagian3 ? formData.get('alasan_permintaan') : '',
         keterangan_permintaan: formData.get('keterangan_permintaan') || '',
         isi_penjelasan: formData.get('isi_penjelasan'),
-        petugas_id: formData.get('petugas')
+        petugas_id: petugasId
     };
     
-    // Get petugas info
-    const petugasSelect = document.getElementById('petugas');
-    const selectedPetugasOption = petugasSelect.options[petugasSelect.selectedIndex];
-    if (!selectedPetugasOption || !selectedPetugasOption.value) {
-        petugasSelect.style.borderColor = '#d32f2f';
-        petugasSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        petugasSelect.focus();
-        return;
-    }
-    selectedPetugas = {
-        id: selectedPetugasOption.value,
-        nama: selectedPetugasOption.textContent,
-        no_wa: selectedPetugasOption.getAttribute('data-wa')
-    };
+    // selectedPetugas sudah di-set di atas (line 1037-1041), tidak perlu di-set lagi
     
     try {
         const submitData = new FormData();

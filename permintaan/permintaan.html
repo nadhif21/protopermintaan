@@ -117,14 +117,39 @@
         <main class="main-content">
             <!-- Filters Section -->
             <div class="filters-section">
-                <div class="status-filters">
-                    <button class="status-filter-btn active" data-status="">All</button>
-                    <button class="status-filter-btn" data-status="Open">Pending</button>
-                    <button class="status-filter-btn" data-status="Closed">Approved</button>
-                    <button class="status-filter-btn" data-status="Cancelled">Rejected</button>
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="jenisPermintaanFilter">Jenis Permintaan</label>
+                        <select id="jenisPermintaanFilter" class="filter-select">
+                            <option value="">Semua Jenis</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="petugasFilter">Petugas</label>
+                        <select id="petugasFilter" class="filter-select">
+                            <option value="">Semua Petugas</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="flagFilter">Flag</label>
+                        <select id="flagFilter" class="filter-select">
+                            <option value="">Semua Flag</option>
+                            <option value="Hijau">Hijau</option>
+                            <option value="Kuning">Kuning</option>
+                            <option value="Merah">Merah</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="content-search">
-                    <input type="text" id="searchInput" placeholder="Cari ID atau Nama Pemohon..." />
+                <div class="filter-row">
+                    <div class="status-filters">
+                        <button class="status-filter-btn active" data-status="">All</button>
+                        <button class="status-filter-btn" data-status="Open">Pending</button>
+                        <button class="status-filter-btn" data-status="Closed">Approved</button>
+                        <button class="status-filter-btn" data-status="Cancelled">Rejected</button>
+                    </div>
+                    <div class="content-search">
+                        <input type="text" id="searchInput" placeholder="Cari ID atau Nama Pemohon..." />
+                    </div>
                 </div>
             </div>
 

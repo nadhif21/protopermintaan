@@ -171,22 +171,6 @@
             <div class="form-section" id="bagian2">
 
                 <div class="form-group">
-                    <label>Data Surat</label>
-                    <input type="text" id="data_surat" name="data_surat" placeholder="Deskripsi (opsional)">
-                </div>
-
-                <div class="form-group">
-                    <label for="status_surat">Status Surat <span class="required">*</span></label>
-                    <select id="status_surat" name="status_surat" required>
-                        <option value="">Pilih Status Surat</option>
-                        <option value="Drafter">Drafter</option>
-                        <option value="Reviewer">Reviewer</option>
-                        <option value="Approver">Approver</option>
-                        <option value="Sudah disetujui Approver">Sudah disetujui Approver</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
                     <label for="jenis_surat">Jenis Surat <span class="required">*</span></label>
                     <select id="jenis_surat" name="jenis_surat" required>
                         <option value="">Pilih Jenis Surat</option>
@@ -196,25 +180,44 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="no_surat">No Surat</label>
-                    <input type="text" id="no_surat" name="no_surat" placeholder="Teks jawaban singkat">
+                    <label for="posisi_surat">Posisi Surat <span class="required">*</span></label>
+                    <select id="posisi_surat" name="posisi_surat" required>
+                        <option value="">Pilih Posisi Surat</option>
+                        <option value="Drafter">Drafter</option>
+                        <option value="Reviewer">Reviewer</option>
+                        <option value="Approver">Approver</option>
+                        <option value="Sudah disetujui Approver">Sudah disetujui Approver</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="no_surat_group" style="display: none;">
+                    <label for="no_surat">No Surat <span class="required">*</span></label>
+                    <input type="text" id="no_surat" name="no_surat" placeholder="Masukkan No Surat">
                 </div>
 
                 <div class="form-group">
                     <label for="alasan_permintaan">Alasan Permintaan/Permintaan <span class="required">*</span></label>
-                    <textarea id="alasan_permintaan" name="alasan_permintaan" placeholder="Teks jawaban panjang" rows="5"></textarea>
+                    <textarea id="alasan_permintaan" name="alasan_permintaan" placeholder="Teks jawaban panjang" rows="5" required></textarea>
+                </div>
+
+                <!-- Petugas field untuk Revisi, Pembatalan, Perubahan Plt -->
+                <div class="form-group" id="petugas_bagian2_group">
+                    <label for="petugas_bagian2_select">Petugas <span class="required">*</span></label>
+                    <select id="petugas_bagian2_select" name="petugas_bagian2" required>
+                        <option value="">Pilih Petugas</option>
+                    </select>
                 </div>
 
                 <div class="form-navigation">
                     <button type="button" class="btn-prev" onclick="prevSection()">Kembali</button>
-                    <button type="button" class="btn-next" onclick="nextSection()">Lanjut</button>
+                    <button type="submit" class="btn-submit" id="btnSubmitBagian2">Kirim Permintaan</button>
                 </div>
             </div>
 
             <!-- Bagian 3: Keterangan -->
             <div class="form-section" id="bagian3">
 
-                <div class="form-group">
+                <div class="form-group" id="keterangan_permintaan_group" style="display: none;">
                     <label>Keterangan Permintaan</label>
                     <input type="text" id="keterangan_permintaan" name="keterangan_permintaan" placeholder="Deskripsi (opsional)">
                 </div>
