@@ -20,34 +20,44 @@ document.addEventListener('DOMContentLoaded', function() {
         const role = getUserRole();
         quickAccessForm.style.display = (role === 'user') ? 'flex' : 'none';
     }
-
-    // Backdate card and quick access - open submenu in sidebar
-    // Note: The actual toggle is handled by sidebar.js
-    const backdateCard = document.getElementById('backdateCard');
-    const quickAccessBackdate = document.getElementById('quickAccessBackdate');
-
-    function openBackdateSubmenu() {
-        const backdateMenu = document.getElementById('backdateMenu');
-        const backdateSubmenu = document.getElementById('backdateSubmenu');
-        if (backdateMenu && backdateSubmenu) {
-            backdateMenu.classList.add('active');
-            backdateSubmenu.classList.add('active');
-        }
+    
+    // Tampilkan menu Quick Access berdasarkan role
+    const role = getUserRole();
+    const isAdmin = role === 'admin' || role === 'super_admin';
+    const isApprover = role === 'approver';
+    const isPetugas = role === 'petugas';
+    const isUser = role === 'user';
+    
+    // Form Permintaan Backdate - untuk user
+    const quickAccessFormBackdate = document.getElementById('quickAccessFormBackdate');
+    if (quickAccessFormBackdate) {
+        quickAccessFormBackdate.style.display = isUser ? 'flex' : 'none';
+    }
+    
+    // Status Permintaan Saya - untuk user
+    const quickAccessStatusBackdate = document.getElementById('quickAccessStatusBackdate');
+    if (quickAccessStatusBackdate) {
+        quickAccessStatusBackdate.style.display = isUser ? 'flex' : 'none';
+    }
+    
+    // Approval Backdate - untuk approver dan admin
+    const quickAccessApprovalBackdate = document.getElementById('quickAccessApprovalBackdate');
+    if (quickAccessApprovalBackdate) {
+        quickAccessApprovalBackdate.style.display = (isApprover || isAdmin) ? 'flex' : 'none';
+    }
+    
+    // Tugas Backdate - untuk petugas
+    const quickAccessTugasBackdate = document.getElementById('quickAccessTugasBackdate');
+    if (quickAccessTugasBackdate) {
+        quickAccessTugasBackdate.style.display = isPetugas ? 'flex' : 'none';
+    }
+    
+    // User Management - untuk admin
+    const quickAccessAdmin = document.getElementById('quickAccessAdmin');
+    if (quickAccessAdmin) {
+        quickAccessAdmin.style.display = isAdmin ? 'flex' : 'none';
     }
 
-    if (backdateCard) {
-        backdateCard.addEventListener('click', function(e) {
-            e.preventDefault();
-            openBackdateSubmenu();
-        });
-    }
-
-    if (quickAccessBackdate) {
-        quickAccessBackdate.addEventListener('click', function(e) {
-            e.preventDefault();
-            openBackdateSubmenu();
-        });
-    }
 
     // Header Logout Button
     const headerLogoutBtn = document.getElementById('headerLogoutBtn');

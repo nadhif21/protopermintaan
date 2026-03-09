@@ -2454,6 +2454,12 @@ function handleGetApprovers($conn) {
 function handleCreateApprover($conn) {
     $session = requireSuperAdmin($conn);
     
+    // Check if there's already an active approver
+    $checkApprover = $conn->query("SELECT `id` FROM `users` WHERE `role` = 'approver' AND `is_active` = 1 LIMIT 1");
+    if ($checkApprover && $checkApprover->num_rows > 0) {
+        throw new Exception("Hanya boleh ada 1 approver aktif. Silakan edit atau nonaktifkan approver yang sudah ada terlebih dahulu.");
+    }
+    
     $name = trim(getRequestParam('name', ''));
     $username = trim(getRequestParam('username', ''));
     $nomorTelepon = trim(getRequestParam('nomor_telepon', ''));

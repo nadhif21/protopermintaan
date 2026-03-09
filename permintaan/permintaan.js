@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadData();
     setupEventListeners();
     setupLogout();
+    updateStatistics(); // Initialize statistics with 0 values
     
     // Cek apakah ada parameter id di URL untuk membuka detail
     const urlParams = new URLSearchParams(window.location.search);
@@ -627,6 +628,41 @@ function filterAndDisplayData() {
     displayData();
     updateResultCount();
     updatePagination();
+    updateStatistics();
+}
+
+function updateStatistics() {
+    // Calculate statistics from allData (not filteredData, to show overall stats)
+    const total = allData.length;
+    const pending = allData.filter(row => {
+        const status = (row.status || '').trim().toLowerCase();
+        return status === 'open';
+    }).length;
+    const approved = allData.filter(row => {
+        const status = (row.status || '').trim().toLowerCase();
+        return status === 'closed';
+    }).length;
+    const rejected = allData.filter(row => {
+        const status = (row.status || '').trim().toLowerCase();
+        return status === 'cancelled';
+    }).length;
+    const close = allData.filter(row => {
+        const status = (row.status || '').trim().toLowerCase();
+        return status === 'closed';
+    }).length;
+    
+    // Update DOM elements
+    const statTotal = document.getElementById('statTotal');
+    const statPending = document.getElementById('statPending');
+    const statApproved = document.getElementById('statApproved');
+    const statRejected = document.getElementById('statRejected');
+    const statClose = document.getElementById('statClose');
+    
+    if (statTotal) statTotal.textContent = total.toLocaleString('id-ID');
+    if (statPending) statPending.textContent = pending.toLocaleString('id-ID');
+    if (statApproved) statApproved.textContent = approved.toLocaleString('id-ID');
+    if (statRejected) statRejected.textContent = rejected.toLocaleString('id-ID');
+    if (statClose) statClose.textContent = close.toLocaleString('id-ID');
 }
 
 function displayData() {

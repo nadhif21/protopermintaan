@@ -1381,7 +1381,7 @@ function bindApprovers() {
     if (form) form.addEventListener('submit', saveApprover);
 }
 
-function openApproverModal(id = null) {
+async function openApproverModal(id = null) {
     currentApproverId = id;
     const modal = document.getElementById('approverModal');
     const title = document.getElementById('approverModalTitle');
@@ -1401,6 +1401,28 @@ function openApproverModal(id = null) {
     if (!form) {
         alert('Form element tidak ditemukan.');
         return;
+    }
+    
+    // Jika menambah approver baru (bukan edit), cek apakah sudah ada approver aktif
+    if (!id) {
+        try {
+            const token = getAuthToken();
+            const response = await fetch(`${API_URL}?action=getApprovers`, {
+                headers: { 'X-Auth-Token': token || '' }
+            });
+            
+            const result = await response.json();
+            if (result.success && result.data && result.data.length > 0) {
+                const activeApprovers = result.data.filter(a => a.is_active !== false);
+                if (activeApprovers.length > 0) {
+                    alert('Hanya boleh ada 1 approver aktif. Silakan edit atau nonaktifkan approver yang sudah ada terlebih dahulu.');
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Error checking approvers:', error);
+            // Continue anyway, backend will validate
+        }
     }
     
     // Load unit kerja dropdown
@@ -1535,6 +1557,17 @@ async function loadApprovers() {
         
         const tbody = document.getElementById('approversTbody');
         const approvers = result.data || [];
+        
+        // Hide/show "Tambah Approver" button based on active approvers count
+        const addBtn = document.getElementById('addApproverBtn');
+        if (addBtn) {
+            const activeApprovers = approvers.filter(a => a.is_active !== false);
+            if (activeApprovers.length >= 1) {
+                addBtn.style.display = 'none';
+            } else {
+                addBtn.style.display = 'inline-block';
+            }
+        }
         
         if (approvers.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="loading">Tidak ada approver</td></tr>';
