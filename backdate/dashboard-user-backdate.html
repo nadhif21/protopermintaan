@@ -524,8 +524,15 @@
             try {
                 const token = getAuthToken();
                 const apiUrl = getApiUrl();
-                const response = await fetch(`${apiUrl}?action=getListPermintaanBackdate`, {
-                    headers: { 'X-Auth-Token': token || '' }
+                // Tambahkan timestamp untuk cache-busting agar selalu mendapatkan data terbaru
+                const timestamp = Date.now();
+                const response = await fetch(`${apiUrl}?action=getListPermintaanBackdate&_t=${timestamp}`, {
+                    method: 'GET',
+                    headers: { 
+                        'X-Auth-Token': token || '',
+                        'Cache-Control': 'no-cache'
+                    },
+                    cache: 'no-cache'
                 });
                 
                 const result = await response.json();
@@ -746,11 +753,23 @@
                 const token = getAuthToken();
                 const apiUrl = getApiUrl();
                 const fullUrl = apiUrl;
-                const response = await fetch(`${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${id}`, {
-                    headers: { 'X-Auth-Token': token || '' }
+                // Tambahkan timestamp untuk cache-busting agar selalu mendapatkan data terbaru
+                const timestamp = Date.now();
+                const response = await fetch(`${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${id}&_t=${timestamp}`, {
+                    method: 'GET',
+                    headers: { 
+                        'X-Auth-Token': token || '',
+                        'Cache-Control': 'no-cache'
+                    },
+                    cache: 'no-cache'
                 });
                 
                 const result = await response.json();
+                
+                console.log('=== SHOW DETAIL NOMOR SURAT (USER) ===');
+                console.log('ID yang digunakan:', id);
+                console.log('API Response:', result);
+                console.log('Data length:', result.data ? result.data.length : 0);
                 
                 if (!result.success) {
                     throw new Error(result.error || 'Gagal memuat data nomor surat');

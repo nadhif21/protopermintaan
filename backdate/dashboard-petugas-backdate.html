@@ -309,14 +309,14 @@
             window.location.href = 'https://infoadkor.com/permintaandof/login.html';
         }
         
-        // Check if user is admin or super_admin
+        // Check if user is admin, super_admin, or petugas
         const session = getSession();
         if (!session || !session.user) {
             window.location.href = 'https://infoadkor.com/permintaandof/login.html';
         } else {
             const userRole = session.user.role || 'user';
-            if (userRole !== 'admin' && userRole !== 'super_admin') {
-                showAlert('Akses ditolak. Hanya admin yang dapat mengakses halaman ini.', 'error').then(() => {
+            if (userRole !== 'admin' && userRole !== 'super_admin' && userRole !== 'petugas') {
+                showAlert('Akses ditolak. Hanya admin dan petugas yang dapat mengakses halaman ini.', 'error').then(() => {
                     window.location.href = 'https://infoadkor.com/permintaandof/index.html';
                 });
             } else {
@@ -349,35 +349,90 @@
                 // Admin bisa lihat semua permintaan backdate
                 const apiUrl = getApiUrl();
                 const fullUrl = apiUrl;
-                const response = await fetch(`${fullUrl}?action=getListPermintaanBackdate`, {
-                    headers: { 'X-Auth-Token': token || '' }
+                
+                // Untuk petugas, tambahkan parameter as_petugas=1
+                const session = getSession();
+                const userRole = session?.user?.role || 'user';
+                const isPetugas = userRole === 'petugas';
+                
+                let apiUrlWithParams = `${fullUrl}?action=getListPermintaanBackdate`;
+                if (isPetugas) {
+                    apiUrlWithParams += '&as_petugas=1';
+                }
+                // Tambahkan timestamp untuk cache-busting agar selalu mendapatkan data terbaru
+                const timestamp = Date.now();
+                apiUrlWithParams += `&_t=${timestamp}`;
+                
+                console.log('Loading requests from:', apiUrlWithParams);
+                console.log('User role:', userRole, 'isPetugas:', isPetugas);
+                
+                const response = await fetch(apiUrlWithParams, {
+                    method: 'GET',
+                    headers: { 
+                        'X-Auth-Token': token || '',
+                        'Cache-Control': 'no-cache'
+                    },
+                    cache: 'no-cache'
                 });
                 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}. ${errorText.substring(0, 200)}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error(`Expected JSON but got ${contentType}. Response: ${text.substring(0, 200)}`);
+                }
+                
                 const result = await response.json();
+                console.log('API Response:', result);
+                
                 if (!result.success) {
                     throw new Error(result.error || 'Gagal memuat data');
                 }
                 
                 allRequests = result.data || [];
-                // Filter hanya approved (In Progress) dan rejected
+                console.log('Total requests loaded:', allRequests.length);
+                console.log('All requests:', allRequests);
+                
+                // Filter untuk petugas: tampilkan semua yang statusnya In Progress, Approved, atau Closed
+                // Admin/super_admin akan melihat semua, tapi untuk display kita filter yang relevan
                 approvedRequests = allRequests.filter(r => {
                     const status = (r.status || '').trim().toLowerCase();
-                    return status === 'in progress' || status === 'approved';
+                    // Tampilkan jika status In Progress, Approved, atau Closed
+                    // (Closed tetap ditampilkan karena mungkin perlu dilihat history)
+                    return status === 'in progress' || status === 'approved' || status === 'closed' || status === 'close';
                 });
+                
+                console.log('Approved requests (filtered):', approvedRequests.length);
+                console.log('Filtered requests:', approvedRequests);
+                
                 updateStats();
                 displayRequests();
             } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('approvedTableBody').innerHTML = 
-                    `<tr><td colspan="8" style="padding: 20px; text-align: center; color: #f44336;">Error: ${error.message}</td></tr>`;
+                console.error('Error loading requests:', error);
+                const tbody = document.getElementById('approvedTableBody');
+                if (tbody) {
+                    tbody.innerHTML = 
+                        `<tr><td colspan="8" style="padding: 20px; text-align: center; color: #f44336;">Error: ${error.message}</td></tr>`;
+                }
             }
         }
         
         function updateStats() {
-            const total = approvedRequests.length;
-            const approved = approvedRequests.length;
-            const inProgress = approvedRequests.filter(r => (r.status || '').trim().toLowerCase() === 'in progress').length;
-            const closed = approvedRequests.filter(r => {
+            // Hitung dari allRequests untuk statistik yang lebih akurat
+            const total = allRequests.length;
+            const approved = allRequests.filter(r => {
+                const status = (r.status || '').trim().toLowerCase();
+                return status === 'approved';
+            }).length;
+            const inProgress = allRequests.filter(r => {
+                const status = (r.status || '').trim().toLowerCase();
+                return status === 'in progress';
+            }).length;
+            const closed = allRequests.filter(r => {
                 const status = (r.status || '').trim().toLowerCase();
                 return status === 'closed' || status === 'close';
             }).length;
@@ -397,7 +452,7 @@
             const pagination = document.getElementById('approvedPagination');
             
             if (approvedRequests.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="padding: 20px; text-align: center;">Tidak ada tugas approved</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="padding: 20px; text-align: center;">Tidak ada tugas yang ditugaskan</td></tr>';
                 if (pagination) pagination.innerHTML = '';
                 return;
             }
@@ -467,9 +522,17 @@
         
         async function showUpdateModal(id) {
             const req = approvedRequests.find(r => r.id === id) || allRequests.find(r => r.id === id);
-            if (!req) return;
+            if (!req) {
+                console.error('Request not found for id:', id);
+                return;
+            }
             
-            currentRequestId = id;
+            // Pastikan ID di-set dengan benar sebagai integer
+            currentRequestId = parseInt(id);
+            console.log('=== SHOW UPDATE MODAL ===');
+            console.log('Setting currentRequestId to:', currentRequestId);
+            console.log('ID type:', typeof currentRequestId);
+            console.log('Request found:', req);
             const modal = document.getElementById('updateModal');
             const content = document.getElementById('updateContent');
             
@@ -488,7 +551,14 @@
                 </div>
                 <div class="detail-item">
                     <label>Jumlah Surat:</label>
-                    <div class="value">${req.jumlah_surat || 'N/A'}</div>
+                    <div class="value" style="display: flex; align-items: center; gap: 10px;">
+                        <span>${req.jumlah_surat || 'N/A'}</span>
+                        ${req.jumlah_surat && parseInt(req.jumlah_surat) > 0 ? `
+                            <button class="action-btn btn-detail" onclick="showDetailNomorSurat(${req.id})" style="padding: 6px 12px; font-size: 0.9rem;" title="Lihat detail nomor surat">
+                                Detail
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
             `;
             
@@ -497,18 +567,32 @@
                 const token = getAuthToken();
                 const apiUrl = getApiUrl();
                 const fullUrl = apiUrl;
-                const response = await fetch(`${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${id}`, {
-                    headers: { 'X-Auth-Token': token || '' }
+                // Tambahkan timestamp untuk cache-busting agar selalu mendapatkan data terbaru
+                const timestamp = Date.now();
+                const response = await fetch(`${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${id}&_t=${timestamp}`, {
+                    method: 'GET',
+                    headers: { 
+                        'X-Auth-Token': token || '',
+                        'Cache-Control': 'no-cache'
+                    },
+                    cache: 'no-cache'
                 });
                 const result = await response.json();
+                
+                console.log('=== SHOW UPDATE MODAL - Loading nomor surat ===');
+                console.log('Permintaan ID:', id);
+                console.log('Response getNomorSuratBackdate:', result);
+                console.log('Data length:', result.data ? result.data.length : 0);
                 
                 if (result.success && result.data && result.data.length > 0) {
                     // Ambil nomor surat terbaru (yang pertama di list karena diurutkan DESC)
                     const latestNomorSurat = result.data[0].nomor_surat || '';
                     document.getElementById('nomorSuratBackdate').value = latestNomorSurat;
+                    console.log('Latest nomor surat:', latestNomorSurat);
                 } else {
                     // Jika belum ada nomor surat di database, gunakan dari req
                     document.getElementById('nomorSuratBackdate').value = req.nomor_surat_backdate || '';
+                    console.log('No nomor surat found, using from req:', req.nomor_surat_backdate);
                 }
             } catch (error) {
                 console.error('Error loading nomor surat:', error);
@@ -518,6 +602,9 @@
             
             document.getElementById('statusSelect').value = req.status || 'In Progress';
             
+            // Simpan ID di data attribute modal untuk fallback
+            modal.setAttribute('data-request-id', id);
+            
             // Initialize button state
             setTimeout(() => {
                 toggleNomorSuratButtons();
@@ -525,6 +612,10 @@
             
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
+            
+            console.log('=== SHOW UPDATE MODAL COMPLETE ===');
+            console.log('currentRequestId after modal show:', currentRequestId);
+            console.log('currentRequestId type:', typeof currentRequestId);
         }
         
         // Function untuk show detail dengan update (gabungkan showDetail dan showUpdateModal)
@@ -799,12 +890,29 @@
             
             if (input && btnAdd && btnDetail) {
                 const hasValue = input.value.trim().length > 0;
+                // Button Add hanya enabled jika input ada value
                 btnAdd.disabled = !hasValue;
-                btnDetail.disabled = !hasValue;
                 btnAdd.style.opacity = hasValue ? '1' : '0.5';
-                btnDetail.style.opacity = hasValue ? '1' : '0.5';
                 btnAdd.style.cursor = hasValue ? 'pointer' : 'not-allowed';
-                btnDetail.style.cursor = hasValue ? 'pointer' : 'not-allowed';
+                
+                // Button Detail selalu enabled jika currentRequestId ada (untuk melihat detail yang sudah ada)
+                const hasRequestId = currentRequestId !== null && currentRequestId !== undefined;
+                console.log('Toggle buttons - currentRequestId:', currentRequestId, 'hasRequestId:', hasRequestId);
+                btnDetail.disabled = !hasRequestId;
+                btnDetail.style.opacity = hasRequestId ? '1' : '0.5';
+                btnDetail.style.cursor = hasRequestId ? 'pointer' : 'not-allowed';
+                
+                // Update onclick untuk Detail button agar selalu menggunakan currentRequestId
+                if (hasRequestId) {
+                    // Pastikan currentRequestId adalah number sebelum digunakan
+                    const requestId = parseInt(currentRequestId);
+                    btnDetail.onclick = () => {
+                        console.log('Detail button clicked, currentRequestId:', currentRequestId, 'parsed:', requestId);
+                        showDetailNomorSurat(requestId);
+                    };
+                } else {
+                    btnDetail.onclick = null;
+                }
             }
         }
         
@@ -925,8 +1033,15 @@
                 
                 try {
                     const token = getAuthToken();
+                    // Pastikan currentRequestId adalah number
+                    const permintaanId = parseInt(currentRequestId);
+                    if (!permintaanId || isNaN(permintaanId)) {
+                        await showAlert('ID permintaan tidak valid. Silakan refresh halaman dan coba lagi.', 'error');
+                        return;
+                    }
+                    
                     const requestBody = {
-                        permintaan_id: currentRequestId,
+                        permintaan_id: permintaanId,
                         unit_kerja: unitKerja,
                         nomor_surat: nomorSurat,
                         perihal: perihal || ''
@@ -934,8 +1049,11 @@
                     
                     const apiUrl = getApiUrl();
                     const fullUrl = apiUrl;
+                    console.log('=== ADD NOMOR SURAT ===');
                     console.log('Sending request to:', `${fullUrl}?action=addNomorSuratBackdate`);
                     console.log('Request body:', requestBody);
+                    console.log('Current request ID:', currentRequestId);
+                    console.log('Parsed permintaan ID:', permintaanId);
                     console.log('Token:', token ? 'Present' : 'Missing');
                 const response = await fetch(`${fullUrl}?action=addNomorSuratBackdate`, {
                         method: 'POST',
@@ -966,6 +1084,8 @@
                     }
                     
                     console.log('Nomor surat berhasil ditambahkan:', result);
+                    console.log('Inserted ID:', result.data?.id);
+                    console.log('Permintaan ID:', result.data?.permintaan_id);
                     await showAlert('Nomor surat backdate berhasil ditambahkan', 'success');
                     closeAddNomorSuratModal();
                     
@@ -976,16 +1096,25 @@
                         toggleNomorSuratButtons();
                     }
                     
+                    // Tunggu sebentar untuk memastikan data sudah tersimpan di database
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
                     // Refresh data permintaan untuk mendapatkan data terbaru
                     await loadRequests();
                     
-                    // Buka kembali modal update dengan data terbaru
-                    await showUpdateModal(currentRequestId);
-                    
-                    // Refresh modal detail jika sedang terbuka
-                    const detailModal = document.getElementById('detailNomorSuratModal');
-                    if (detailModal && detailModal.style.display === 'flex') {
-                        await openDetailNomorSuratModal();
+                    // Pastikan currentRequestId masih ada sebelum membuka modal
+                    if (currentRequestId) {
+                        // Buka kembali modal update dengan data terbaru
+                        await showUpdateModal(currentRequestId);
+                        
+                        // Refresh modal detail jika sedang terbuka - gunakan classList.contains bukan style.display
+                        const detailModal = document.getElementById('detailNomorSuratModal');
+                        if (detailModal && detailModal.classList.contains('show')) {
+                            // Tunggu sebentar lagi sebelum refresh detail
+                            await new Promise(resolve => setTimeout(resolve, 300));
+                            // Pastikan menggunakan currentRequestId yang benar
+                            await showDetailNomorSurat(currentRequestId);
+                        }
                     }
                 } catch (error) {
                     console.error('Error adding nomor surat:', error);
@@ -1004,76 +1133,94 @@
             setupAddNomorSuratFormListener();
         }
         
-        // Open modal Detail
-        async function openDetailNomorSuratModal() {
-            const input = document.getElementById('nomorSuratBackdate');
-            if (!input || !input.value.trim()) {
-                await showAlert('Nomor Surat Backdate harus diisi terlebih dahulu', 'warning');
-                return;
-            }
-            
+        // Function untuk menampilkan detail nomor surat - SAMA PERSIS seperti di dashboard user
+        async function showDetailNomorSurat(id) {
             const modal = document.getElementById('detailNomorSuratModal');
             const content = document.getElementById('detailNomorSuratContent');
             
-            if (modal && content) {
-                modal.style.display = 'flex';
-                document.body.style.overflow = 'hidden';
+            if (!modal || !content) return;
+            
+            content.innerHTML = '<p>Memuat data...</p>';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            try {
+                const token = getAuthToken();
+                const apiUrl = getApiUrl();
+                const fullUrl = apiUrl;
+                // Tambahkan timestamp untuk cache-busting agar selalu mendapatkan data terbaru
+                const timestamp = Date.now();
+                const response = await fetch(`${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${id}&_t=${timestamp}`, {
+                    method: 'GET',
+                    headers: { 
+                        'X-Auth-Token': token || '',
+                        'Cache-Control': 'no-cache'
+                    },
+                    cache: 'no-cache'
+                });
                 
-                content.innerHTML = '<div class="loading">Memuat data...</div>';
+                const result = await response.json();
                 
-                try {
-                    const token = getAuthToken();
-                    const apiUrl = getApiUrl();
-                    const fullUrl = apiUrl;
-                    const url = `${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${currentRequestId}`;
-                    console.log('Fetching nomor surat from:', url);
-                    
-                    const response = await fetch(url, {
-                        headers: { 'X-Auth-Token': token || '' }
-                    });
-                    const result = await response.json();
-                    
-                    console.log('Response getNomorSuratBackdate:', result);
-                    
-                    if (result.success && result.data) {
-                        if (result.data.length === 0) {
-                            content.innerHTML = '<p style="text-align: center; color: #999;">Belum ada nomor surat backdate yang ditambahkan</p>';
-                        } else {
-                            let html = '<table class="nomor-surat-table">';
-                            html += '<thead><tr><th>No</th><th>Unit Kerja</th><th>Nomor Surat</th><th>Perihal</th><th>Tanggal</th><th>Aksi</th></tr></thead>';
-                            html += '<tbody>';
-                            
-                            result.data.forEach((item, index) => {
-                                html += `<tr>
-                                    <td>${index + 1}</td>
-                                    <td>${escapeHtml(item.unit_kerja || '-')}</td>
-                                    <td>${escapeHtml(item.nomor_surat || '-')}</td>
-                                    <td>${escapeHtml(item.perihal || '-')}</td>
-                                    <td>${new Date(item.created_at).toLocaleString('id-ID')}</td>
-                                    <td><button class="btn-delete" onclick="deleteNomorSurat(${item.id})">Hapus</button></td>
-                                </tr>`;
-                            });
-                            
-                            html += '</tbody></table>';
-                            content.innerHTML = html;
-                        }
-                    } else {
-                        content.innerHTML = '<p style="text-align: center; color: #f44336;">Error: ' + (result.error || 'Gagal memuat data') + '</p>';
-                    }
-                } catch (error) {
-                    content.innerHTML = '<p style="text-align: center; color: #f44336;">Error: ' + error.message + '</p>';
+                if (!result.success) {
+                    throw new Error(result.error || 'Gagal memuat data nomor surat');
                 }
+                
+                const nomorSuratList = result.data || [];
+                
+                if (nomorSuratList.length === 0) {
+                    content.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Belum ada nomor surat yang ditambahkan</p>';
+                    return;
+                }
+                
+                content.innerHTML = `
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f5f5f5;">
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">No</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Unit Kerja</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Nomor Surat</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Perihal</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Tanggal</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${nomorSuratList.map((surat, index) => `
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 10px;">${index + 1}</td>
+                                        <td style="padding: 10px;">${escapeHtml(surat.unit_kerja || 'N/A')}</td>
+                                        <td style="padding: 10px;">${escapeHtml(surat.nomor_surat || 'N/A')}</td>
+                                        <td style="padding: 10px;">${escapeHtml(surat.perihal || 'N/A')}</td>
+                                        <td style="padding: 10px;">${new Date(surat.created_at).toLocaleString('id-ID')}</td>
+                                        <td style="padding: 10px;"><button class="btn-delete" onclick="deleteNomorSurat(${surat.id})" style="padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Hapus</button></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading nomor surat:', error);
+                content.innerHTML = `<p style="color: #f44336; text-align: center; padding: 20px;">Error: ${error.message}</p>`;
             }
         }
         
-        // Close modal Detail
-        function closeDetailNomorSuratModal() {
-            const modal = document.getElementById('detailNomorSuratModal');
-            if (modal) {
-                modal.style.display = 'none';
-                modal.classList.remove('show');
-                document.body.style.overflow = 'auto';
+        // Alias untuk backward compatibility
+        async function openDetailNomorSuratModal(id = null) {
+            // Jika id tidak diberikan, gunakan currentRequestId
+            const requestId = id || currentRequestId;
+            if (!requestId) {
+                await showAlert('ID permintaan tidak ditemukan. Silakan buka detail permintaan terlebih dahulu.', 'warning');
+                return;
             }
+            await showDetailNomorSurat(requestId);
+        }
+        
+        // Close modal Detail - sama seperti di dashboard user
+        function closeDetailNomorSuratModal() {
+            document.getElementById('detailNomorSuratModal').classList.remove('show');
+            document.body.style.overflow = 'auto';
         }
         
         // Delete nomor surat
@@ -1107,20 +1254,50 @@
                 console.log('Nomor surat berhasil dihapus');
                 await showAlert('Nomor surat backdate berhasil dihapus', 'success');
                 
-                // Refresh data permintaan
+                // Tunggu sebentar untuk memastikan data sudah terhapus di database
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Refresh data permintaan terlebih dahulu
                 await loadRequests();
                 
-                // Refresh modal detail
-                await openDetailNomorSuratModal();
+                // Refresh modal detail jika sedang terbuka - gunakan classList.contains bukan style.display
+                const detailModal = document.getElementById('detailNomorSuratModal');
+                if (detailModal && detailModal.classList.contains('show')) {
+                    // Cari ID permintaan yang sedang ditampilkan
+                    let requestIdToRefresh = null;
+                    
+                    // Coba ambil dari update modal yang sedang terbuka
+                    const updateModal = document.getElementById('updateModal');
+                    if (updateModal && updateModal.classList.contains('show')) {
+                        const modalRequestId = updateModal.getAttribute('data-request-id');
+                        if (modalRequestId) {
+                            requestIdToRefresh = parseInt(modalRequestId);
+                        } else if (currentRequestId) {
+                            requestIdToRefresh = currentRequestId;
+                        }
+                    } else if (currentRequestId) {
+                        requestIdToRefresh = currentRequestId;
+                    }
+                    
+                    // Refresh modal detail dengan ID yang benar - tunggu sebentar lagi untuk memastikan database sudah update
+                    if (requestIdToRefresh) {
+                        console.log('Refreshing detail modal after delete with ID:', requestIdToRefresh);
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        await showDetailNomorSurat(requestIdToRefresh);
+                    }
+                }
             } catch (error) {
                 await showAlert('Error: ' + error.message, 'error');
             }
         }
         
         // Load data on page load
-        if (session && session.user && (session.user.role === 'admin' || session.user.role === 'super_admin')) {
-            loadRequests();
-            initializeItemsPerPage();
+        if (session && session.user) {
+            const userRole = session.user.role || 'user';
+            if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'petugas') {
+                loadRequests();
+                initializeItemsPerPage();
+            }
         }
     </script>
     

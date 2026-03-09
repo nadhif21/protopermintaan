@@ -888,10 +888,17 @@
                 const statusFilter = document.getElementById('statusFilter').value;
                 const token = getAuthToken();
                 const apiUrl = getApiUrl();
-                const url = `${apiUrl}?action=getListPermintaanBackdate${statusFilter !== 'all' ? '&status=' + statusFilter : ''}`;
+                // Tambahkan timestamp untuk cache-busting agar selalu mendapatkan data terbaru
+                const timestamp = Date.now();
+                const url = `${apiUrl}?action=getListPermintaanBackdate${statusFilter !== 'all' ? '&status=' + statusFilter : ''}&_t=${timestamp}`;
                 
                 const response = await fetch(url, {
-                    headers: { 'X-Auth-Token': token || '' }
+                    method: 'GET',
+                    headers: { 
+                        'X-Auth-Token': token || '',
+                        'Cache-Control': 'no-cache'
+                    },
+                    cache: 'no-cache'
                 });
                 
                 const result = await response.json();
@@ -1703,8 +1710,15 @@
                 const token = getAuthToken();
                 const apiUrl = getApiUrl();
                 const fullUrl = apiUrl;
-                const response = await fetch(`${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${id}`, {
-                    headers: { 'X-Auth-Token': token || '' }
+                // Tambahkan timestamp untuk cache-busting agar selalu mendapatkan data terbaru
+                const timestamp = Date.now();
+                const response = await fetch(`${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${id}&_t=${timestamp}`, {
+                    method: 'GET',
+                    headers: { 
+                        'X-Auth-Token': token || '',
+                        'Cache-Control': 'no-cache'
+                    },
+                    cache: 'no-cache'
                 });
                 
                 const result = await response.json();

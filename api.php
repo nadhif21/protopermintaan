@@ -2986,9 +2986,18 @@ function handleAddNomorSuratBackdate($conn) {
 }
 
 function handleGetNomorSuratBackdate($conn) {
+    // Debug: log semua parameter yang diterima
+    error_log("getNomorSuratBackdate - GET params: " . json_encode($_GET));
+    error_log("getNomorSuratBackdate - POST params: " . json_encode($_POST));
+    error_log("getNomorSuratBackdate - REQUEST params: " . json_encode($_REQUEST));
+    
     $permintaanId = intval(getRequestParam('permintaan_id', 0));
     
+    error_log("getNomorSuratBackdate - permintaan_id from getRequestParam: " . $permintaanId);
+    error_log("getNomorSuratBackdate - permintaan_id type: " . gettype($permintaanId));
+    
     if (!$permintaanId) {
+        error_log("getNomorSuratBackdate - Invalid permintaan_id: " . $permintaanId);
         throw new Exception("ID permintaan tidak valid");
     }
     
@@ -3032,15 +3041,30 @@ function handleGetNomorSuratBackdate($conn) {
         }
     }
     
-    $sql = "SELECT `id`, `unit_kerja`, `nomor_surat`, `perihal`, `created_at` FROM `nomor_surat_backdate` WHERE `permintaan_id` = ? ORDER BY `created_at` DESC";
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new Exception("Prepare error: " . $conn->error);
+    // Test query langsung untuk debugging
+    $testQuery = "SELECT COUNT(*) as count FROM `nomor_surat_backdate` WHERE `permintaan_id` = " . intval($permintaanId);
+    $testResult = $conn->query($testQuery);
+    if ($testResult) {
+        $testRow = $testResult->fetch_assoc();
+        error_log("getNomorSuratBackdate - Direct query count: " . $testRow['count']);
     }
     
-    $stmt->bind_param('i', $permintaanId);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    // Log untuk debugging
+    error_log("getNomorSuratBackdate called with permintaan_id: " . $permintaanId);
+    
+    // Gunakan query langsung untuk menghindari masalah dengan prepared statement
+    $permintaanIdEscaped = intval($permintaanId);
+    $sql = "SELECT `id`, `unit_kerja`, `nomor_surat`, `perihal`, `created_at` FROM `nomor_surat_backdate` WHERE `permintaan_id` = " . $permintaanIdEscaped . " ORDER BY `created_at` DESC";
+    
+    error_log("getNomorSuratBackdate - Executing query: " . $sql);
+    $result = $conn->query($sql);
+    
+    if (!$result) {
+        error_log("Query error: " . $conn->error);
+        throw new Exception("Query error: " . $conn->error);
+    }
+    
+    error_log("getNomorSuratBackdate - Query executed, num_rows: " . $result->num_rows);
     
     $data = [];
     while ($row = $result->fetch_assoc()) {
@@ -3053,7 +3077,9 @@ function handleGetNomorSuratBackdate($conn) {
         ];
     }
     
-    $stmt->close();
+    error_log("getNomorSuratBackdate found " . count($data) . " records for permintaan_id: " . $permintaanId);
+    error_log("getNomorSuratBackdate - Data: " . json_encode($data));
+    
     sendJSONResponse(true, $data);
 }
 
