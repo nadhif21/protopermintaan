@@ -93,6 +93,12 @@ body {
 
 .sidebar-nav-item.sidebar-nav-parent {
     cursor: pointer;
+    user-select: none;
+}
+
+.sidebar-nav-item.sidebar-nav-parent:hover {
+    background: #f5f7fa;
+    color: #1976d2;
 }
 
 .sidebar-nav-arrow {

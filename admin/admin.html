@@ -69,11 +69,29 @@
                     </span>
                     <span>Data Surat Yang Backdate</span>
                 </a>
-                <a href="../backdate/form-backdate.html" class="sidebar-submenu-item">
+                <a href="../backdate/form-backdate.html" class="sidebar-submenu-item" id="formBackdateWorkflowMenuLink">
                     <span class="sidebar-submenu-icon">
                         <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
                     </span>
-                    <span>Input Data Backdate</span>
+                    <span>Form Permintaan Backdate</span>
+                </a>
+                <a href="../backdate/dashboard-user-backdate.html" class="sidebar-submenu-item" id="dashboardUserBackdateMenuLink">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    </span>
+                    <span>Status Permintaan Saya</span>
+                </a>
+                <a href="../backdate/dashboard-approver-backdate.html" class="sidebar-submenu-item" id="dashboardApproverBackdateMenuLink">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+                    </span>
+                    <span>Approval Backdate</span>
+                </a>
+                <a href="../backdate/dashboard-petugas-backdate.html" class="sidebar-submenu-item" id="dashboardPetugasBackdateMenuLink">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    </span>
+                    <span>Tugas Backdate</span>
                 </a>
             </div>
         </nav>
@@ -155,6 +173,79 @@
                         <button id="savePinBtn" class="btn btn-primary">Simpan PIN</button>
                         <button id="cancelEditPinBtn" class="btn">Batal</button>
                     </div>
+                </div>
+            </section>
+
+            <!-- Approver Management Section -->
+            <section class="panel">
+                <div class="panel-header">
+                    <div class="panel-title-with-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/>
+                        </svg>
+                        <div>
+                            <h2>Approver Management</h2>
+                            <p class="panel-description">Kelola data approver dan nomor telepon untuk notifikasi WhatsApp</p>
+                        </div>
+                    </div>
+                    <div class="panel-actions">
+                        <button id="addApproverBtn" class="btn btn-primary">Tambah Approver</button>
+                        <button id="refreshApproversBtn" class="btn">Refresh</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="admin-table" id="approversTable">
+                        <thead>
+                            <tr>
+                                <th>NAMA</th>
+                                <th>USERNAME</th>
+                                <th>NOMOR TELEPON</th>
+                                <th>EMAIL</th>
+                                <th>UNIT KERJA</th>
+                                <th>STATUS</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approversTbody">
+                            <tr><td colspan="7" class="loading">Memuat...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Petugas Management Section -->
+            <section class="panel">
+                <div class="panel-header">
+                    <div class="panel-title-with-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <div>
+                            <h2>Petugas Management</h2>
+                            <p class="panel-description">Kelola data petugas dan nomor telepon untuk notifikasi WhatsApp</p>
+                        </div>
+                    </div>
+                    <div class="panel-actions">
+                        <button id="addPetugasBtn" class="btn btn-primary">Tambah Petugas</button>
+                        <button id="refreshPetugasBtn" class="btn">Refresh</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="admin-table" id="petugasTable">
+                        <thead>
+                            <tr>
+                                <th>NAMA</th>
+                                <th>NPK</th>
+                                <th>JABATAN</th>
+                                <th>NOMOR TELEPON</th>
+                                <th>STATUS</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="petugasTbody">
+                            <tr><td colspan="6" class="loading">Memuat...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
@@ -473,6 +564,74 @@
                 <div class="form-actions">
                     <button type="button" id="cancelResetPasswordBtn" class="btn">Batal</button>
                     <button type="submit" class="btn btn-primary">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Create/Edit Approver -->
+    <div id="approverModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="approverModalTitle">Tambah Approver</h3>
+                <button id="closeApproverModal" class="icon-btn" title="Tutup">✕</button>
+            </div>
+            <form id="approverForm" class="form">
+                <div class="form-row">
+                    <label>Nama <span style="color: red;">*</span></label>
+                    <input type="text" id="approverName" placeholder="Nama lengkap" required>
+                </div>
+                <div class="form-row">
+                    <label>Email</label>
+                    <input type="email" id="approverEmail" placeholder="email@example.com">
+                </div>
+                <div class="form-row">
+                    <label>Nomor Telepon</label>
+                    <input type="tel" id="approverNomorTelepon" placeholder="08xxxxxxxxxx">
+                </div>
+                <div class="form-row">
+                    <label>Unit Kerja</label>
+                    <select id="approverUnitKerja">
+                        <option value="">Pilih Unit Kerja</option>
+                    </select>
+                </div>
+                <div id="approverError" class="error-box"></div>
+                <div class="form-actions">
+                    <button type="button" id="cancelApproverBtn" class="btn">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Create/Edit Petugas -->
+    <div id="petugasModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="petugasModalTitle">Tambah Petugas</h3>
+                <button id="closePetugasModal" class="icon-btn" title="Tutup">✕</button>
+            </div>
+            <form id="petugasForm" class="form">
+                <div class="form-row">
+                    <label>Nama <span style="color: red;">*</span></label>
+                    <input type="text" id="petugasNama" placeholder="Nama lengkap" required>
+                </div>
+                <div class="form-row">
+                    <label>NPK</label>
+                    <input type="text" id="petugasNpk" placeholder="NPK">
+                </div>
+                <div class="form-row">
+                    <label>Jabatan</label>
+                    <input type="text" id="petugasJabatan" placeholder="Jabatan">
+                </div>
+                <div class="form-row">
+                    <label>Nomor WhatsApp</label>
+                    <input type="tel" id="petugasNoWa" placeholder="08xxxxxxxxxx">
+                </div>
+                <div id="petugasError" class="error-box"></div>
+                <div class="form-actions">
+                    <button type="button" id="cancelPetugasBtn" class="btn">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </form>
         </div>

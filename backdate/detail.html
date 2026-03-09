@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail & Approval Permintaan Backdate</title>
+    <link rel="stylesheet" href="../layout.css">
+    <style>
+        body {
+            background: #f5f7fa;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .approval-container {
+            max-width: 900px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* PIN Modal Card */
+        .pin-card {
+            background: white;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 14px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .pin-icon-wrapper {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 16px;
+        }
+
+        .pin-icon-wrapper svg {
+            width: 48px;
+            height: 48px;
+            stroke: white;
+            fill: none;
+        }
+
+        .pin-card h2 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .pin-card p {
+            margin: 0 0 32px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .pin-input-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .pin-input {
+            width: 60px;
+            height: 60px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .pin-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        .pin-error {
+            color: #f44336;
+            font-size: 14px;
+            margin-bottom: 20px;
+            min-height: 20px;
+        }
+
+        .pin-submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 16px;
+        }
+
+        .pin-submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .pin-submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Request Details Card */
+        .details-card {
+            background: white;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            display: none;
+            flex-direction: column;
+            max-height: calc(100vh - 100px);
+            overflow: hidden;
+        }
+
+        .details-card.show {
+            display: flex;
+        }
+
+        .details-header {
+            padding: 24px;
+            border-bottom: 1px solid #e0e0e0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .details-header h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .details-content {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .detail-section h3 {
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+
+        .detail-item {
+            margin-bottom: 16px;
+        }
+
+        .detail-item label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .detail-item .value {
+            color: #333;
+            font-size: 1rem;
+        }
+
+        .status-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-open { background: #ffc107; color: #000; }
+        .status-approved { background: #4caf50; color: white; }
+        .status-rejected { background: #f44336; color: white; }
+        .status-in-progress { background: #2196f3; color: white; }
+        .status-closed { background: #9e9e9e; color: white; }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .btn-approve {
+            flex: 1;
+            padding: 14px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-approve:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-approve:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-reject {
+            flex: 1;
+            padding: 14px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-reject:hover:not(:disabled) {
+            background: #da190b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+        }
+
+        .btn-reject:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-whatsapp {
+            padding: 12px 24px;
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-whatsapp:hover {
+            background: #20BA5A;
+        }
+
+        .logs-section {
+            margin-top: 20px;
+        }
+
+        .log-item {
+            padding: 12px;
+            background: #f5f5f5;
+            border-left: 3px solid #2196F3;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .log-item .log-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .log-item .log-action {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .log-item .log-time {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .log-item .log-description {
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="approval-container">
+        <!-- PIN Card -->
+        <div id="pinCard" class="pin-card">
+            <div class="pin-icon-wrapper">
+                <svg viewBox="0 0 24 24" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            <h2>Verifikasi PIN</h2>
+            <p>Masukkan PIN untuk mengakses detail dan approval permintaan backdate</p>
+            
+            <div class="pin-input-group">
+                <input type="text" id="pin1" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">
+                <input type="text" id="pin2" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">
+                <input type="text" id="pin3" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">
+                <input type="text" id="pin4" class="pin-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">
+            </div>
+            
+            <div id="pinError" class="pin-error"></div>
+            
+            <button id="pinSubmitBtn" class="pin-submit-btn">Verifikasi PIN</button>
+        </div>
+
+        <!-- Details Card -->
+        <div id="detailsCard" class="details-card">
+            <div class="details-header">
+                <h2>Detail & Approval Permintaan Backdate</h2>
+            </div>
+            <div class="details-content">
+                <div id="loading" class="loading">Memuat data...</div>
+                <div id="error" class="error" style="display: none;"></div>
+                
+                <div id="detailInfo" style="display: none;">
+                    <!-- Content akan diisi oleh JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '../api.php';
+        
+        let validatedPin = null;
+        let permintaanData = null;
+        let permintaanId = null;
+
+        // Get ID from URL
+        function getPermintaanId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id');
+        }
+
+        function getPin() {
+            const pin1 = document.getElementById('pin1').value;
+            const pin2 = document.getElementById('pin2').value;
+            const pin3 = document.getElementById('pin3').value;
+            const pin4 = document.getElementById('pin4').value;
+            return pin1 + pin2 + pin3 + pin4;
+        }
+
+        // Format status badge
+        function getStatusBadge(status) {
+            const statusLower = (status || '').toLowerCase().trim();
+            let className = 'status-open';
+            let text = status || 'Open';
+            
+            if (statusLower === 'approved') {
+                className = 'status-approved';
+                text = 'Approved';
+            } else if (statusLower === 'rejected') {
+                className = 'status-rejected';
+                text = 'Rejected';
+            } else if (statusLower === 'in progress') {
+                className = 'status-in-progress';
+                text = 'In Progress';
+            } else if (statusLower === 'closed') {
+                className = 'status-closed';
+                text = 'Closed';
+            }
+            
+            return `<span class="status-badge ${className}">${text}</span>`;
+        }
+
+        // Format WhatsApp number
+        function formatWhatsAppNumber(phone) {
+            if (!phone) return '';
+            let cleaned = phone.replace(/\D/g, '');
+            if (cleaned.startsWith('0')) {
+                cleaned = '62' + cleaned.substring(1);
+            } else if (!cleaned.startsWith('62')) {
+                cleaned = '62' + cleaned;
+            }
+            return cleaned;
+        }
+
+        // Open WhatsApp
+        function openWhatsApp() {
+            if (!permintaanData.petugas_no_wa || !permintaanData.petugas_nama) {
+                await showAlert('Data petugas tidak tersedia', 'error');
+                return;
+            }
+            
+            const baseUrl = window.location.origin;
+            const detailUrl = `${baseUrl}/backdate/detail.html?id=${permintaanData.id}`;
+            
+            const message = `Halo ${permintaanData.petugas_nama},
+
+Saya ingin menanyakan progress permintaan backdate saya.
+
+Detail permintaan:
+Nomor: ${permintaanData.row_number}
+Nama Pegawai: ${permintaanData.nama_pegawai_backdate}
+NPK: ${permintaanData.npk_pegawai_backdate}
+Jumlah Surat: ${permintaanData.jumlah_surat}
+Status: ${permintaanData.status}
+
+Link detail: ${detailUrl}
+
+Mohon informasi progress terbaru. Terima kasih.`;
+            
+            const whatsappNumber = formatWhatsAppNumber(permintaanData.petugas_no_wa);
+            const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+            
+            window.open(whatsappUrl, '_blank');
+        }
+
+        // Load and display data
+        async function loadAndShowData() {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const detailInfoEl = document.getElementById('detailInfo');
+            
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            detailInfoEl.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_URL}?action=getPermintaanBackdate&id=${permintaanId}`);
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Gagal memuat data');
+                }
+                
+                permintaanData = result.data;
+                
+                // Build HTML
+                let html = '';
+                
+                // Informasi Permintaan
+                html += '<div class="detail-section">';
+                html += '<h3>Informasi Permintaan</h3>';
+                html += `<div class="detail-item"><label>Nomor Permintaan</label><div class="value">${permintaanData.row_number || '-'}</div></div>`;
+                html += `<div class="detail-item"><label>Status</label><div class="value">${getStatusBadge(permintaanData.status)}</div></div>`;
+                html += `<div class="detail-item"><label>Tanggal Dibuat</label><div class="value">${new Date(permintaanData.created_at).toLocaleString('id-ID')}</div></div>`;
+                html += '</div>';
+                
+                // Data Pemohon
+                html += '<div class="detail-section">';
+                html += '<h3>Data Pemohon</h3>';
+                html += `<div class="detail-item"><label>NPK</label><div class="value">${permintaanData.npk_user || '-'}</div></div>`;
+                html += `<div class="detail-item"><label>Nama Lengkap</label><div class="value">${permintaanData.nama_user || '-'}</div></div>`;
+                html += `<div class="detail-item"><label>Unit Kerja</label><div class="value">${permintaanData.unit_kerja || '-'}</div></div>`;
+                html += '</div>';
+                
+                // Data Permintaan Backdate
+                html += '<div class="detail-section">';
+                html += '<h3>Data Permintaan Backdate</h3>';
+                html += `<div class="detail-item"><label>Nama Pegawai yang Dibukakan Backdate</label><div class="value">${permintaanData.nama_pegawai_backdate || '-'}</div></div>`;
+                html += `<div class="detail-item"><label>NPK Pegawai</label><div class="value">${permintaanData.npk_pegawai_backdate || '-'}</div></div>`;
+                html += `<div class="detail-item"><label>Nomor Surat Permintaan</label><div class="value">${permintaanData.nomor_surat_permintaan || '-'}</div></div>`;
+                html += `<div class="detail-item"><label>Jumlah Surat</label><div class="value">${permintaanData.jumlah_surat || '-'}</div></div>`;
+                html += `<div class="detail-item"><label>Alasan Permintaan</label><div class="value">${permintaanData.alasan || '-'}</div></div>`;
+                html += '</div>';
+                
+                // Data Petugas
+                html += '<div class="detail-section">';
+                html += '<h3>Data Petugas</h3>';
+                html += `<div class="detail-item"><label>Nama Petugas</label><div class="value">${permintaanData.petugas_nama || '-'}</div></div>`;
+                if (permintaanData.keterangan_petugas) {
+                    html += `<div class="detail-item"><label>Keterangan Petugas</label><div class="value">${permintaanData.keterangan_petugas}</div></div>`;
+                }
+                if (permintaanData.petugas_no_wa && permintaanData.petugas_nama) {
+                    html += `<button class="btn-whatsapp" onclick="openWhatsApp()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                        </svg>
+                        Hubungi Petugas
+                    </button>`;
+                }
+                html += '</div>';
+                
+                
+                // Log Aktivitas
+                if (permintaanData.logs && permintaanData.logs.length > 0) {
+                    html += '<div class="detail-section">';
+                    html += '<h3>Log Aktivitas</h3>';
+                    html += '<div class="logs-section">';
+                    permintaanData.logs.forEach(log => {
+                        html += `<div class="log-item">
+                            <div class="log-header">
+                                <span class="log-action">${log.action || '-'}</span>
+                                <span class="log-time">${new Date(log.created_at).toLocaleString('id-ID')}</span>
+                            </div>
+                            <div class="log-description">${log.description || '-'}</div>
+                            ${log.user_name ? `<div style="font-size: 0.85rem; color: #666; margin-top: 5px;">Oleh: ${log.user_name}</div>` : ''}
+                        </div>`;
+                    });
+                    html += '</div>';
+                    html += '</div>';
+                }
+                
+                // Action Buttons (hanya untuk status Open)
+                const currentStatus = (permintaanData.status || '').trim().toLowerCase();
+                if (currentStatus === 'open') {
+                    html += '<div class="detail-section">';
+                    html += '<h3>Pilih Petugas</h3>';
+                    html += '<div class="detail-item">';
+                    html += '<label for="petugasSelect" class="required">Petugas:</label>';
+                    html += '<select id="petugasSelect" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px;">';
+                    html += '<option value="">Pilih Petugas</option>';
+                    html += '</select>';
+                    html += '</div>';
+                    html += '<div class="detail-item">';
+                    html += '<label for="catatanPelaksanaan">Catatan Pelaksanaan:</label>';
+                    html += '<textarea id="catatanPelaksanaan" rows="4" placeholder="Masukkan catatan pelaksanaan (opsional)" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical;"></textarea>';
+                    html += '</div>';
+                    html += '</div>';
+                    
+                    html += '<div class="action-buttons">';
+                    html += '<button class="btn-approve" onclick="approveRequest()">Approve</button>';
+                    html += '<button class="btn-reject" onclick="rejectRequest()">Reject</button>';
+                    html += '</div>';
+                    
+                    // Load petugas list setelah HTML di-render
+                    setTimeout(() => {
+                        loadPetugasForApproval();
+                    }, 100);
+                }
+                
+                detailInfoEl.innerHTML = html;
+                
+                loadingEl.style.display = 'none';
+                detailInfoEl.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        // Load petugas for approval
+        async function loadPetugasForApproval() {
+            try {
+                // Gunakan parameter for_approval=true untuk akses tanpa autentikasi
+                const response = await fetch(`${API_URL}?action=getPetugas&for_approval=true`);
+                const result = await response.json();
+                
+                if (result.success && result.data && Array.isArray(result.data)) {
+                    const select = document.getElementById('petugasSelect');
+                    if (select) {
+                        select.innerHTML = '<option value="">Pilih Petugas</option>';
+                        if (result.data.length === 0) {
+                            const option = document.createElement('option');
+                            option.value = '';
+                            option.textContent = 'Tidak ada petugas tersedia';
+                            option.disabled = true;
+                            select.appendChild(option);
+                        } else {
+                            result.data.forEach(petugas => {
+                                const option = document.createElement('option');
+                                option.value = petugas.id;
+                                option.textContent = petugas.nama || 'Petugas ' + petugas.id;
+                                option.setAttribute('data-nama', petugas.nama || '');
+                                select.appendChild(option);
+                            });
+                        }
+                    }
+                } else {
+                    console.error('Error loading petugas: Invalid response', result);
+                    const select = document.getElementById('petugasSelect');
+                    if (select) {
+                        select.innerHTML = '<option value="">Error memuat petugas</option>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading petugas:', error);
+                const select = document.getElementById('petugasSelect');
+                if (select) {
+                    select.innerHTML = '<option value="">Error memuat petugas</option>';
+                }
+            }
+        }
+        
+        // Approve request
+        async function approveRequest() {
+            const petugasSelect = document.getElementById('petugasSelect');
+            if (!petugasSelect) {
+                await showAlert('Dropdown petugas tidak ditemukan', 'error');
+                return;
+            }
+            
+            const petugasId = petugasSelect.value;
+            if (!petugasId) {
+                await showAlert('Pilih petugas terlebih dahulu', 'warning');
+                return;
+            }
+            
+            const confirmed = await showConfirm('Apakah Anda yakin ingin menyetujui permintaan ini?', 'Konfirmasi Approve', 'Approve', 'Batal', 'warning');
+            if (!confirmed) {
+                return;
+            }
+            
+            try {
+                const petugasOption = petugasSelect.options[petugasSelect.selectedIndex];
+                const petugasNama = petugasOption ? petugasOption.getAttribute('data-nama') : '';
+                const catatanPelaksanaan = document.getElementById('catatanPelaksanaan')?.value.trim() || '';
+                
+                const response = await fetch(`${API_URL}?action=approvePermintaanBackdate&id=${permintaanId}&petugas_id=${petugasId}&petugas_tunjuk=${encodeURIComponent(petugasNama)}&keterangan_petugas=${encodeURIComponent(catatanPelaksanaan)}&pin=${validatedPin}`);
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Gagal approve');
+                }
+                
+                await showAlert('Permintaan berhasil disetujui', 'success');
+                await loadAndShowData();
+            } catch (error) {
+                await showAlert('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Reject request
+        async function rejectRequest() {
+            const confirmed = await showConfirm('Apakah Anda yakin ingin menolak permintaan ini?', 'Konfirmasi Reject', 'Reject', 'Batal', 'danger');
+            if (!confirmed) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}?action=rejectPermintaanBackdate&id=${permintaanId}&pin=${validatedPin}`);
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Gagal reject');
+                }
+                
+                await showAlert('Permintaan berhasil ditolak', 'success');
+                await loadAndShowData();
+            } catch (error) {
+                await showAlert('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Setup PIN input navigation
+        document.addEventListener('DOMContentLoaded', () => {
+            permintaanId = getPermintaanId();
+            if (!permintaanId) {
+                document.getElementById('pinCard').innerHTML = '<div class="error">ID permintaan tidak valid</div>';
+                return;
+            }
+            
+            const pinInputs = ['pin1', 'pin2', 'pin3', 'pin4'];
+            
+            pinInputs.forEach((id, index) => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.addEventListener('input', (e) => {
+                        const value = e.target.value.replace(/[^0-9]/g, '');
+                        e.target.value = value;
+                        
+                        if (value && index < pinInputs.length - 1) {
+                            document.getElementById(pinInputs[index + 1]).focus();
+                        }
+                    });
+                    
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                            document.getElementById(pinInputs[index - 1]).focus();
+                        }
+                    });
+                }
+            });
+            
+            // PIN Submit
+            const pinSubmitBtn = document.getElementById('pinSubmitBtn');
+            if (pinSubmitBtn) {
+                pinSubmitBtn.addEventListener('click', async () => {
+                    const pin = getPin();
+                    
+                    if (pin.length !== 4) {
+                        document.getElementById('pinError').textContent = 'PIN harus 4 digit';
+                        return;
+                    }
+                    
+                    pinSubmitBtn.disabled = true;
+                    pinSubmitBtn.textContent = 'Memverifikasi...';
+                    document.getElementById('pinError').textContent = '';
+                    
+                    try {
+                        const cleanPin = pin.replace(/\s/g, '');
+                        
+                        if (cleanPin.length !== 4) {
+                            throw new Error('PIN harus 4 digit angka');
+                        }
+                        
+                        const validateUrl = new URL(API_URL, window.location.origin);
+                        validateUrl.searchParams.append('action', 'validateApprovalPin');
+                        validateUrl.searchParams.append('pin', cleanPin);
+                        
+                        const validateResponse = await fetch(validateUrl.toString(), {
+                            method: 'GET',
+                            mode: 'cors',
+                            cache: 'no-cache'
+                        });
+                        
+                        const validateResult = await validateResponse.json();
+                        
+                        let validationData = null;
+                        if (validateResult.data) {
+                            validationData = validateResult.data;
+                        } else {
+                            validationData = validateResult;
+                        }
+                        
+                        let isValid = false;
+                        if (validationData.valid === true) {
+                            isValid = true;
+                        } else if (validateResult.success === true && validationData.valid === true) {
+                            isValid = true;
+                        } else if (validateResult.success === false || validationData.valid === false) {
+                            isValid = false;
+                        }
+                        
+                        if (!isValid) {
+                            const errorMsg = validationData.message || validateResult.message || 'PIN tidak valid';
+                            throw new Error(errorMsg);
+                        }
+                        
+                        validatedPin = cleanPin;
+                        document.getElementById('pinCard').style.display = 'none';
+                        document.getElementById('detailsCard').classList.add('show');
+                        
+                        await loadAndShowData();
+                        
+                    } catch (error) {
+                        document.getElementById('pinError').textContent = error.message || 'PIN tidak valid';
+                        pinSubmitBtn.disabled = false;
+                        pinSubmitBtn.textContent = 'Verifikasi PIN';
+                        
+                        document.getElementById('pin1').value = '';
+                        document.getElementById('pin2').value = '';
+                        document.getElementById('pin3').value = '';
+                        document.getElementById('pin4').value = '';
+                        document.getElementById('pin1').focus();
+                    }
+                });
+            }
+            
+            // Enter key to submit PIN
+            document.getElementById('pin4')?.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('pinSubmitBtn').click();
+                }
+            });
+            
+            // Focus first PIN input
+            document.getElementById('pin1').focus();
+        });
+    </script>
+    
+    
+    <style>
+        /* Custom Modal Styles */
+        .custom-modal-overlay {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.2s ease-out;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .custom-modal-overlay.show {
+            display: flex;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .custom-modal {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 450px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+            position: relative;
+        }
+        
+        .custom-modal-header {
+            padding: 24px 24px 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .custom-modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .custom-modal-icon.success {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+        }
+        
+        .custom-modal-icon.error {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+        
+        .custom-modal-icon.warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+        
+        .custom-modal-icon.info {
+            background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+        }
+        
+        .custom-modal-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+            fill: none;
+            stroke-width: 2.5;
+        }
+        
+        .custom-modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            flex: 1;
+        }
+        
+        .custom-modal-body {
+            padding: 0 24px 24px;
+            color: #666;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        
+        .custom-modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        
+        .custom-modal-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 100px;
+        }
+        
+        .custom-modal-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .custom-modal-btn:active {
+            transform: translateY(0);
+        }
+        
+        .custom-modal-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .custom-modal-btn-primary:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
+        }
+        
+        .custom-modal-btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .custom-modal-btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .custom-modal-btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+        
+        .custom-modal-btn-danger:hover {
+            background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+        }
+        
+        .popup {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .popup.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .popup-content {
+            background-color: white;
+            margin: auto;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            cursor: pointer;
+        }
+        
+        .close-btn:hover {
+            color: #000;
+        }
+        
+        .nomor-surat-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .nomor-surat-table th,
+        .nomor-surat-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .nomor-surat-table th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+        }
+        
+        .btn-delete {
+            padding: 5px 10px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        
+        .btn-delete:hover {
+            background: #d32f2f;
+        }
+    </style>
+    
+    <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Custom Alert & Confirm Functions
+        function showAlert(message, type = 'info', title = null) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-modal-overlay show';
+                
+                const iconMap = {
+                    success: {
+                        icon: 'success',
+                        defaultTitle: 'Berhasil',
+                        svg: '<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    },
+                    error: {
+                        icon: 'error',
+                        defaultTitle: 'Error',
+                        svg: '<path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    },
+                    warning: {
+                        icon: 'warning',
+                        defaultTitle: 'Peringatan',
+                        svg: '<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    },
+                    info: {
+                        icon: 'info',
+                        defaultTitle: 'Informasi',
+                        svg: '<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    }
+                };
+                
+                const config = iconMap[type] || iconMap.info;
+                
+                overlay.innerHTML = `
+                    <div class="custom-modal">
+                        <div class="custom-modal-header">
+                            <div class="custom-modal-icon ${config.icon}">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    ${config.svg}
+                                </svg>
+                            </div>
+                            <h3 class="custom-modal-title">${title || config.defaultTitle}</h3>
+                        </div>
+                        <div class="custom-modal-body">${message}</div>
+                        <div class="custom-modal-footer">
+                            <button class="custom-modal-btn custom-modal-btn-primary" onclick="this.closest('.custom-modal-overlay').remove(); document.body.style.overflow = '';">OK</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.style.overflow = 'hidden';
+                document.body.appendChild(overlay);
+                
+                overlay.querySelector('button').addEventListener('click', () => {
+                    overlay.remove();
+                    document.body.style.overflow = '';
+                    resolve(true);
+                });
+                
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        overlay.remove();
+                        document.body.style.overflow = '';
+                        resolve(false);
+                    }
+                });
+            });
+        }
+        
+        function showConfirm(message, title = 'Konfirmasi', confirmText = 'Ya', cancelText = 'Batal', type = 'warning') {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-modal-overlay show';
+                
+                const iconMap = {
+                    warning: {
+                        svg: '<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    },
+                    danger: {
+                        svg: '<path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    }
+                };
+                
+                const config = iconMap[type] || iconMap.warning;
+                const iconClass = type === 'danger' ? 'error' : 'warning';
+                
+                overlay.innerHTML = `
+                    <div class="custom-modal">
+                        <div class="custom-modal-header">
+                            <div class="custom-modal-icon ${iconClass}">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    ${config.svg}
+                                </svg>
+                            </div>
+                            <h3 class="custom-modal-title">${title}</h3>
+                        </div>
+                        <div class="custom-modal-body">${message}</div>
+                        <div class="custom-modal-footer">
+                            <button class="custom-modal-btn custom-modal-btn-secondary" data-action="cancel">${cancelText}</button>
+                            <button class="custom-modal-btn ${type === 'danger' ? 'custom-modal-btn-danger' : 'custom-modal-btn-primary'}" data-action="confirm">${confirmText}</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.style.overflow = 'hidden';
+                document.body.appendChild(overlay);
+                
+                const handleClick = (action) => {
+                    overlay.remove();
+                    document.body.style.overflow = '';
+                    resolve(action === 'confirm');
+                };
+                
+                overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => handleClick('cancel'));
+                overlay.querySelector('[data-action="confirm"]').addEventListener('click', () => handleClick('confirm'));
+                
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        handleClick('cancel');
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>

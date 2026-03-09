@@ -1,4 +1,4 @@
-﻿const API_URL = '../api.php';
+const API_URL = '../api.php';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Hanya super_admin yang bisa akses halaman ini
@@ -12,10 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
     bindRefreshButtons();
     bindRegistrations();
     bindPinApproval();
+    bindApprovers();
+    bindPetugas();
 
     loadUsers();
     loadRegistrations();
     loadApprovalPin();
+    loadApprovers();
+    loadPetugas();
+    loadUnitKerjaForApprover();
 });
 
 function bindLogout() {
@@ -504,6 +509,13 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text ?? '';
     return div.innerHTML;
+}
+
+function showError(errorBox, message) {
+    if (!errorBox) return;
+    errorBox.textContent = message;
+    errorBox.style.display = 'block';
+    errorBox.classList.add('show');
 }
 
 // =========================
@@ -1161,5 +1173,407 @@ async function loadApprovalPin() {
     } catch (error) {
         console.error('Error loading PIN:', error);
         alert('Gagal memuat PIN: ' + error.message);
+    }
+}
+
+// ========== APPROVER MANAGEMENT ==========
+let currentApproverId = null;
+
+function bindApprovers() {
+    const addBtn = document.getElementById('addApproverBtn');
+    const refreshBtn = document.getElementById('refreshApproversBtn');
+    const modal = document.getElementById('approverModal');
+    const form = document.getElementById('approverForm');
+    const closeBtn = document.getElementById('closeApproverModal');
+    const cancelBtn = document.getElementById('cancelApproverBtn');
+    
+    if (addBtn) addBtn.addEventListener('click', () => openApproverModal());
+    if (refreshBtn) refreshBtn.addEventListener('click', loadApprovers);
+    if (closeBtn) closeBtn.addEventListener('click', closeApproverModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeApproverModal);
+    if (form) form.addEventListener('submit', saveApprover);
+}
+
+function openApproverModal(id = null) {
+    currentApproverId = id;
+    const modal = document.getElementById('approverModal');
+    const title = document.getElementById('approverModalTitle');
+    const form = document.getElementById('approverForm');
+    const errorBox = document.getElementById('approverError');
+    
+    if (!modal) {
+        alert('Modal approver tidak ditemukan. Pastikan modal sudah ditambahkan di HTML.');
+        return;
+    }
+    
+    if (!title) {
+        alert('Title element tidak ditemukan.');
+        return;
+    }
+    
+    if (!form) {
+        alert('Form element tidak ditemukan.');
+        return;
+    }
+    
+    // Load unit kerja dropdown
+    loadUnitKerjaForApprover();
+    
+    if (id) {
+        title.textContent = 'Edit Approver';
+        loadApproverData(id);
+    } else {
+        title.textContent = 'Tambah Approver';
+        if (form) form.reset();
+    }
+    
+    if (errorBox) {
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
+    }
+    
+    modal.classList.add('show');
+}
+
+async function loadUnitKerjaForApprover() {
+    try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_URL}?action=getUnitKerja`, {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        const select = document.getElementById('approverUnitKerja');
+        
+        if (!select) return;
+        
+        if (result.success && result.data && Array.isArray(result.data)) {
+            // Keep the first option (Pilih Unit Kerja)
+            const firstOption = select.querySelector('option[value=""]');
+            select.innerHTML = '';
+            if (firstOption) select.appendChild(firstOption);
+            
+            result.data.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit.nama_unit || unit.nama || unit.id;
+                option.textContent = unit.nama_unit || unit.nama || unit.id;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading unit kerja:', error);
+    }
+}
+
+function loadApproverData(id) {
+    loadApprovers().then(() => {
+        const tbody = document.getElementById('approversTbody');
+        const rows = tbody.querySelectorAll('tr[data-id]');
+        for (let row of rows) {
+            if (parseInt(row.getAttribute('data-id')) === id) {
+                const name = row.querySelector('[data-field="name"]')?.textContent || '';
+                const email = row.querySelector('[data-field="email"]')?.textContent || '';
+                const nomorTelepon = row.querySelector('[data-field="nomor_telepon"]')?.textContent || '';
+                const unitKerja = row.querySelector('[data-field="unit_kerja"]')?.textContent || '';
+                
+                document.getElementById('approverName').value = name;
+                document.getElementById('approverEmail').value = email;
+                document.getElementById('approverNomorTelepon').value = nomorTelepon;
+                document.getElementById('approverUnitKerja').value = unitKerja;
+                break;
+            }
+        }
+    });
+}
+
+async function saveApprover(e) {
+    e.preventDefault();
+    const errorBox = document.getElementById('approverError');
+    const name = document.getElementById('approverName').value.trim();
+    const email = document.getElementById('approverEmail').value.trim();
+    const nomorTelepon = document.getElementById('approverNomorTelepon').value.trim();
+    const unitKerja = document.getElementById('approverUnitKerja').value.trim();
+    
+    if (!name) {
+        showError(errorBox, 'Nama wajib diisi');
+        return;
+    }
+    
+    try {
+        const token = getAuthToken();
+        const url = new URL(`${API_URL}?action=${currentApproverId ? 'updateApprover' : 'createApprover'}`, window.location.origin);
+        if (currentApproverId) url.searchParams.append('id', currentApproverId);
+        url.searchParams.append('name', name);
+        // Generate username dari nama (lowercase, replace space dengan underscore)
+        const username = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+        url.searchParams.append('username', username);
+        if (email) url.searchParams.append('email', email);
+        if (nomorTelepon) url.searchParams.append('nomor_telepon', nomorTelepon);
+        if (unitKerja) url.searchParams.append('unit_kerja', unitKerja);
+        
+        const response = await fetch(url.toString(), {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal menyimpan approver');
+        }
+        
+        alert(result.data?.message || 'Approver berhasil disimpan');
+        closeApproverModal();
+        loadApprovers();
+    } catch (error) {
+        showError(errorBox, error.message);
+    }
+}
+
+function closeApproverModal() {
+    document.getElementById('approverModal').classList.remove('show');
+    currentApproverId = null;
+    document.getElementById('approverForm').reset();
+}
+
+async function loadApprovers() {
+    try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_URL}?action=getApprovers`, {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal memuat approvers');
+        }
+        
+        const tbody = document.getElementById('approversTbody');
+        const approvers = result.data || [];
+        
+        if (approvers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="loading">Tidak ada approver</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = approvers.map(approver => {
+            const status = approver.is_active !== false ? 'Active' : 'Inactive';
+            const statusClass = approver.is_active !== false ? 'badge-active' : 'badge-inactive';
+            
+            return `
+                <tr data-id="${approver.id}">
+                    <td data-field="name">${escapeHtml(approver.name || '')}</td>
+                    <td data-field="username">${escapeHtml(approver.username || '')}</td>
+                    <td data-field="nomor_telepon">${escapeHtml(approver.nomor_telepon || '-')}</td>
+                    <td data-field="email">${escapeHtml(approver.email || '-')}</td>
+                    <td data-field="unit_kerja">${escapeHtml(approver.unit_kerja || '-')}</td>
+                    <td><span class="badge ${statusClass}">${status}</span></td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn-small" onclick="openApproverModal(${approver.id})" title="Edit">✏️</button>
+                            <button class="btn-small btn-danger" onclick="deleteApprover(${approver.id})" title="Hapus">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Error loading approvers:', error);
+        document.getElementById('approversTbody').innerHTML = 
+            `<tr><td colspan="7" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
+    }
+}
+
+async function deleteApprover(id) {
+    if (!confirm('Apakah Anda yakin ingin menghapus approver ini?')) return;
+    
+    try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_URL}?action=deleteApprover&id=${id}`, {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal menghapus approver');
+        }
+        
+        alert('Approver berhasil dihapus');
+        loadApprovers();
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// ========== PETUGAS MANAGEMENT ==========
+let currentPetugasId = null;
+
+function bindPetugas() {
+    const addBtn = document.getElementById('addPetugasBtn');
+    const refreshBtn = document.getElementById('refreshPetugasBtn');
+    const modal = document.getElementById('petugasModal');
+    const form = document.getElementById('petugasForm');
+    const closeBtn = document.getElementById('closePetugasModal');
+    const cancelBtn = document.getElementById('cancelPetugasBtn');
+    
+    if (addBtn) addBtn.addEventListener('click', () => openPetugasModal());
+    if (refreshBtn) refreshBtn.addEventListener('click', loadPetugas);
+    if (closeBtn) closeBtn.addEventListener('click', closePetugasModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closePetugasModal);
+    if (form) form.addEventListener('submit', savePetugas);
+}
+
+function openPetugasModal(id = null) {
+    currentPetugasId = id;
+    const modal = document.getElementById('petugasModal');
+    const title = document.getElementById('petugasModalTitle');
+    const form = document.getElementById('petugasForm');
+    const errorBox = document.getElementById('petugasError');
+    
+    if (id) {
+        title.textContent = 'Edit Petugas';
+        loadPetugasData(id);
+    } else {
+        title.textContent = 'Tambah Petugas';
+        form.reset();
+    }
+    
+    if (errorBox) {
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
+    }
+    
+    modal.classList.add('show');
+}
+
+function loadPetugasData(id) {
+    loadPetugas().then(() => {
+        const tbody = document.getElementById('petugasTbody');
+        const rows = tbody.querySelectorAll('tr[data-id]');
+        for (let row of rows) {
+            if (parseInt(row.getAttribute('data-id')) === id) {
+                const nama = row.querySelector('[data-field="nama"]')?.textContent || '';
+                const npk = row.querySelector('[data-field="npk"]')?.textContent || '';
+                const jabatan = row.querySelector('[data-field="jabatan"]')?.textContent || '';
+                const noWa = row.querySelector('[data-field="no_wa"]')?.textContent || '';
+                
+                document.getElementById('petugasNama').value = nama;
+                document.getElementById('petugasNpk').value = npk;
+                document.getElementById('petugasJabatan').value = jabatan;
+                document.getElementById('petugasNoWa').value = noWa;
+                break;
+            }
+        }
+    });
+}
+
+async function savePetugas(e) {
+    e.preventDefault();
+    const errorBox = document.getElementById('petugasError');
+    const nama = document.getElementById('petugasNama').value.trim();
+    const npk = document.getElementById('petugasNpk').value.trim();
+    const jabatan = document.getElementById('petugasJabatan').value.trim();
+    const noWa = document.getElementById('petugasNoWa').value.trim();
+    
+    if (!nama) {
+        showError(errorBox, 'Nama petugas wajib diisi');
+        return;
+    }
+    
+    try {
+        const token = getAuthToken();
+        const url = new URL(`${API_URL}?action=${currentPetugasId ? 'updatePetugas' : 'createPetugas'}`, window.location.origin);
+        if (currentPetugasId) url.searchParams.append('id', currentPetugasId);
+        url.searchParams.append('nama', nama);
+        if (npk) url.searchParams.append('npk', npk);
+        if (jabatan) url.searchParams.append('jabatan', jabatan);
+        if (noWa) url.searchParams.append('no_wa', noWa);
+        
+        const response = await fetch(url.toString(), {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal menyimpan petugas');
+        }
+        
+        alert(result.data?.message || 'Petugas berhasil disimpan');
+        closePetugasModal();
+        loadPetugas();
+    } catch (error) {
+        showError(errorBox, error.message);
+    }
+}
+
+function closePetugasModal() {
+    document.getElementById('petugasModal').classList.remove('show');
+    currentPetugasId = null;
+    document.getElementById('petugasForm').reset();
+}
+
+async function loadPetugas() {
+    try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_URL}?action=getPetugas`, {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal memuat petugas');
+        }
+        
+        const tbody = document.getElementById('petugasTbody');
+        const petugasList = Array.isArray(result.data) ? result.data : [];
+        
+        if (petugasList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="loading">Tidak ada petugas</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = petugasList.map(petugas => {
+            const status = petugas.is_active !== false ? 'Active' : 'Inactive';
+            const statusClass = petugas.is_active !== false ? 'badge-active' : 'badge-inactive';
+            
+            return `
+                <tr data-id="${petugas.id}">
+                    <td data-field="nama">${escapeHtml(petugas.nama || '')}</td>
+                    <td data-field="npk">${escapeHtml(petugas.npk || '-')}</td>
+                    <td data-field="jabatan">${escapeHtml(petugas.jabatan || '-')}</td>
+                    <td data-field="no_wa">${escapeHtml(petugas.no_wa || '-')}</td>
+                    <td><span class="badge ${statusClass}">${status}</span></td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn-small" onclick="openPetugasModal(${petugas.id})" title="Edit">✏️</button>
+                            <button class="btn-small btn-danger" onclick="deletePetugas(${petugas.id})" title="Hapus">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Error loading petugas:', error);
+        document.getElementById('petugasTbody').innerHTML = 
+            `<tr><td colspan="6" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
+    }
+}
+
+async function deletePetugas(id) {
+    if (!confirm('Apakah Anda yakin ingin menghapus petugas ini?')) return;
+    
+    try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_URL}?action=deletePetugas&id=${id}`, {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal menghapus petugas');
+        }
+        
+        alert('Petugas berhasil dihapus');
+        loadPetugas();
+    } catch (error) {
+        alert('Error: ' + error.message);
     }
 }

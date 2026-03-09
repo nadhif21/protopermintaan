@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Input Data Backdate</title>
+    <title>Form Permintaan Pembukaan Backdate</title>
     <link rel="stylesheet" href="../layout.css">
     <link rel="stylesheet" href="backdate.css">
     <link rel="stylesheet" href="../icons.css">
@@ -197,23 +197,29 @@
                 <span class="sidebar-nav-arrow">▼</span>
             </div>
             <div class="sidebar-submenu" id="backdateSubmenu">
-                <a href="backdate.html" class="sidebar-submenu-item">
+                <a href="form-permintaan.html" class="sidebar-submenu-item" id="formBackdateMenuLink">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </span>
+                    <span>Form Permintaan Backdate</span>
+                </a>
+                <a href="dashboard-user-backdate.html" class="sidebar-submenu-item" id="dashboardUserBackdateMenuLink">
                     <span class="sidebar-submenu-icon">
                         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
                     </span>
-                    <span>Data Permintaan Backdate</span>
+                    <span>Status Permintaan Saya</span>
                 </a>
-                <a href="surat-backdate.html" class="sidebar-submenu-item">
+                <a href="dashboard-approver-backdate.html" class="sidebar-submenu-item" id="dashboardApproverBackdateMenuLink">
                     <span class="sidebar-submenu-icon">
-                        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
                     </span>
-                    <span>Data Surat Yang Backdate</span>
+                    <span>Approval Backdate</span>
                 </a>
-                <a href="form-backdate.html" class="sidebar-submenu-item">
+                <a href="dashboard-petugas-backdate.html" class="sidebar-submenu-item" id="dashboardPetugasBackdateMenuLink">
                     <span class="sidebar-submenu-icon">
-                        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
                     </span>
-                    <span>Input Data Backdate</span>
+                    <span>Tugas Backdate</span>
                 </a>
             </div>
         </nav>
@@ -236,7 +242,7 @@
         <!-- Content Header -->
         <div class="content-header">
             <div>
-                <h1>Rekapitulasi Pembukaan Akses Backdate DOF</h1>
+                <h1>Form Permintaan Pembukaan Backdate</h1>
                 <p>Silakan isi form di bawah ini dengan lengkap</p>
             </div>
             <button id="headerLogoutBtn" class="header-logout-btn">
@@ -254,44 +260,30 @@
             <div class="form-container">
                 <form id="backdateForm">
                     <div class="form-group">
-                        <label for="namaAdmin" class="required">Nama Admin</label>
-                        <select id="namaAdmin" name="namaAdmin" required>
-                            <option value="">Pilih Admin</option>
-                        </select>
+                        <label for="alasanPermintaan" class="required">Alasan Permintaan</label>
+                        <textarea id="alasanPermintaan" name="alasanPermintaan" required placeholder="Jelaskan alasan permintaan pembukaan backdate" rows="4"></textarea>
+                        <div class="help-text">Jelaskan alasan mengapa diperlukan pembukaan backdate</div>
                     </div>
 
                     <div class="form-group">
-                        <label for="tanggalBackdate" class="required">Tanggal Pembukaan Backdate</label>
-                        <input type="date" id="tanggalBackdate" name="tanggalBackdate" required>
-                        <div class="help-text">Pilih tanggal pembukaan backdate</div>
+                        <label for="namaPegawai" class="required">Nama Pegawai yang Akan Dibukakan Backdate</label>
+                        <input type="text" id="namaPegawai" name="namaPegawai" required placeholder="Masukkan nama pegawai yang akan dibukakan backdate">
                     </div>
 
                     <div class="form-group">
-                        <label for="alasanBackdate" class="required">Alasan Pembukaan Backdate</label>
-                        <textarea id="alasanBackdate" name="alasanBackdate" required placeholder="Diisi alasan dan siapa yang memberikan perintah pembukaan backdate" rows="4"></textarea>
-                        <div class="help-text">Jelaskan alasan dan siapa yang memberikan perintah</div>
+                        <label for="npk" class="required">NPK</label>
+                        <input type="text" id="npk" name="npk" required placeholder="Masukkan NPK pegawai">
                     </div>
 
                     <div class="form-group">
-                        <label for="namaDibuka" class="required">Nama yang Dibuka Backdate</label>
-                        <input type="text" id="namaDibuka" name="namaDibuka" required placeholder="Masukkan nama yang dibuka backdate">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="departemen" class="required">Departemen yang dibukakan Backdate</label>
-                        <select id="departemen" name="departemen" required>
-                            <option value="">Pilih Departemen</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="nomorSurat" class="required">Nomor Surat Backdate DOF</label>
-                        <input type="text" id="nomorSurat" name="nomorSurat" required placeholder="Masukkan nomor surat backdate DOF">
+                        <label for="jumlahSurat" class="required">Jumlah Surat yang Akan Dibackdate</label>
+                        <input type="number" id="jumlahSurat" name="jumlahSurat" required min="1" placeholder="Masukkan jumlah surat">
+                        <div class="help-text">Masukkan jumlah surat yang akan dibackdate</div>
                     </div>
 
                     <div class="form-actions">
                         <button type="button" class="btn btn-cancel" onclick="window.location.href='../'">Batal</button>
-                        <button type="submit" class="btn btn-submit" id="submitBtn">Simpan Data</button>
+                        <button type="submit" class="btn btn-submit" id="submitBtn">Kirim Permintaan</button>
                     </div>
                 </form>
             </div>
@@ -336,64 +328,6 @@
         const form = document.getElementById('backdateForm');
         const submitBtn = document.getElementById('submitBtn');
         const notification = document.getElementById('notification');
-        const namaAdminSelect = document.getElementById('namaAdmin');
-        const departemenSelect = document.getElementById('departemen');
-        
-        // Load petugas dari API
-        async function loadPetugas() {
-            try {
-                const response = await fetch(`${API_URL}?action=getPetugas&_t=${Date.now()}`);
-                const result = await response.json();
-                
-                if (result.success && result.data) {
-                    // Clear existing options except first
-                    while (namaAdminSelect.options.length > 1) {
-                        namaAdminSelect.remove(1);
-                    }
-                    
-                    // Add petugas options
-                    result.data.forEach(petugas => {
-                        const option = document.createElement('option');
-                        option.value = petugas.nama;
-                        option.textContent = petugas.nama;
-                        namaAdminSelect.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading petugas:', error);
-                showNotification('Gagal memuat data petugas', 'error');
-            }
-        }
-        
-        // Load unit kerja dari API
-        async function loadUnitKerja() {
-            try {
-                const response = await fetch(`${API_URL}?action=getUnitKerja&_t=${Date.now()}`);
-                const result = await response.json();
-                
-                if (result.success && result.data) {
-                    // Clear existing options except first
-                    while (departemenSelect.options.length > 1) {
-                        departemenSelect.remove(1);
-                    }
-                    
-                    // Add unit kerja options
-                    result.data.forEach(unit => {
-                        const option = document.createElement('option');
-                        option.value = unit.nama_unit;
-                        option.textContent = unit.nama_unit;
-                        departemenSelect.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading unit kerja:', error);
-                showNotification('Gagal memuat data unit kerja', 'error');
-            }
-        }
-        
-        // Initialize dropdown saat halaman dimuat
-        loadPetugas();
-        loadUnitKerja();
 
         function showNotification(message, type = 'success') {
             notification.textContent = message;
@@ -409,20 +343,16 @@
             if (submitBtn.disabled) return;
             
             // Validasi client-side sebelum submit
-            const namaAdmin = namaAdminSelect.value.trim();
-            const tanggalBackdate = document.getElementById('tanggalBackdate').value.trim();
-            const alasanBackdate = document.getElementById('alasanBackdate').value.trim();
-            const namaDibuka = document.getElementById('namaDibuka').value.trim();
-            const departemen = departemenSelect.value.trim();
-            const nomorSurat = document.getElementById('nomorSurat').value.trim();
+            const alasanPermintaan = document.getElementById('alasanPermintaan').value.trim();
+            const namaPegawai = document.getElementById('namaPegawai').value.trim();
+            const npk = document.getElementById('npk').value.trim();
+            const jumlahSurat = document.getElementById('jumlahSurat').value.trim();
             
             const missingFields = [];
-            if (!namaAdmin || namaAdmin === '') missingFields.push('Nama Admin');
-            if (!tanggalBackdate) missingFields.push('Tanggal Pembukaan Backdate');
-            if (!alasanBackdate) missingFields.push('Alasan Pembukaan Backdate');
-            if (!namaDibuka) missingFields.push('Nama yang Dibuka Backdate');
-            if (!departemen) missingFields.push('Departemen yang dibukakan Backdate');
-            if (!nomorSurat) missingFields.push('Nomor Surat Backdate DOF');
+            if (!alasanPermintaan) missingFields.push('Alasan Permintaan');
+            if (!namaPegawai) missingFields.push('Nama Pegawai');
+            if (!npk) missingFields.push('NPK');
+            if (!jumlahSurat || parseInt(jumlahSurat) < 1) missingFields.push('Jumlah Surat');
             
             if (missingFields.length > 0) {
                 showNotification('Field wajib yang belum diisi: ' + missingFields.join(', '), 'error');
@@ -431,22 +361,20 @@
             
             // Disable submit button
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Menyimpan...';
+            submitBtn.textContent = 'Mengirim...';
             
             // Get form data
             const data = {
-                namaAdmin: namaAdmin,
-                tanggalBackdate: tanggalBackdate,
-                alasanBackdate: alasanBackdate,
-                namaDibuka: namaDibuka,
-                departemen: departemen,
-                nomorSurat: nomorSurat
+                alasanPermintaan: alasanPermintaan,
+                namaPegawai: namaPegawai,
+                npk: npk,
+                jumlahSurat: jumlahSurat
             };
             
             try {
                 // Build URL with parameters
                 const url = new URL(API_URL, window.location.origin);
-                url.searchParams.append('action', 'insertBackdate');
+                url.searchParams.append('action', 'submitBackdateWorkflow');
                 Object.keys(data).forEach(key => {
                     if (data[key] !== undefined && data[key] !== null) {
                         url.searchParams.append(key, data[key]);
@@ -474,25 +402,20 @@
                 const result = await response.json();
                 
                 if (!result.success) {
-                    throw new Error(result.error || 'Gagal menyimpan data');
+                    throw new Error(result.error || 'Gagal mengirim permintaan');
                 }
                 
-                showNotification('Data berhasil disimpan!', 'success');
+                showNotification('Permintaan berhasil dikirim! Status: Pending Approval', 'success');
                 
                 // Reset form after 1 second
                 setTimeout(() => {
                     form.reset();
-                    // Clear dan re-populate dropdown setelah reset
-                    namaAdminSelect.innerHTML = '<option value="">Pilih Admin</option>';
-                    departemenSelect.innerHTML = '<option value="">Pilih Departemen</option>';
-                    loadPetugas();
-                    loadUnitKerja();
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Simpan Data';
+                    submitBtn.textContent = 'Kirim Permintaan';
                     
-                    // Optionally redirect to backdate list
-                    if (confirm('Data berhasil disimpan! Apakah Anda ingin melihat data backdate?')) {
-                        window.location.href = 'backdate.html';
+                    // Optionally redirect to user dashboard
+                    if (confirm('Permintaan berhasil dikirim! Apakah Anda ingin melihat status permintaan?')) {
+                        window.location.href = 'dashboard-user-backdate.html';
                     }
                 }, 1000);
                 

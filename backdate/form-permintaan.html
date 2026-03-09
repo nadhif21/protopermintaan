@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Permintaan Pembukaan Backdate</title>
+    <link rel="stylesheet" href="../layout.css">
+    <link rel="stylesheet" href="../form-permintaan.css">
+    <link rel="stylesheet" href="../icons.css">
+    <style>
+        /* Override form-permintaan.css untuk form backdate */
+        #permintaanBackdateForm .form-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: block !important;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-cancel {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .btn-cancel:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn-submit {
+            background: #1976d2;
+            color: white;
+        }
+        
+        .btn-submit:hover {
+            background: #1565c0;
+        }
+        
+        .form-section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .readonly-field {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+            color: #666;
+        }
+        
+        .success-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .success-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .success-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .success-icon {
+            font-size: 64px;
+            color: #4caf50;
+            margin-bottom: 20px;
+        }
+        
+        .success-modal h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .success-modal .nomor-permintaan {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2196F3;
+            margin: 15px 0;
+        }
+        
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-whatsapp:hover {
+            background: #20BA5A;
+        }
+        /* Custom Modal Styles */
+        .custom-modal-overlay {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.2s ease-out;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .custom-modal-overlay.show {
+            display: flex;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .custom-modal {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 450px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+            position: relative;
+        }
+        
+        .custom-modal-header {
+            padding: 24px 24px 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .custom-modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .custom-modal-icon.success {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+        }
+        
+        .custom-modal-icon.error {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+        
+        .custom-modal-icon.warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+        
+        .custom-modal-icon.info {
+            background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+        }
+        
+        .custom-modal-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+            fill: none;
+            stroke-width: 2.5;
+        }
+        
+        .custom-modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            flex: 1;
+        }
+        
+        .custom-modal-body {
+            padding: 0 24px 24px;
+            color: #666;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        
+        .custom-modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        
+        .custom-modal-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 100px;
+        }
+        
+        .custom-modal-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .custom-modal-btn:active {
+            transform: translateY(0);
+        }
+        
+        .custom-modal-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .custom-modal-btn-primary:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
+        }
+        
+        .custom-modal-btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .custom-modal-btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .custom-modal-btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+        
+        .custom-modal-btn-danger:hover {
+            background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Overlay for Mobile -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">DOF</div>
+            <div class="sidebar-logo-text">DOF Admin</div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="../index.html" class="sidebar-nav-item">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                </span>
+                <span>Dashboard</span>
+            </a>
+            <a href="../permintaan/permintaan.html" class="sidebar-nav-item">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </span>
+                <span>Data Permintaan</span>
+            </a>
+            <a href="../admin/admin.html" class="sidebar-nav-item" id="adminMenuLink" style="display:none;">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
+                <span>User Management</span>
+            </a>
+            <a href="../form-permintaan.html" class="sidebar-nav-item" id="formPermintaanMenuLink" style="display:none;">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                </span>
+                <span>Form Permintaan</span>
+            </a>
+            <a href="../profile.html" class="sidebar-nav-item">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
+                <span>Profile</span>
+            </a>
+            <div class="sidebar-nav-item sidebar-nav-parent" id="backdateMenu" style="cursor: pointer;">
+                <span class="sidebar-nav-icon">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <span>Backdate</span>
+                <span class="sidebar-nav-arrow">▼</span>
+            </div>
+            <div class="sidebar-submenu" id="backdateSubmenu">
+                <a href="form-permintaan.html" class="sidebar-submenu-item active" id="formBackdateMenuLink">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </span>
+                    <span>Form Permintaan Backdate</span>
+                </a>
+                <a href="dashboard-user-backdate.html" class="sidebar-submenu-item" id="dashboardUserBackdateMenuLink">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    </span>
+                    <span>Status Permintaan Saya</span>
+                </a>
+                <a href="dashboard-approver-backdate.html" class="sidebar-submenu-item" id="dashboardApproverBackdateMenuLink">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+                    </span>
+                    <span>Approval Backdate</span>
+                </a>
+                <a href="dashboard-petugas-backdate.html" class="sidebar-submenu-item" id="dashboardPetugasBackdateMenuLink">
+                    <span class="sidebar-submenu-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    </span>
+                    <span>Tugas Backdate</span>
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="sidebar-user-avatar" id="sidebarUserAvatar">U</div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name" id="sidebarUserName">User</div>
+                    <div class="sidebar-user-role" id="sidebarUserRole">User</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+        <header class="content-header">
+            <div>
+                <h1>Form Permintaan Pembukaan Backdate</h1>
+                <p>Silakan isi form di bawah ini dengan lengkap</p>
+            </div>
+            <button id="headerLogoutBtn" class="btn-logout">Logout</button>
+        </header>
+
+        <main class="main-content">
+            <form id="permintaanBackdateForm">
+                <!-- Bagian 1: Data User (Auto Fill) -->
+                <div class="form-section">
+                    <div class="form-section-title">Data User</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>NPK</label>
+                            <input type="text" id="npk_user" class="readonly-field" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Nama Lengkap</label>
+                            <input type="text" id="nama_user" class="readonly-field" readonly>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nomor Telepon</label>
+                            <input type="text" id="no_telepon" class="readonly-field" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Unit Kerja</label>
+                            <input type="text" id="unit_kerja" class="readonly-field" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bagian 2: Data Permintaan Backdate -->
+                <div class="form-section">
+                    <div class="form-section-title">Data Permintaan Backdate</div>
+                    <div class="form-group">
+                        <label for="nama_pegawai_backdate" class="required">Nama Pegawai yang Dibukakan Backdate</label>
+                        <input type="text" id="nama_pegawai_backdate" name="nama_pegawai_backdate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="npk_pegawai_backdate" class="required">NPK Pegawai</label>
+                        <input type="text" id="npk_pegawai_backdate" name="npk_pegawai_backdate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="jumlah_surat" class="required">Jumlah Surat yang Akan Dibackdate</label>
+                        <input type="number" id="jumlah_surat" name="jumlah_surat" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="alasan" class="required">Alasan Permintaan</label>
+                        <textarea id="alasan" name="alasan" required rows="4"></textarea>
+                    </div>
+                </div>
+
+                <!-- Bagian 3: Tombol Submit -->
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" onclick="window.location.href='../index.html'">Batal</button>
+                    <button type="submit" class="btn btn-submit" id="submitBtn">Kirim Permintaan</button>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="success-modal">
+        <div class="success-modal-content">
+            <div class="success-icon">✓</div>
+            <h2>Permintaan Berhasil Dikirim</h2>
+            <p>Permintaan pembukaan backdate berhasil dikirim.</p>
+            <p>Permintaan Anda akan direview oleh approver. Petugas akan ditunjuk setelah permintaan disetujui.</p>
+            <div class="nomor-permintaan" id="nomorPermintaan"></div>
+            <button class="btn-whatsapp" id="btnHubungiContact" style="margin-top: 15px; width: 100%; padding: 12px; background: #25D366; color: white; border: none; border-radius: 4px; cursor: pointer; display: none; align-items: center; justify-content: center; gap: 8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                </svg>
+                <span id="btnHubungiContactText">Hubungi Admin</span>
+            </button>
+            <button class="btn btn-cancel" onclick="closeSuccessModal()" style="margin-top: 10px;">Tutup</button>
+        </div>
+    </div>
+
+    <script src="../auth.js"></script>
+    <script src="../sidebar.js"></script>
+    <script>
+        const API_URL = '../api.php';
+        
+        if (!checkAuth()) {
+            window.location.href = '../login.html';
+        }
+        
+        // Check role - user, admin, dan super_admin bisa akses
+        const role = getUserRole();
+        const isUser = role === 'user';
+        const isAdmin = role === 'admin' || role === 'super_admin';
+        
+        if (!isUser && !isAdmin) {
+            showAlert('Akses ditolak. Halaman ini hanya untuk User, Admin, dan Super Admin.', 'error').then(() => {
+                window.location.href = '../index.html';
+            });
+        }
+        
+        // Setup logout
+        document.getElementById('headerLogoutBtn').addEventListener('click', async function() {
+            if (typeof logout === 'function') {
+                logout();
+            } else {
+                const confirmed = await showConfirm('Apakah Anda yakin ingin logout?', 'Konfirmasi Logout', 'Logout', 'Batal', 'warning');
+                if (confirmed) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '../index.html';
+                }
+                    window.location.href = '../index.html';
+                }
+                    localStorage.removeItem('userData');
+                    window.location.href = '../login.html';
+                }
+            }
+        });
+        
+        let userData = {};
+        let submittedData = {};
+        
+        // Load user data
+        async function loadUserData() {
+            try {
+                const token = getAuthToken();
+                const response = await fetch(`${API_URL}?action=me`, {
+                    headers: { 'X-Auth-Token': token || '' }
+                });
+                
+                const result = await response.json();
+                if (result.success && result.user) {
+                    userData = result.user;
+                    document.getElementById('npk_user').value = userData.npk || '';
+                    document.getElementById('nama_user').value = userData.name || '';
+                    document.getElementById('no_telepon').value = userData.nomorTelepon || '';
+                    document.getElementById('unit_kerja').value = userData.unitKerja || '';
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+        
+        
+        // Format nomor WhatsApp
+        function formatWhatsAppNumber(phone) {
+            if (!phone) return '';
+            // Remove non-digit
+            let cleaned = phone.replace(/\D/g, '');
+            // Convert to international format
+            if (cleaned.startsWith('0')) {
+                cleaned = '62' + cleaned.substring(1);
+            } else if (!cleaned.startsWith('62')) {
+                cleaned = '62' + cleaned;
+            }
+            return cleaned;
+        }
+        
+        // Open WhatsApp
+        function openWhatsAppBackdate(permintaanId, nomorPermintaan, petugasNama, petugasNoWa) {
+            const baseUrl = window.location.origin;
+            const detailUrl = `${baseUrl}/backdate/detail.html?id=${permintaanId}`;
+            
+            const message = `Halo ${petugasNama},
+
+Saya telah mengajukan permintaan pembukaan Backdate dengan nomor:
+
+#${nomorPermintaan}
+
+Mohon untuk dapat direview melalui link berikut:
+${detailUrl}
+
+Terima kasih.`;
+            
+            const whatsappNumber = formatWhatsAppNumber(petugasNoWa);
+            const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+            
+            window.open(whatsappUrl, '_blank');
+        }
+        
+        // Show success modal
+        async function showSuccessModal(data) {
+            submittedData = data;
+            document.getElementById('nomorPermintaan').textContent = '#' + data.row_number;
+            
+            // Load contact data untuk tombol WhatsApp (admin atau petugas)
+            await loadContactForWhatsApp();
+            
+            // Tampilkan modal setelah data contact dimuat
+            document.getElementById('successModal').classList.add('show');
+        }
+        
+        // Load contact data untuk WhatsApp button (admin jika belum ada petugas, petugas jika sudah ada)
+        async function loadContactForWhatsApp() {
+            try {
+                const btn = document.getElementById('btnHubungiContact');
+                const btnText = document.getElementById('btnHubungiContactText');
+                
+                if (!btn || !btnText) {
+                    console.error('Button elements not found');
+                    return;
+                }
+                
+                console.log('Loading contact for WhatsApp, submittedData:', submittedData);
+                
+                // Cek apakah sudah ada petugas_id dari response
+                if (submittedData && submittedData.petugas_id) {
+                    console.log('Petugas ID found:', submittedData.petugas_id);
+                    // Jika sudah ada petugas, ambil data petugas
+                    try {
+                        const token = getAuthToken();
+                        const response = await fetch(`${API_URL}?action=getPetugas`, {
+                            headers: { 'X-Auth-Token': token || '' }
+                        });
+                        
+                        const result = await response.json();
+                        console.log('Petugas response:', result);
+                        if (result.success && result.data) {
+                            const petugasList = Array.isArray(result.data) ? result.data : [result.data];
+                            const petugas = petugasList.find(p => p.id == submittedData.petugas_id);
+                            
+                            if (petugas) {
+                                // Gunakan petugas_nama dari submittedData jika ada, jika tidak gunakan dari tabel petugas
+                                const petugasNama = submittedData.petugas_nama || petugas.nama || 'Petugas';
+                                const petugasNoWa = submittedData.petugas_no_wa || petugas.no_wa || '';
+                                
+                                window.currentContact = {
+                                    type: 'petugas',
+                                    name: petugasNama,
+                                    no_wa: petugasNoWa
+                                };
+                                
+                                btn.style.display = 'flex';
+                                btn.onclick = () => openWhatsAppToContact();
+                                btnText.textContent = `Hubungi Petugas (${petugasNama})`;
+                                console.log('Button set to Petugas:', petugasNama);
+                                return;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error loading petugas:', error);
+                    }
+                }
+                
+                // Jika belum ada petugas, ambil admin abdul jalal
+                console.log('Loading admin...');
+                const token = getAuthToken();
+                const response = await fetch(`${API_URL}?action=getAdminForWhatsApp`, {
+                    headers: { 'X-Auth-Token': token || '' }
+                });
+                
+                const result = await response.json();
+                console.log('Admin response:', result);
+                if (result.success && result.data) {
+                    const admin = result.data;
+                    console.log('Admin found:', admin);
+                    // Gunakan nomor telepon dari API, jika kosong dan ini Abdul Jalal, gunakan default
+                    let adminPhone = admin.nomor_telepon || admin.no_wa || admin.phone || '';
+                    if (!adminPhone && (
+                        (admin.name && admin.name.toLowerCase().includes('abdul') && admin.name.toLowerCase().includes('jalal')) ||
+                        (admin.username && admin.username.toLowerCase().includes('abdul') && admin.username.toLowerCase().includes('jalal'))
+                    )) {
+                        adminPhone = '082154549026';
+                    }
+                    // Jika masih kosong, gunakan default untuk Abdul Jalal
+                    if (!adminPhone) {
+                        adminPhone = '082154549026';
+                    }
+                    window.currentContact = {
+                        type: 'admin',
+                        name: admin.name || admin.username || 'Abdul Jalal',
+                        no_wa: adminPhone
+                    };
+                    
+                    btn.style.display = 'flex';
+                    btn.onclick = () => openWhatsAppToContact();
+                    btnText.textContent = `Hubungi Admin (${admin.name || admin.username || 'Abdul Jalal'})`;
+                    console.log('Button set to Admin:', btnText.textContent, 'Phone:', adminPhone);
+                } else {
+                    // Fallback: gunakan Abdul Jalal dengan nomor default
+                    window.currentContact = {
+                        type: 'admin',
+                        name: 'Abdul Jalal',
+                        no_wa: '082154549026'
+                    };
+                    btn.style.display = 'flex';
+                    btn.onclick = () => openWhatsAppToContact();
+                    btnText.textContent = 'Hubungi Admin (Abdul Jalal)';
+                    console.log('Button set to Admin (fallback), Phone: 082154549026');
+                }
+            } catch (error) {
+                console.error('Error loading contact:', error);
+                // Hide tombol jika error
+                const btn = document.getElementById('btnHubungiContact');
+                if (btn) {
+                    btn.style.display = 'none';
+                }
+            }
+        }
+        
+        // Function untuk membuka WhatsApp ke contact (admin atau petugas)
+        function openWhatsAppToContact() {
+            if (!window.currentContact || !submittedData) {
+                await showAlert('Data contact tidak tersedia', 'error');
+                return;
+            }
+            
+            const contact = window.currentContact;
+            const contactNoWa = contact.no_wa || '';
+            
+            if (!contactNoWa) {
+                await showAlert(`Nomor WhatsApp tidak tersedia.\n\nContact: ${contact.name || 'Tidak diketahui'}\n\nSilakan hubungi admin.`, 'warning');
+                return;
+            }
+            
+            // Generate WhatsApp message
+            const baseUrl = window.location.origin;
+            // Link untuk admin: mengarah ke dashboard dengan modal detail terbuka
+            const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${submittedData.id}`;
+            console.log('Link WhatsApp ke Admin:', detailUrl); // Debug
+            
+            // Get form values from submittedData
+            const namaPegawai = submittedData.nama_pegawai_backdate || 'N/A';
+            const npkPegawai = submittedData.npk_pegawai_backdate || 'N/A';
+            const jumlahSurat = submittedData.jumlah_surat || 'N/A';
+            const alasan = submittedData.alasan || 'N/A';
+            
+            let message = '';
+            if (contact.type === 'petugas') {
+                message = `*Permintaan Backdate - Tindak Lanjut*\n\n`;
+                message += `Halo ${contact.name},\n\n`;
+                message += `Saya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n`;
+                message += `• Nomor Permintaan: ${submittedData.row_number || 'N/A'}\n`;
+                message += `• Nama Pegawai: ${namaPegawai}\n`;
+                message += `• NPK: ${npkPegawai}\n`;
+                message += `• Jumlah Surat: ${jumlahSurat}\n`;
+                message += `• Alasan: ${alasan}\n\n`;
+                message += `Mohon untuk dapat ditindaklanjuti. Detail permintaan:\n`;
+                message += `${detailUrl}\n\n`;
+                message += `Terima kasih.`;
+            } else {
+                message = `*Notifikasi Permintaan Backdate Baru*\n\n`;
+                message += `Halo ${contact.name},\n\n`;
+                message += `Saya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n`;
+                message += `• Nomor Permintaan: ${submittedData.row_number || 'N/A'}\n`;
+                message += `• Nama Pegawai: ${namaPegawai}\n`;
+                message += `• NPK: ${npkPegawai}\n`;
+                message += `• Jumlah Surat: ${jumlahSurat}\n`;
+                message += `• Alasan: ${alasan}\n\n`;
+                message += `Mohon untuk dapat direview dan disetujui. Detail permintaan:\n`;
+                message += `${detailUrl}\n\n`;
+                message += `Terima kasih.`;
+            }
+            
+            // Format nomor WhatsApp (remove non-digit, add 62 if starts with 0)
+            let cleanPhone = contactNoWa.replace(/\D/g, '');
+            if (cleanPhone.startsWith('0')) {
+                cleanPhone = '62' + cleanPhone.substring(1);
+            } else if (!cleanPhone.startsWith('62')) {
+                cleanPhone = '62' + cleanPhone;
+            }
+            
+            const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+        
+        // Close success modal
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.remove('show');
+            // Reset form setelah modal ditutup
+            document.getElementById('permintaanBackdateForm').reset();
+        }
+        
+        // Form submit
+        document.getElementById('permintaanBackdateForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn.disabled) return;
+            
+            const namaPegawaiBackdate = document.getElementById('nama_pegawai_backdate').value.trim();
+            const npkPegawaiBackdate = document.getElementById('npk_pegawai_backdate').value.trim();
+            const jumlahSurat = document.getElementById('jumlah_surat').value.trim();
+            const alasan = document.getElementById('alasan').value.trim();
+            
+            // Validasi
+            if (!namaPegawaiBackdate || !npkPegawaiBackdate || !jumlahSurat || !alasan) {
+                await showAlert('Mohon lengkapi semua field yang wajib diisi', 'warning');
+                return;
+            }
+            
+            if (parseInt(jumlahSurat) < 1) {
+                await showAlert('Jumlah surat harus lebih dari 0', 'warning');
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Mengirim...';
+            
+            try {
+                const token = getAuthToken();
+                const url = new URL(API_URL, window.location.origin);
+                url.searchParams.append('action', 'submitPermintaanBackdate');
+                url.searchParams.append('nama_pegawai_backdate', namaPegawaiBackdate);
+                url.searchParams.append('npk_pegawai_backdate', npkPegawaiBackdate);
+                url.searchParams.append('jumlah_surat', jumlahSurat);
+                url.searchParams.append('alasan', alasan);
+                
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: { 'X-Auth-Token': token || '' }
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Gagal mengirim permintaan');
+                }
+                
+                // Fetch ulang data permintaan untuk mendapatkan status terbaru dan petugas_id
+                try {
+                    const detailResponse = await fetch(`${API_URL}?action=getPermintaanBackdate&id=${result.data.id}`, {
+                        headers: { 'X-Auth-Token': token || '' }
+                    });
+                    const detailResult = await detailResponse.json();
+                    
+                    if (detailResult.success && detailResult.data) {
+                        // Simpan data form ke submittedData untuk digunakan di WhatsApp
+                        submittedData = {
+                            ...detailResult.data,
+                            nama_pegawai_backdate: namaPegawaiBackdate,
+                            npk_pegawai_backdate: npkPegawaiBackdate,
+                            jumlah_surat: jumlahSurat,
+                            alasan: alasan
+                        };
+                    } else {
+                        // Fallback ke result.data jika fetch detail gagal
+                        submittedData = {
+                            ...result.data,
+                            nama_pegawai_backdate: namaPegawaiBackdate,
+                            npk_pegawai_backdate: npkPegawaiBackdate,
+                            jumlah_surat: jumlahSurat,
+                            alasan: alasan,
+                            petugas_id: null
+                        };
+                    }
+                } catch (error) {
+                    console.error('Error fetching detail:', error);
+                    // Fallback ke result.data jika fetch detail gagal
+                    submittedData = {
+                        ...result.data,
+                        nama_pegawai_backdate: namaPegawaiBackdate,
+                        npk_pegawai_backdate: npkPegawaiBackdate,
+                        jumlah_surat: jumlahSurat,
+                        alasan: alasan,
+                        petugas_id: null
+                    };
+                }
+                
+                // Show success modal - tidak auto redirect
+                await showSuccessModal(submittedData);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                await showAlert('Error: ' + error.message, 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Kirim Permintaan';
+            }
+        });
+        
+        
+        // Custom Alert & Confirm Functions
+        function showAlert(message, type = 'info', title = null) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-modal-overlay show';
+                
+                const iconMap = {
+                    success: {
+                        icon: 'success',
+                        defaultTitle: 'Berhasil',
+                        svg: '<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    },
+                    error: {
+                        icon: 'error',
+                        defaultTitle: 'Error',
+                        svg: '<path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    },
+                    warning: {
+                        icon: 'warning',
+                        defaultTitle: 'Peringatan',
+                        svg: '<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    },
+                    info: {
+                        icon: 'info',
+                        defaultTitle: 'Informasi',
+                        svg: '<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    }
+                };
+                
+                const config = iconMap[type] || iconMap.info;
+                
+                overlay.innerHTML = `
+                    <div class="custom-modal">
+                        <div class="custom-modal-header">
+                            <div class="custom-modal-icon ${config.icon}">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    ${config.svg}
+                                </svg>
+                            </div>
+                            <h3 class="custom-modal-title">${title || config.defaultTitle}</h3>
+                        </div>
+                        <div class="custom-modal-body">${message}</div>
+                        <div class="custom-modal-footer">
+                            <button class="custom-modal-btn custom-modal-btn-primary" onclick="this.closest('.custom-modal-overlay').remove(); document.body.style.overflow = '';">OK</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.style.overflow = 'hidden';
+                document.body.appendChild(overlay);
+                
+                overlay.querySelector('button').addEventListener('click', () => {
+                    overlay.remove();
+                    document.body.style.overflow = '';
+                    resolve(true);
+                });
+                
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        overlay.remove();
+                        document.body.style.overflow = '';
+                        resolve(false);
+                    }
+                });
+            });
+        }
+        
+        function showConfirm(message, title = 'Konfirmasi', confirmText = 'Ya', cancelText = 'Batal', type = 'warning') {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-modal-overlay show';
+                
+                const iconMap = {
+                    warning: {
+                        svg: '<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    },
+                    danger: {
+                        svg: '<path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>'
+                    }
+                };
+                
+                const config = iconMap[type] || iconMap.warning;
+                const iconClass = type === 'danger' ? 'error' : 'warning';
+                
+                overlay.innerHTML = `
+                    <div class="custom-modal">
+                        <div class="custom-modal-header">
+                            <div class="custom-modal-icon ${iconClass}">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    ${config.svg}
+                                </svg>
+                            </div>
+                            <h3 class="custom-modal-title">${title}</h3>
+                        </div>
+                        <div class="custom-modal-body">${message}</div>
+                        <div class="custom-modal-footer">
+                            <button class="custom-modal-btn custom-modal-btn-secondary" data-action="cancel">${cancelText}</button>
+                            <button class="custom-modal-btn ${type === 'danger' ? 'custom-modal-btn-danger' : 'custom-modal-btn-primary'}" data-action="confirm">${confirmText}</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.style.overflow = 'hidden';
+                document.body.appendChild(overlay);
+                
+                const handleClick = (action) => {
+                    overlay.remove();
+                    document.body.style.overflow = '';
+                    resolve(action === 'confirm');
+                };
+                
+                overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => handleClick('cancel'));
+                overlay.querySelector('[data-action="confirm"]').addEventListener('click', () => handleClick('confirm'));
+                
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        handleClick('cancel');
+                    }
+                });
+            });
+        }
+        
+        // Initialize
+        loadUserData();
+    </script>
+</body>
+</html>

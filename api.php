@@ -161,6 +161,50 @@ try {
             handleGetPetugas($conn);
             break;
             
+        case 'addNomorSuratBackdate':
+            handleAddNomorSuratBackdate($conn);
+            break;
+            
+        case 'getNomorSuratBackdate':
+            handleGetNomorSuratBackdate($conn);
+            break;
+            
+        case 'deleteNomorSuratBackdate':
+            handleDeleteNomorSuratBackdate($conn);
+            break;
+            
+        case 'getApprovers':
+            handleGetApprovers($conn);
+            break;
+            
+        case 'getAdminForWhatsApp':
+            handleGetAdminForWhatsApp($conn);
+            break;
+            
+        case 'createApprover':
+            handleCreateApprover($conn);
+            break;
+            
+        case 'updateApprover':
+            handleUpdateApprover($conn);
+            break;
+            
+        case 'deleteApprover':
+            handleDeleteApprover($conn);
+            break;
+            
+        case 'createPetugas':
+            handleCreatePetugas($conn);
+            break;
+            
+        case 'updatePetugas':
+            handleUpdatePetugas($conn);
+            break;
+            
+        case 'deletePetugas':
+            handleDeletePetugas($conn);
+            break;
+            
         case 'changePassword':
             handleChangePassword($conn);
             break;
@@ -183,6 +227,57 @@ try {
             
         case 'validateApprovalPin':
             handleValidateApprovalPin($conn);
+            break;
+            
+        case 'submitBackdateWorkflow':
+            handleSubmitBackdateWorkflow($conn);
+            break;
+            
+        case 'getBackdateWorkflowRequests':
+            handleGetBackdateWorkflowRequests($conn);
+            break;
+            
+        case 'approveBackdateWorkflow':
+            handleApproveBackdateWorkflow($conn);
+            break;
+            
+        case 'rejectBackdateWorkflow':
+            handleRejectBackdateWorkflow($conn);
+            break;
+            
+        case 'updateBackdateWorkflowPetugas':
+            handleUpdateBackdateWorkflowPetugas($conn);
+            break;
+            
+        case 'getBackdateWorkflowLogs':
+            handleGetBackdateWorkflowLogs($conn);
+            break;
+            
+        case 'submitPermintaanBackdate':
+            handleSubmitPermintaanBackdate($conn);
+            break;
+            
+        case 'getPermintaanBackdate':
+            handleGetPermintaanBackdate($conn);
+            break;
+        case 'getPermintaanBackdateLogs':
+            handleGetPermintaanBackdateLogs($conn);
+            break;
+            
+        case 'getListPermintaanBackdate':
+            handleGetListPermintaanBackdate($conn);
+            break;
+            
+        case 'approvePermintaanBackdate':
+            handleApprovePermintaanBackdate($conn);
+            break;
+            
+        case 'rejectPermintaanBackdate':
+            handleRejectPermintaanBackdate($conn);
+            break;
+            
+        case 'updatePermintaanBackdatePetugas':
+            handleUpdatePermintaanBackdatePetugas($conn);
             break;
             
         default:
@@ -2317,7 +2412,388 @@ function handleDeletePilihPermintaanOption($conn) {
 }
 
 // Handler untuk getPetugas
+function handleGetApprovers($conn) {
+    $session = requireAuth($conn);
+    
+    // Get users with role 'approver' (include inactive for super admin)
+    $includeInactive = ($session && isset($session['role']) && ($session['role'] === 'super_admin' || $session['role'] === 'admin'));
+    
+    $sql = "SELECT `id`, `username`, `name`, `email`, `nomor_telepon`, `unit_kerja`, `role`, `is_active` 
+            FROM `users` 
+            WHERE `role` = 'approver'";
+    
+    if (!$includeInactive) {
+        $sql .= " AND `is_active` = 1";
+    }
+    
+    $sql .= " ORDER BY `name` ASC";
+    
+    $result = $conn->query($sql);
+    if (!$result) {
+        throw new Exception("Error fetching approvers: " . $conn->error);
+    }
+    
+    $approvers = [];
+    while ($row = $result->fetch_assoc()) {
+        $approvers[] = [
+            'id' => $row['id'],
+            'username' => $row['username'],
+            'name' => $row['name'],
+            'email' => $row['email'] ?? '',
+            'nomor_telepon' => $row['nomor_telepon'] ?? '',
+            'unit_kerja' => $row['unit_kerja'] ?? '',
+            'role' => $row['role'],
+            'is_active' => $row['is_active'] ?? 1
+        ];
+    }
+    
+    sendJSONResponse(true, $approvers);
+}
+
+// Handler untuk CRUD Approver
+function handleCreateApprover($conn) {
+    $session = requireSuperAdmin($conn);
+    
+    $name = trim(getRequestParam('name', ''));
+    $username = trim(getRequestParam('username', ''));
+    $nomorTelepon = trim(getRequestParam('nomor_telepon', ''));
+    $email = trim(getRequestParam('email', ''));
+    $unitKerja = trim(getRequestParam('unit_kerja', ''));
+    
+    if ($name === '') {
+        throw new Exception("Nama wajib diisi.");
+    }
+    
+    // Generate username dari nama jika tidak ada
+    if ($username === '') {
+        $username = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $name));
+        $username = preg_replace('/^_+|_+$/', '', $username);
+    }
+    
+    // Check if username already exists
+    $checkUser = $conn->prepare("SELECT `id` FROM `users` WHERE `username` = ? AND `is_active` = 1 LIMIT 1");
+    if ($checkUser) {
+        $checkUser->bind_param('s', $username);
+        $checkUser->execute();
+        $result = $checkUser->get_result();
+        if ($result && $result->num_rows > 0) {
+            $checkUser->close();
+            // Jika username sudah ada, tambahkan angka
+            $counter = 1;
+            $originalUsername = $username;
+            do {
+                $username = $originalUsername . '_' . $counter;
+                $checkUser = $conn->prepare("SELECT `id` FROM `users` WHERE `username` = ? AND `is_active` = 1 LIMIT 1");
+                $checkUser->bind_param('s', $username);
+                $checkUser->execute();
+                $result = $checkUser->get_result();
+                $counter++;
+            } while ($result && $result->num_rows > 0);
+            if ($checkUser) $checkUser->close();
+        } else {
+            $checkUser->close();
+        }
+    }
+    
+    // Ensure role column is large enough for 'approver' (8 characters)
+    $checkRoleColumn = $conn->query("SHOW COLUMNS FROM `users` WHERE `Field` = 'role'");
+    if ($checkRoleColumn && $checkRoleColumn->num_rows > 0) {
+        $roleColumn = $checkRoleColumn->fetch_assoc();
+        $columnType = strtolower($roleColumn['Type']);
+        
+        // If column is VARCHAR and smaller than 20, alter it
+        if (preg_match('/varchar\((\d+)\)/i', $columnType, $matches)) {
+            $varcharSize = intval($matches[1]);
+            if ($varcharSize < 20) {
+                $alterResult = $conn->query("ALTER TABLE `users` MODIFY COLUMN `role` VARCHAR(50)");
+                if (!$alterResult) {
+                    // Log error but continue (might fail if user doesn't have ALTER permission)
+                    error_log("Warning: Could not alter role column: " . $conn->error);
+                }
+            }
+        }
+        // If column is ENUM, we need to add 'approver' to the enum values
+        elseif (preg_match("/enum\s*\(([^)]+)\)/i", $columnType, $enumMatches)) {
+            // Get current enum values
+            $enumString = $enumMatches[1];
+            // Remove quotes and split
+            $enumValues = array_map(function($v) {
+                return trim($v, " '\"");
+            }, explode(',', $enumString));
+            
+            if (!in_array('approver', $enumValues)) {
+                $enumValues[] = 'approver';
+                $newEnum = "ENUM('" . implode("','", $enumValues) . "')";
+                $alterResult = $conn->query("ALTER TABLE `users` MODIFY COLUMN `role` $newEnum");
+                if (!$alterResult) {
+                    // Log error but continue
+                    error_log("Warning: Could not alter role enum: " . $conn->error);
+                }
+            }
+        }
+    }
+    
+    // Create user with role 'approver'
+    $password = 'Approver@25'; // Default password
+    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+    
+    $sql = "INSERT INTO `users` (`username`, `name`, `role`, `password_hash`, `is_active`";
+    $values = "VALUES (?, ?, 'approver', ?, 1";
+    $params = [$username, $name, $passwordHash];
+    $types = 'sss';
+    
+    // Add optional fields
+    $checkEmail = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
+    $checkTel = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
+    $checkUnit = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
+    
+    if ($checkEmail && $checkEmail->num_rows > 0 && $email !== '') {
+        $sql .= ", `email`";
+        $values .= ", ?";
+        $params[] = $email;
+        $types .= 's';
+    }
+    if ($checkTel && $checkTel->num_rows > 0 && $nomorTelepon !== '') {
+        $sql .= ", `nomor_telepon`";
+        $values .= ", ?";
+        $params[] = $nomorTelepon;
+        $types .= 's';
+    }
+    if ($checkUnit && $checkUnit->num_rows > 0 && $unitKerja !== '') {
+        $sql .= ", `unit_kerja`";
+        $values .= ", ?";
+        $params[] = $unitKerja;
+        $types .= 's';
+    }
+    
+    $sql .= ") " . $values . ")";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param($types, ...$params);
+    
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal membuat approver: " . $err);
+    }
+    $newId = $stmt->insert_id;
+    $stmt->close();
+    
+    auditLog($conn, $session['user_id'], 'create_approver', 'user', ['createdUserId' => $newId, 'username' => $username]);
+    sendJSONResponse(true, ['message' => 'Approver berhasil dibuat', 'id' => $newId]);
+}
+
+function handleUpdateApprover($conn) {
+    $session = requireSuperAdmin($conn);
+    
+    $id = intval(getRequestParam('id', 0));
+    $name = trim(getRequestParam('name', ''));
+    $nomorTelepon = trim(getRequestParam('nomor_telepon', ''));
+    $email = trim(getRequestParam('email', ''));
+    $unitKerja = trim(getRequestParam('unit_kerja', ''));
+    $isActive = getRequestParam('is_active', null);
+    
+    if ($id <= 0) {
+        throw new Exception("ID approver tidak valid.");
+    }
+    
+    $updates = [];
+    $params = [];
+    $types = '';
+    
+    if ($name !== '') {
+        $updates[] = "`name` = ?";
+        $params[] = $name;
+        $types .= 's';
+    }
+    
+    if ($isActive !== null) {
+        $isActiveVal = ($isActive === '1' || $isActive === 1 || $isActive === true || $isActive === 'true') ? 1 : 0;
+        $updates[] = "`is_active` = ?";
+        $params[] = $isActiveVal;
+        $types .= 'i';
+    }
+    
+    // Check if columns exist
+    $checkEmail = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
+    $checkTel = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
+    $checkUnit = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
+    
+    if ($checkEmail && $checkEmail->num_rows > 0 && $email !== '') {
+        $updates[] = "`email` = ?";
+        $params[] = $email;
+        $types .= 's';
+    }
+    if ($checkTel && $checkTel->num_rows > 0) {
+        $updates[] = "`nomor_telepon` = ?";
+        $params[] = $nomorTelepon;
+        $types .= 's';
+    }
+    if ($checkUnit && $checkUnit->num_rows > 0 && $unitKerja !== '') {
+        $updates[] = "`unit_kerja` = ?";
+        $params[] = $unitKerja;
+        $types .= 's';
+    }
+    
+    if (empty($updates)) {
+        throw new Exception("Tidak ada data yang diupdate.");
+    }
+    
+    $params[] = $id;
+    $types .= 'i';
+    
+    $sql = "UPDATE `users` SET " . implode(', ', $updates) . " WHERE `id` = ? AND `role` = 'approver'";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param($types, ...$params);
+    
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal update approver: " . $err);
+    }
+    $stmt->close();
+    
+    auditLog($conn, $session['user_id'], 'update_approver', 'user', ['updatedUserId' => $id]);
+    sendJSONResponse(true, ['message' => 'Approver berhasil diupdate']);
+}
+
+function handleDeleteApprover($conn) {
+    $session = requireSuperAdmin($conn);
+    
+    $id = intval(getRequestParam('id', 0));
+    
+    if ($id <= 0) {
+        throw new Exception("ID approver tidak valid.");
+    }
+    
+    // Soft delete (set is_active = 0)
+    $sql = "UPDATE `users` SET `is_active` = 0 WHERE `id` = ? AND `role` = 'approver'";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('i', $id);
+    
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal delete approver: " . $err);
+    }
+    $stmt->close();
+    
+    auditLog($conn, $session['user_id'], 'delete_approver', 'user', ['deletedUserId' => $id]);
+    sendJSONResponse(true, ['message' => 'Approver berhasil dihapus']);
+}
+
+// Handler untuk mendapatkan data admin untuk WhatsApp (bisa diakses user biasa)
+function handleGetAdminForWhatsApp($conn) {
+    requireAuth($conn); // Hanya perlu login, tidak perlu role khusus
+    
+    // Cek apakah kolom nomor_telepon ada
+    $checkTel = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
+    $hasTelColumn = $checkTel && $checkTel->num_rows > 0;
+    
+    // Prioritas 1: Cari admin dengan nama/username yang mengandung 'abdul jalal' (fleksibel)
+    $sql = "SELECT `id`, `username`, `name`, `nomor_telepon` 
+            FROM `users` 
+            WHERE (`role` = 'admin' OR `role` = 'super_admin') 
+            AND `is_active` = 1 
+            AND (
+                LOWER(`name`) LIKE '%abdul%jalal%' 
+                OR LOWER(`name`) LIKE '%abdul jalal%'
+                OR LOWER(`username`) LIKE '%abdul%jalal%'
+                OR LOWER(`username`) LIKE '%abdul jalal%'
+                OR LOWER(`name`) LIKE '%abduljalal%'
+                OR LOWER(`username`) LIKE '%abduljalal%'
+            )
+            ORDER BY 
+                CASE 
+                    WHEN LOWER(`name`) = 'abdul jalal' THEN 1
+                    WHEN LOWER(`username`) = 'abdul jalal' THEN 2
+                    WHEN LOWER(`name`) LIKE '%abdul jalal%' THEN 3
+                    WHEN LOWER(`username`) LIKE '%abdul jalal%' THEN 4
+                    ELSE 5
+                END,
+                `name` ASC
+            LIMIT 1";
+    
+    $result = $conn->query($sql);
+    if (!$result) {
+        throw new Exception("Error fetching admin: " . $conn->error);
+    }
+    
+    // Prioritas 2: Jika tidak ditemukan 'abdul jalal', ambil admin pertama
+    if ($result->num_rows === 0) {
+        $sql = "SELECT `id`, `username`, `name`, `nomor_telepon` 
+                FROM `users` 
+                WHERE (`role` = 'admin' OR `role` = 'super_admin') 
+                AND `is_active` = 1 
+                ORDER BY `name` ASC
+                LIMIT 1";
+        $result = $conn->query($sql);
+        if (!$result) {
+            throw new Exception("Error fetching admin: " . $conn->error);
+        }
+    }
+    
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $nomorTelepon = $hasTelColumn ? ($row['nomor_telepon'] ?? '') : '';
+        
+        // Jika nomor telepon kosong dan ini adalah Abdul Jalal, gunakan nomor default
+        if (empty($nomorTelepon) && (
+            stripos($row['name'], 'abdul') !== false && stripos($row['name'], 'jalal') !== false ||
+            stripos($row['username'], 'abdul') !== false && stripos($row['username'], 'jalal') !== false
+        )) {
+            $nomorTelepon = '082154549026';
+        }
+        
+        $admin = [
+            'id' => $row['id'],
+            'username' => $row['username'],
+            'name' => $row['name'],
+            'nomor_telepon' => $nomorTelepon
+        ];
+        sendJSONResponse(true, $admin);
+    } else {
+        // Fallback: Jika tidak ada admin yang ditemukan, return Abdul Jalal dengan nomor default
+        $admin = [
+            'id' => 0,
+            'username' => 'abduljalal',
+            'name' => 'Abdul Jalal',
+            'nomor_telepon' => '082154549026'
+        ];
+        sendJSONResponse(true, $admin);
+    }
+}
+
 function handleGetPetugas($conn) {
+    // Check if petugas table exists, if not create it
+    $checkTable = $conn->query("SHOW TABLES LIKE 'petugas'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `petugas` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `nama` VARCHAR(100) NOT NULL,
+            `npk` VARCHAR(20),
+            `jabatan` VARCHAR(100),
+            `no_wa` VARCHAR(20),
+            `is_active` TINYINT(1) DEFAULT 1,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_nama` (`nama`),
+            INDEX `idx_is_active` (`is_active`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createTableSql)) {
+            throw new Exception("Error creating petugas table: " . $conn->error);
+        }
+    }
+    
     // Jika ada parameter nama, cari petugas berdasarkan nama
     $nama = trim(getRequestParam('nama', ''));
     
@@ -2351,8 +2827,27 @@ function handleGetPetugas($conn) {
         throw new Exception("Petugas dengan nama '$nama' tidak ditemukan.");
     }
     
-    // Jika tidak ada parameter nama, kembalikan semua petugas
-    $sql = "SELECT `id`, `nama`, `npk`, `jabatan`, `no_wa` FROM `petugas` WHERE `is_active` = 1 ORDER BY `nama` ASC";
+    // Jika tidak ada parameter nama, kembalikan semua petugas (include inactive for super admin)
+    // Cek apakah ini untuk approval (tanpa autentikasi)
+    $forApproval = trim(getRequestParam('for_approval', '')) === 'true';
+    
+    if ($forApproval) {
+        // Untuk approval, tidak perlu autentikasi, hanya ambil petugas aktif
+        $sql = "SELECT `id`, `nama`, `npk`, `jabatan`, `no_wa`, `is_active` FROM `petugas` WHERE `is_active` = 1 ORDER BY `nama` ASC";
+    } else {
+        // Untuk akses normal, perlu autentikasi
+        $session = requireAuth($conn);
+        $includeInactive = ($session && isset($session['role']) && ($session['role'] === 'super_admin' || $session['role'] === 'admin'));
+        
+        $sql = "SELECT `id`, `nama`, `npk`, `jabatan`, `no_wa`, `is_active` FROM `petugas`";
+        
+        if (!$includeInactive) {
+            $sql .= " WHERE `is_active` = 1";
+        }
+        
+        $sql .= " ORDER BY `nama` ASC";
+    }
+    
     $result = $conn->query($sql);
     
     if (!$result) {
@@ -2366,11 +2861,426 @@ function handleGetPetugas($conn) {
             'nama' => $row['nama'],
             'npk' => $row['npk'] ?? '',
             'jabatan' => $row['jabatan'] ?? '',
-            'no_wa' => $row['no_wa'] ?? ''
+            'no_wa' => $row['no_wa'] ?? '',
+            'is_active' => $row['is_active'] ?? 1
         ];
     }
     
     sendJSONResponse(true, $data);
+}
+
+// Handler untuk Nomor Surat Backdate
+function handleAddNomorSuratBackdate($conn) {
+    // Cek apakah ini dari user yang sudah login atau dari PIN verification
+    $pin = trim(getRequestParam('pin', ''));
+    $hasAuth = false;
+    
+    try {
+        $session = requireAuth($conn);
+        $hasAuth = true;
+    } catch (Exception $e) {
+        // Jika tidak ada auth, cek PIN
+        if (!$pin) {
+            throw new Exception("PIN atau autentikasi diperlukan");
+        }
+        
+        $pinSql = "SELECT * FROM `approval_pin` WHERE `pin` = ? AND `is_active` = 1 LIMIT 1";
+        $pinStmt = $conn->prepare($pinSql);
+        $pinStmt->bind_param('s', $pin);
+        $pinStmt->execute();
+        $pinResult = $pinStmt->get_result();
+        
+        if (!$pinResult || $pinResult->num_rows === 0) {
+            $pinStmt->close();
+            throw new Exception("PIN tidak valid");
+        }
+        $pinStmt->close();
+    }
+    
+    $permintaanId = intval(getRequestParam('permintaan_id', 0));
+    $unitKerja = trim(getRequestParam('unit_kerja', ''));
+    $nomorSurat = trim(getRequestParam('nomor_surat', ''));
+    $perihal = trim(getRequestParam('perihal', ''));
+    
+    if (!$permintaanId) {
+        throw new Exception("ID permintaan tidak valid");
+    }
+    
+    if (!$unitKerja) {
+        throw new Exception("Unit Kerja harus diisi");
+    }
+    
+    if (!$nomorSurat) {
+        throw new Exception("Nomor Surat Backdate harus diisi");
+    }
+    
+    // Pastikan tabel permintaan_backdate sudah ada
+    ensureBackdateTables($conn);
+    
+    // Buat tabel nomor_surat_backdate jika belum ada
+    $checkTable = $conn->query("SHOW TABLES LIKE 'nomor_surat_backdate'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        // Buat tabel tanpa foreign key dulu
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `nomor_surat_backdate` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `permintaan_id` INT NOT NULL,
+            `unit_kerja` VARCHAR(200) NOT NULL,
+            `nomor_surat` VARCHAR(200) NOT NULL,
+            `perihal` TEXT,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_permintaan_id` (`permintaan_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createTableSql)) {
+            throw new Exception("Error creating nomor_surat_backdate table: " . $conn->error);
+        }
+        
+        // Tambahkan foreign key setelah tabel dibuat
+        // Cek apakah foreign key sudah ada
+        $checkFK = $conn->query("SELECT CONSTRAINT_NAME 
+            FROM information_schema.KEY_COLUMN_USAGE 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'nomor_surat_backdate' 
+            AND COLUMN_NAME = 'permintaan_id' 
+            AND REFERENCED_TABLE_NAME = 'permintaan_backdate'");
+        
+        if (!$checkFK || $checkFK->num_rows === 0) {
+            // Cek apakah tabel permintaan_backdate ada
+            $checkParentTable = $conn->query("SHOW TABLES LIKE 'permintaan_backdate'");
+            if ($checkParentTable && $checkParentTable->num_rows > 0) {
+                // Tambahkan foreign key
+                $addFKSql = "ALTER TABLE `nomor_surat_backdate` 
+                    ADD CONSTRAINT `fk_nomor_surat_permintaan` 
+                    FOREIGN KEY (`permintaan_id`) 
+                    REFERENCES `permintaan_backdate`(`id`) 
+                    ON DELETE CASCADE 
+                    ON UPDATE CASCADE";
+                
+                if (!$conn->query($addFKSql)) {
+                    // Jika gagal, log warning tapi lanjutkan (mungkin constraint sudah ada dengan nama lain)
+                    error_log("Warning: Could not add foreign key: " . $conn->error);
+                }
+            }
+        }
+    }
+    
+    // Cek apakah permintaan_id valid (ada di tabel permintaan_backdate)
+    $checkPermintaan = $conn->prepare("SELECT `id` FROM `permintaan_backdate` WHERE `id` = ? LIMIT 1");
+    if ($checkPermintaan) {
+        $checkPermintaan->bind_param('i', $permintaanId);
+        $checkPermintaan->execute();
+        $checkResult = $checkPermintaan->get_result();
+        if (!$checkResult || $checkResult->num_rows === 0) {
+            $checkPermintaan->close();
+            throw new Exception("Permintaan dengan ID $permintaanId tidak ditemukan di database");
+        }
+        $checkPermintaan->close();
+    }
+    
+    // Insert nomor surat
+    $sql = "INSERT INTO `nomor_surat_backdate` (`permintaan_id`, `unit_kerja`, `nomor_surat`, `perihal`) VALUES (?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('isss', $permintaanId, $unitKerja, $nomorSurat, $perihal);
+    
+    if (!$stmt->execute()) {
+        $errorMsg = $stmt->error;
+        $stmt->close();
+        error_log("Error inserting nomor_surat_backdate: " . $errorMsg);
+        error_log("Data: permintaan_id=$permintaanId, unit_kerja=$unitKerja, nomor_surat=$nomorSurat");
+        throw new Exception("Error menyimpan data: " . $errorMsg);
+    }
+    
+    $insertId = $conn->insert_id;
+    $stmt->close();
+    
+    error_log("Nomor surat backdate berhasil ditambahkan: id=$insertId, permintaan_id=$permintaanId");
+    
+    sendJSONResponse(true, ['id' => $insertId, 'permintaan_id' => $permintaanId], 'Nomor surat backdate berhasil ditambahkan');
+}
+
+function handleGetNomorSuratBackdate($conn) {
+    $permintaanId = intval(getRequestParam('permintaan_id', 0));
+    
+    if (!$permintaanId) {
+        throw new Exception("ID permintaan tidak valid");
+    }
+    
+    // Pastikan tabel sudah ada
+    ensureBackdateTables($conn);
+    
+    // Buat tabel nomor_surat_backdate jika belum ada
+    $checkTable = $conn->query("SHOW TABLES LIKE 'nomor_surat_backdate'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        // Buat tabel tanpa foreign key dulu
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `nomor_surat_backdate` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `permintaan_id` INT NOT NULL,
+            `unit_kerja` VARCHAR(200) NOT NULL,
+            `nomor_surat` VARCHAR(200) NOT NULL,
+            `perihal` TEXT,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_permintaan_id` (`permintaan_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createTableSql)) {
+            error_log("Error creating nomor_surat_backdate table: " . $conn->error);
+            sendJSONResponse(true, []);
+            return;
+        } else {
+            // Tambahkan foreign key setelah tabel dibuat
+            $checkParentTable = $conn->query("SHOW TABLES LIKE 'permintaan_backdate'");
+            if ($checkParentTable && $checkParentTable->num_rows > 0) {
+                $addFKSql = "ALTER TABLE `nomor_surat_backdate` 
+                    ADD CONSTRAINT `fk_nomor_surat_permintaan` 
+                    FOREIGN KEY (`permintaan_id`) 
+                    REFERENCES `permintaan_backdate`(`id`) 
+                    ON DELETE CASCADE 
+                    ON UPDATE CASCADE";
+                
+                if (!$conn->query($addFKSql)) {
+                    error_log("Warning: Could not add foreign key: " . $conn->error);
+                }
+            }
+        }
+    }
+    
+    $sql = "SELECT `id`, `unit_kerja`, `nomor_surat`, `perihal`, `created_at` FROM `nomor_surat_backdate` WHERE `permintaan_id` = ? ORDER BY `created_at` DESC";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('i', $permintaanId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = [
+            'id' => intval($row['id']),
+            'unit_kerja' => $row['unit_kerja'],
+            'nomor_surat' => $row['nomor_surat'],
+            'perihal' => $row['perihal'] ?? '',
+            'created_at' => $row['created_at']
+        ];
+    }
+    
+    $stmt->close();
+    sendJSONResponse(true, $data);
+}
+
+function handleDeleteNomorSuratBackdate($conn) {
+    // Cek apakah ini dari user yang sudah login atau dari PIN verification
+    $pin = trim(getRequestParam('pin', ''));
+    $hasAuth = false;
+    $session = null;
+    
+    try {
+        $session = requireAuth($conn);
+        $hasAuth = true;
+    } catch (Exception $e) {
+        // Jika tidak ada auth, cek PIN
+        if (!$pin) {
+            throw new Exception("PIN atau autentikasi diperlukan");
+        }
+        
+        $pinSql = "SELECT * FROM `approval_pin` WHERE `pin` = ? AND `is_active` = 1 LIMIT 1";
+        $pinStmt = $conn->prepare($pinSql);
+        $pinStmt->bind_param('s', $pin);
+        $pinStmt->execute();
+        $pinResult = $pinStmt->get_result();
+        
+        if (!$pinResult || $pinResult->num_rows === 0) {
+            $pinStmt->close();
+            throw new Exception("PIN tidak valid");
+        }
+        $pinStmt->close();
+    }
+    
+    $id = intval(getRequestParam('id', 0));
+    
+    if (!$id) {
+        throw new Exception("ID tidak valid");
+    }
+    
+    // Pastikan tabel sudah ada
+    $checkTable = $conn->query("SHOW TABLES LIKE 'nomor_surat_backdate'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        throw new Exception("Tabel nomor_surat_backdate tidak ditemukan");
+    }
+    
+    $sql = "DELETE FROM `nomor_surat_backdate` WHERE `id` = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('i', $id);
+    
+    if (!$stmt->execute()) {
+        $stmt->close();
+        throw new Exception("Error: " . $stmt->error);
+    }
+    
+    $stmt->close();
+    sendJSONResponse(true, null, 'Nomor surat backdate berhasil dihapus');
+}
+
+// Handler untuk CRUD Petugas
+function handleCreatePetugas($conn) {
+    $session = requireSuperAdmin($conn);
+    
+    $nama = trim(getRequestParam('nama', ''));
+    $npk = trim(getRequestParam('npk', ''));
+    $jabatan = trim(getRequestParam('jabatan', ''));
+    $noWa = trim(getRequestParam('no_wa', ''));
+    
+    if ($nama === '') {
+        throw new Exception("Nama petugas wajib diisi.");
+    }
+    
+    // Ensure petugas table exists
+    $checkTable = $conn->query("SHOW TABLES LIKE 'petugas'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `petugas` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `nama` VARCHAR(100) NOT NULL,
+            `npk` VARCHAR(20),
+            `jabatan` VARCHAR(100),
+            `no_wa` VARCHAR(20),
+            `is_active` TINYINT(1) DEFAULT 1,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_nama` (`nama`),
+            INDEX `idx_is_active` (`is_active`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createTableSql)) {
+            throw new Exception("Error creating petugas table: " . $conn->error);
+        }
+    }
+    
+    $sql = "INSERT INTO `petugas` (`nama`, `npk`, `jabatan`, `no_wa`, `is_active`) VALUES (?, ?, ?, ?, 1)";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('ssss', $nama, $npk, $jabatan, $noWa);
+    
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal membuat petugas: " . $err);
+    }
+    $newId = $stmt->insert_id;
+    $stmt->close();
+    
+    auditLog($conn, $session['user_id'], 'create_petugas', 'petugas', ['createdPetugasId' => $newId, 'nama' => $nama]);
+    sendJSONResponse(true, ['message' => 'Petugas berhasil dibuat', 'id' => $newId]);
+}
+
+function handleUpdatePetugas($conn) {
+    $session = requireSuperAdmin($conn);
+    
+    $id = intval(getRequestParam('id', 0));
+    $nama = trim(getRequestParam('nama', ''));
+    $npk = trim(getRequestParam('npk', ''));
+    $jabatan = trim(getRequestParam('jabatan', ''));
+    $noWa = trim(getRequestParam('no_wa', ''));
+    $isActive = getRequestParam('is_active', null);
+    
+    if ($id <= 0) {
+        throw new Exception("ID petugas tidak valid.");
+    }
+    
+    $updates = [];
+    $params = [];
+    $types = '';
+    
+    if ($nama !== '') {
+        $updates[] = "`nama` = ?";
+        $params[] = $nama;
+        $types .= 's';
+    }
+    if ($npk !== '') {
+        $updates[] = "`npk` = ?";
+        $params[] = $npk;
+        $types .= 's';
+    }
+    if ($jabatan !== '') {
+        $updates[] = "`jabatan` = ?";
+        $params[] = $jabatan;
+        $types .= 's';
+    }
+    if ($noWa !== '') {
+        $updates[] = "`no_wa` = ?";
+        $params[] = $noWa;
+        $types .= 's';
+    }
+    if ($isActive !== null) {
+        $isActiveVal = ($isActive === '1' || $isActive === 1 || $isActive === true || $isActive === 'true') ? 1 : 0;
+        $updates[] = "`is_active` = ?";
+        $params[] = $isActiveVal;
+        $types .= 'i';
+    }
+    
+    if (empty($updates)) {
+        throw new Exception("Tidak ada data yang diupdate.");
+    }
+    
+    $params[] = $id;
+    $types .= 'i';
+    
+    $sql = "UPDATE `petugas` SET " . implode(', ', $updates) . " WHERE `id` = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param($types, ...$params);
+    
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal update petugas: " . $err);
+    }
+    $stmt->close();
+    
+    auditLog($conn, $session['user_id'], 'update_petugas', 'petugas', ['updatedPetugasId' => $id]);
+    sendJSONResponse(true, ['message' => 'Petugas berhasil diupdate']);
+}
+
+function handleDeletePetugas($conn) {
+    $session = requireSuperAdmin($conn);
+    
+    $id = intval(getRequestParam('id', 0));
+    
+    if ($id <= 0) {
+        throw new Exception("ID petugas tidak valid.");
+    }
+    
+    // Soft delete (set is_active = 0)
+    $sql = "UPDATE `petugas` SET `is_active` = 0 WHERE `id` = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('i', $id);
+    
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal delete petugas: " . $err);
+    }
+    $stmt->close();
+    
+    auditLog($conn, $session['user_id'], 'delete_petugas', 'petugas', ['deletedPetugasId' => $id]);
+    sendJSONResponse(true, ['message' => 'Petugas berhasil dihapus']);
 }
 
 // Handler untuk submitPermintaan
@@ -2540,4 +3450,1391 @@ function handleSubmitPermintaan($conn) {
         'id' => $insertId,
         'rowNumber' => $rowNumber
     ]);
+}
+
+// Handler untuk submitBackdateWorkflow
+function handleSubmitBackdateWorkflow($conn) {
+    $session = requireAuth($conn);
+    $userId = $session['user_id'];
+    
+    $alasanPermintaan = trim(getRequestParam('alasanPermintaan', ''));
+    $namaPegawai = trim(getRequestParam('namaPegawai', ''));
+    $npk = trim(getRequestParam('npk', ''));
+    $jumlahSurat = trim(getRequestParam('jumlahSurat', ''));
+    
+    // Validasi field wajib
+    $missingFields = [];
+    if (empty($alasanPermintaan)) $missingFields[] = 'Alasan Permintaan';
+    if (empty($namaPegawai)) $missingFields[] = 'Nama Pegawai';
+    if (empty($npk)) $missingFields[] = 'NPK';
+    if (empty($jumlahSurat) || !is_numeric($jumlahSurat) || intval($jumlahSurat) < 1) {
+        $missingFields[] = 'Jumlah Surat';
+    }
+    
+    if (!empty($missingFields)) {
+        throw new Exception("Field wajib yang belum diisi: " . implode(', ', $missingFields));
+    }
+    
+    // Check if backdate_workflow table exists, if not create it
+    $checkTable = $conn->query("SHOW TABLES LIKE 'backdate_workflow'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        // Create table
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `backdate_workflow` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `alasan_permintaan` TEXT NOT NULL,
+            `nama_pegawai` VARCHAR(255) NOT NULL,
+            `npk` VARCHAR(50) NOT NULL,
+            `jumlah_surat` INT NOT NULL,
+            `status` VARCHAR(50) DEFAULT 'Pending Approval',
+            `petugas_tunjuk` VARCHAR(255) DEFAULT NULL,
+            `petugas_id` INT DEFAULT NULL,
+            `catatan_pelaksanaan` TEXT DEFAULT NULL,
+            `approver_id` INT DEFAULT NULL,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_user_id` (`user_id`),
+            INDEX `idx_status` (`status`),
+            INDEX `idx_petugas_id` (`petugas_id`),
+            INDEX `idx_approver_id` (`approver_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createTableSql)) {
+            throw new Exception("Error creating table: " . $conn->error);
+        }
+        
+        // Create activity log table
+        $createLogTableSql = "CREATE TABLE IF NOT EXISTS `backdate_workflow_logs` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `workflow_id` INT NOT NULL,
+            `user_id` INT NOT NULL,
+            `action` VARCHAR(100) NOT NULL,
+            `description` TEXT,
+            `old_status` VARCHAR(50),
+            `new_status` VARCHAR(50),
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX `idx_workflow_id` (`workflow_id`),
+            INDEX `idx_user_id` (`user_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createLogTableSql)) {
+            throw new Exception("Error creating log table: " . $conn->error);
+        }
+    }
+    
+    // Insert data
+    $sql = "INSERT INTO `backdate_workflow` (
+        `user_id`, `alasan_permintaan`, `nama_pegawai`, `npk`, `jumlah_surat`, `status`
+    ) VALUES (?, ?, ?, ?, ?, 'Pending Approval')";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    // Convert jumlah_surat to integer and store in variable (required for bind_param)
+    $jumlahSuratInt = intval($jumlahSurat);
+    
+    $stmt->bind_param('isssi', $userId, $alasanPermintaan, $namaPegawai, $npk, $jumlahSuratInt);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $workflowId = $conn->insert_id;
+    $stmt->close();
+    
+    // Log activity
+    $logSql = "INSERT INTO `backdate_workflow_logs` (
+        `workflow_id`, `user_id`, `action`, `description`, `new_status`
+    ) VALUES (?, ?, 'Submit', 'Permintaan backdate dibuat', 'Pending Approval')";
+    
+    $logStmt = $conn->prepare($logSql);
+    if ($logStmt) {
+        $logStmt->bind_param('ii', $workflowId, $userId);
+        $logStmt->execute();
+        $logStmt->close();
+    }
+    
+    sendJSONResponse(true, [
+        'message' => 'Permintaan berhasil dikirim',
+        'id' => $workflowId,
+        'status' => 'Pending Approval'
+    ]);
+}
+
+// Handler untuk getBackdateWorkflowRequests
+function handleGetBackdateWorkflowRequests($conn) {
+    $session = requireAuth($conn);
+    $userId = $session['user_id'];
+    $role = $session['role'];
+    
+    $statusFilter = trim(getRequestParam('status', ''));
+    $userFilter = trim(getRequestParam('user_id', ''));
+    
+    $sql = "SELECT w.*, u.username, u.name as user_name,
+            p.name as petugas_name,
+            a.name as approver_name
+            FROM `backdate_workflow` w
+            LEFT JOIN `users` u ON u.id = w.user_id
+            LEFT JOIN `users` p ON p.id = w.petugas_id
+            LEFT JOIN `users` a ON a.id = w.approver_id
+            WHERE 1=1";
+    
+    $params = [];
+    $types = '';
+    
+    // Filter untuk petugas (prioritas pertama)
+    if (isset($_REQUEST['as_petugas']) && $_REQUEST['as_petugas'] === '1') {
+        $sql .= " AND w.petugas_id = ? AND w.status IN ('Approved', 'In Progress', 'Close')";
+        $params[] = $userId;
+        $types .= 'i';
+    }
+    // Filter berdasarkan role
+    elseif ($role === 'user') {
+        $sql .= " AND w.user_id = ?";
+        $params[] = $userId;
+        $types .= 'i';
+    } elseif ($role === 'approver' || $role === 'admin' || $role === 'super_admin') {
+        // Approver/admin bisa lihat semua, tapi bisa filter
+        if ($statusFilter && $statusFilter !== 'all') {
+            $sql .= " AND w.status = ?";
+            $params[] = $statusFilter;
+            $types .= 's';
+        }
+    }
+    
+    if ($userFilter && ($role === 'admin' || $role === 'super_admin')) {
+        $sql .= " AND w.user_id = ?";
+        $params[] = intval($userFilter);
+        $types .= 'i';
+    }
+    
+    $sql .= " ORDER BY w.created_at DESC";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $result = $stmt->get_result();
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = $row;
+    }
+    
+    $stmt->close();
+    
+    sendJSONResponse(true, $data);
+}
+
+// Handler untuk approveBackdateWorkflow
+function handleApproveBackdateWorkflow($conn) {
+    $session = requireAuth($conn);
+    $userId = $session['user_id'];
+    $role = $session['role'];
+    
+    // Hanya approver, admin, atau super_admin yang bisa approve
+    if ($role !== 'approver' && $role !== 'admin' && $role !== 'super_admin') {
+        throw new Exception("Akses ditolak: hanya approver yang bisa approve");
+    }
+    
+    $workflowId = intval(getRequestParam('id', 0));
+    $petugasTunjuk = trim(getRequestParam('petugas_tunjuk', ''));
+    $petugasId = intval(getRequestParam('petugas_id', 0));
+    
+    if ($workflowId <= 0) {
+        throw new Exception("ID workflow tidak valid");
+    }
+    
+    if (empty($petugasTunjuk) || $petugasId <= 0) {
+        throw new Exception("Petugas harus ditunjuk untuk approve");
+    }
+    
+    // Get current workflow data
+    $getSql = "SELECT * FROM `backdate_workflow` WHERE `id` = ?";
+    $getStmt = $conn->prepare($getSql);
+    $getStmt->bind_param('i', $workflowId);
+    $getStmt->execute();
+    $workflow = $getStmt->get_result()->fetch_assoc();
+    $getStmt->close();
+    
+    if (!$workflow) {
+        throw new Exception("Workflow tidak ditemukan");
+    }
+    
+    // Check status dengan trim dan case-insensitive
+    $currentStatus = trim($workflow['status']);
+    if (strcasecmp($currentStatus, 'Pending Approval') !== 0) {
+        throw new Exception("Status workflow tidak valid untuk approve. Status saat ini: " . $currentStatus);
+    }
+    
+    // Update workflow
+    $updateSql = "UPDATE `backdate_workflow` 
+                  SET `status` = 'Approved', 
+                      `petugas_tunjuk` = ?, 
+                      `petugas_id` = ?,
+                      `approver_id` = ?,
+                      `updated_at` = NOW()
+                  WHERE `id` = ?";
+    
+    $stmt = $conn->prepare($updateSql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('siii', $petugasTunjuk, $petugasId, $userId, $workflowId);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $stmt->close();
+    
+    // Log activity
+    $logSql = "INSERT INTO `backdate_workflow_logs` (
+        `workflow_id`, `user_id`, `action`, `description`, `old_status`, `new_status`
+    ) VALUES (?, ?, 'Approve', 'Permintaan disetujui dan petugas ditunjuk', 'Pending Approval', 'Approved')";
+    
+    $logStmt = $conn->prepare($logSql);
+    if ($logStmt) {
+        $logStmt->bind_param('iis', $workflowId, $userId);
+        $logStmt->execute();
+        $logStmt->close();
+    }
+    
+    sendJSONResponse(true, ['message' => 'Permintaan berhasil disetujui']);
+}
+
+// Handler untuk rejectBackdateWorkflow
+function handleRejectBackdateWorkflow($conn) {
+    $session = requireAuth($conn);
+    $userId = $session['user_id'];
+    $role = $session['role'];
+    
+    // Hanya approver, admin, atau super_admin yang bisa reject
+    if ($role !== 'approver' && $role !== 'admin' && $role !== 'super_admin') {
+        throw new Exception("Akses ditolak: hanya approver yang bisa reject");
+    }
+    
+    $workflowId = intval(getRequestParam('id', 0));
+    
+    if ($workflowId <= 0) {
+        throw new Exception("ID workflow tidak valid");
+    }
+    
+    // Get current workflow data
+    $getSql = "SELECT * FROM `backdate_workflow` WHERE `id` = ?";
+    $getStmt = $conn->prepare($getSql);
+    $getStmt->bind_param('i', $workflowId);
+    $getStmt->execute();
+    $workflow = $getStmt->get_result()->fetch_assoc();
+    $getStmt->close();
+    
+    if (!$workflow) {
+        throw new Exception("Workflow tidak ditemukan");
+    }
+    
+    // Check status dengan trim dan case-insensitive
+    $currentStatus = trim($workflow['status']);
+    if (strcasecmp($currentStatus, 'Pending Approval') !== 0) {
+        throw new Exception("Status workflow tidak valid untuk reject. Status saat ini: " . $currentStatus);
+    }
+    
+    // Update workflow
+    $updateSql = "UPDATE `backdate_workflow` 
+                  SET `status` = 'Rejected', 
+                      `approver_id` = ?,
+                      `updated_at` = NOW()
+                  WHERE `id` = ?";
+    
+    $stmt = $conn->prepare($updateSql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('ii', $userId, $workflowId);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $stmt->close();
+    
+    // Log activity
+    $logSql = "INSERT INTO `backdate_workflow_logs` (
+        `workflow_id`, `user_id`, `action`, `description`, `old_status`, `new_status`
+    ) VALUES (?, ?, 'Reject', 'Permintaan ditolak', 'Pending Approval', 'Rejected')";
+    
+    $logStmt = $conn->prepare($logSql);
+    if ($logStmt) {
+        $logStmt->bind_param('iis', $workflowId, $userId);
+        $logStmt->execute();
+        $logStmt->close();
+    }
+    
+    sendJSONResponse(true, ['message' => 'Permintaan ditolak']);
+}
+
+// Handler untuk updateBackdateWorkflowPetugas
+function handleUpdateBackdateWorkflowPetugas($conn) {
+    $session = requireAuth($conn);
+    $userId = $session['user_id'];
+    
+    $workflowId = intval(getRequestParam('id', 0));
+    $catatanPelaksanaan = trim(getRequestParam('catatan_pelaksanaan', ''));
+    $status = trim(getRequestParam('status', ''));
+    
+    if ($workflowId <= 0) {
+        throw new Exception("ID workflow tidak valid");
+    }
+    
+    // Get current workflow data
+    $getSql = "SELECT * FROM `backdate_workflow` WHERE `id` = ?";
+    $getStmt = $conn->prepare($getSql);
+    $getStmt->bind_param('i', $workflowId);
+    $getStmt->execute();
+    $workflow = $getStmt->get_result()->fetch_assoc();
+    $getStmt->close();
+    
+    if (!$workflow) {
+        throw new Exception("Workflow tidak ditemukan");
+    }
+    
+    // Check if user is the assigned petugas
+    if ($workflow['petugas_id'] != $userId) {
+        throw new Exception("Akses ditolak: Anda bukan petugas yang ditunjuk");
+    }
+    
+    $oldStatus = $workflow['status'];
+    $newStatus = $status ?: $oldStatus;
+    
+    // Update workflow
+    $updates = [];
+    $params = [];
+    $types = '';
+    
+    if ($catatanPelaksanaan !== '') {
+        $updates[] = "`catatan_pelaksanaan` = ?";
+        $params[] = $catatanPelaksanaan;
+        $types .= 's';
+    }
+    
+    if ($status && $status !== $oldStatus) {
+        $updates[] = "`status` = ?";
+        $params[] = $status;
+        $types .= 's';
+    }
+    
+    if (empty($updates)) {
+        throw new Exception("Tidak ada data untuk diupdate");
+    }
+    
+    $updates[] = "`updated_at` = NOW()";
+    $params[] = $workflowId;
+    $types .= 'i';
+    
+    $updateSql = "UPDATE `backdate_workflow` SET " . implode(', ', $updates) . " WHERE `id` = ?";
+    
+    $stmt = $conn->prepare($updateSql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param($types, ...$params);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $stmt->close();
+    
+    // Log activity
+    $action = $status === 'Close' ? 'Close' : 'Update';
+    $description = $status === 'Close' ? 'Pekerjaan selesai dan status diubah menjadi Close' : 'Catatan pelaksanaan diupdate';
+    
+    $logSql = "INSERT INTO `backdate_workflow_logs` (
+        `workflow_id`, `user_id`, `action`, `description`, `old_status`, `new_status`
+    ) VALUES (?, ?, ?, ?, ?, ?)";
+    
+    $logStmt = $conn->prepare($logSql);
+    if ($logStmt) {
+        $logStmt->bind_param('iissss', $workflowId, $userId, $action, $description, $oldStatus, $newStatus);
+        $logStmt->execute();
+        $logStmt->close();
+    }
+    
+    // Jika status Close, kirim notifikasi ke approver
+    if ($status === 'Close' && $workflow['approver_id']) {
+        // Log notifikasi (bisa dikembangkan untuk email/WA)
+        $notifDescription = "Notifikasi dikirim ke approver: Proses backdate untuk " . $workflow['nama_pegawai'] . " (NPK: " . $workflow['npk'] . ") telah selesai";
+        $notifSql = "INSERT INTO `backdate_workflow_logs` (
+            `workflow_id`, `user_id`, `action`, `description`, `new_status`
+        ) VALUES (?, ?, 'Notification', ?, 'Close')";
+        
+        $notifStmt = $conn->prepare($notifSql);
+        if ($notifStmt) {
+            $notifStmt->bind_param('iis', $workflowId, $workflow['approver_id'], $notifDescription);
+            $notifStmt->execute();
+            $notifStmt->close();
+        }
+    }
+    
+    sendJSONResponse(true, ['message' => 'Data berhasil diupdate']);
+}
+
+// Handler untuk getBackdateWorkflowLogs
+function handleGetBackdateWorkflowLogs($conn) {
+    $session = requireAuth($conn);
+    
+    $workflowId = intval(getRequestParam('id', 0));
+    
+    if ($workflowId <= 0) {
+        throw new Exception("ID workflow tidak valid");
+    }
+    
+    $sql = "SELECT l.*, u.username, u.name as user_name
+            FROM `backdate_workflow_logs` l
+            LEFT JOIN `users` u ON u.id = l.user_id
+            WHERE l.workflow_id = ?
+            ORDER BY l.created_at DESC";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('i', $workflowId);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $result = $stmt->get_result();
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = $row;
+    }
+    
+    $stmt->close();
+    
+    sendJSONResponse(true, $data);
+}
+
+// Handler untuk submitPermintaanBackdate
+function handleSubmitPermintaanBackdate($conn) {
+    $session = requireAuth($conn);
+    $userId = $session['user_id'];
+    
+    // Get user details from database
+    // Check if nomor_telepon column exists
+    $checkTelColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
+    $hasNomorTelepon = $checkTelColumn && $checkTelColumn->num_rows > 0;
+    
+    $userSql = "SELECT npk, name, unit_kerja" . ($hasNomorTelepon ? ", nomor_telepon" : "") . " FROM `users` WHERE id = ?";
+    $userStmt = $conn->prepare($userSql);
+    $userStmt->bind_param('i', $userId);
+    $userStmt->execute();
+    $userResult = $userStmt->get_result();
+    $userRow = $userResult->fetch_assoc();
+    $userStmt->close();
+    
+    if (!$userRow) {
+        throw new Exception("Data user tidak ditemukan");
+    }
+    
+    // Ensure nomor_telepon exists in userRow
+    if (!isset($userRow['nomor_telepon'])) {
+        $userRow['nomor_telepon'] = '';
+    }
+    
+    // Get form data
+    $namaPegawaiBackdate = trim(getRequestParam('nama_pegawai_backdate', ''));
+    $npkPegawaiBackdate = trim(getRequestParam('npk_pegawai_backdate', ''));
+    $jumlahSurat = trim(getRequestParam('jumlah_surat', ''));
+    $alasan = trim(getRequestParam('alasan', ''));
+    
+    // Validasi field wajib
+    $missingFields = [];
+    if (empty($namaPegawaiBackdate)) $missingFields[] = 'Nama Pegawai yang Dibukakan Backdate';
+    if (empty($npkPegawaiBackdate)) $missingFields[] = 'NPK Pegawai';
+    if (empty($jumlahSurat) || !is_numeric($jumlahSurat) || intval($jumlahSurat) < 1) {
+        $missingFields[] = 'Jumlah Surat';
+    }
+    if (empty($alasan)) $missingFields[] = 'Alasan Permintaan';
+    
+    if (!empty($missingFields)) {
+        throw new Exception("Field wajib yang belum diisi: " . implode(', ', $missingFields));
+    }
+    
+    // Ensure tables exist
+    ensureBackdateTables($conn);
+    
+    // Verify table exists before querying
+    $verifyTable = $conn->query("SHOW TABLES LIKE 'permintaan_backdate'");
+    if (!$verifyTable || $verifyTable->num_rows === 0) {
+        throw new Exception("Tabel permintaan_backdate gagal dibuat");
+    }
+    
+    // Generate nomor permintaan otomatis
+    $currentYear = date('Y');
+    $likePattern = 'BD-' . $currentYear . '-%';
+    $nextNumber = 1;
+    
+    // Try to get last number
+    try {
+        $lastNumberSql = "SELECT `row_number` FROM `permintaan_backdate` 
+                          WHERE `row_number` LIKE ? 
+                          ORDER BY `id` DESC LIMIT 1";
+        $lastNumberStmt = $conn->prepare($lastNumberSql);
+        
+        if (!$lastNumberStmt) {
+            throw new Exception("Prepare error for last number query: " . $conn->error);
+        }
+        
+        $lastNumberStmt->bind_param('s', $likePattern);
+        if (!$lastNumberStmt->execute()) {
+            throw new Exception("Execute error for last number query: " . $lastNumberStmt->error);
+        }
+        
+        $lastNumberResult = $lastNumberStmt->get_result();
+        if ($lastNumberResult && $lastNumberResult->num_rows > 0) {
+            $lastRow = $lastNumberResult->fetch_assoc();
+            $lastNumber = $lastRow['row_number'];
+            // Extract number from BD-YYYY-XXXX
+            if (preg_match('/BD-' . $currentYear . '-(\d+)/', $lastNumber, $matches)) {
+                $nextNumber = intval($matches[1]) + 1;
+            }
+        }
+        $lastNumberStmt->close();
+    } catch (Exception $e) {
+        // If query fails, start from 1
+        error_log("Error getting last number: " . $e->getMessage());
+        $nextNumber = 1;
+    }
+    
+    $rowNumber = 'BD-' . $currentYear . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+    
+    // Insert data (tanpa petugas_id dan petugas_no_wa - akan diisi saat approve)
+    $sql = "INSERT INTO `permintaan_backdate` (
+        `row_number`, `user_id`, `npk_user`, `nama_user`, `unit_kerja`,
+        `nama_pegawai_backdate`, `npk_pegawai_backdate`, `jumlah_surat`, `alasan`,
+        `status`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $jumlahSuratInt = intval($jumlahSurat);
+    $status = 'Open';
+    
+    // Extract values to variables (bind_param requires variables, not array elements)
+    $npkUser = $userRow['npk'] ?? '';
+    $namaUser = $userRow['name'] ?? '';
+    $unitKerja = $userRow['unit_kerja'] ?? '';
+    
+    // Count: 10 placeholders (tanpa nomor_surat_permintaan)
+    // Types: s(row_number), i(user_id), s(npk_user), s(nama_user), s(unit_kerja),
+    //        s(nama_pegawai_backdate), s(npk_pegawai_backdate), i(jumlah_surat), s(alasan),
+    //        s(status)
+    $stmt->bind_param('sisssssiss', 
+        $rowNumber, 
+        $userId, 
+        $npkUser, 
+        $namaUser, 
+        $unitKerja,
+        $namaPegawaiBackdate, 
+        $npkPegawaiBackdate, 
+        $jumlahSuratInt, 
+        $alasan,
+        $status
+    );
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $permintaanId = $conn->insert_id;
+    $stmt->close();
+    
+    // Log activity
+    $logSql = "INSERT INTO `permintaan_backdate_logs` (
+        `permintaan_id`, `user_id`, `action`, `description`, `new_status`
+    ) VALUES (?, ?, 'Submit', 'Permintaan backdate dibuat', 'Open')";
+    
+    $logStmt = $conn->prepare($logSql);
+    if ($logStmt) {
+        $logStmt->bind_param('ii', $permintaanId, $userId);
+        $logStmt->execute();
+        $logStmt->close();
+    }
+    
+    sendJSONResponse(true, [
+        'message' => 'Permintaan berhasil dikirim',
+        'id' => $permintaanId,
+        'row_number' => $rowNumber
+    ]);
+}
+
+// Helper function untuk ensure tables exist
+function ensureBackdateTables($conn) {
+    // Check if permintaan_backdate table exists
+    $checkTable = $conn->query("SHOW TABLES LIKE 'permintaan_backdate'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `permintaan_backdate` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `row_number` VARCHAR(20) NOT NULL,
+            `user_id` INT NOT NULL,
+            `npk_user` VARCHAR(20),
+            `nama_user` VARCHAR(100),
+            `unit_kerja` VARCHAR(100),
+            `nama_pegawai_backdate` VARCHAR(100) NOT NULL,
+            `npk_pegawai_backdate` VARCHAR(20) NOT NULL,
+            `jumlah_surat` INT NOT NULL,
+            `alasan` TEXT NOT NULL,
+            `petugas_id` INT,
+            `petugas_no_wa` VARCHAR(20),
+            `nomor_surat_backdate` VARCHAR(100),
+            `status` VARCHAR(20) DEFAULT 'Open',
+            `keterangan_petugas` TEXT,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_user_id` (`user_id`),
+            INDEX `idx_petugas_id` (`petugas_id`),
+            INDEX `idx_status` (`status`),
+            INDEX `idx_row_number` (`row_number`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createTableSql)) {
+            throw new Exception("Error creating permintaan_backdate table: " . $conn->error);
+        }
+    } else {
+        // Remove nomor_surat_permintaan column if exists (tidak digunakan lagi)
+        $checkOldColumn = $conn->query("SHOW COLUMNS FROM `permintaan_backdate` LIKE 'nomor_surat_permintaan'");
+        if ($checkOldColumn && $checkOldColumn->num_rows > 0) {
+            $alterSql = "ALTER TABLE `permintaan_backdate` DROP COLUMN `nomor_surat_permintaan`";
+            if (!$conn->query($alterSql)) {
+                error_log("Warning: Could not remove nomor_surat_permintaan column: " . $conn->error);
+            }
+        }
+        
+        // Check if nomor_surat_backdate column exists, if not add it
+        $checkColumn = $conn->query("SHOW COLUMNS FROM `permintaan_backdate` LIKE 'nomor_surat_backdate'");
+        if (!$checkColumn || $checkColumn->num_rows === 0) {
+            $alterSql = "ALTER TABLE `permintaan_backdate` ADD COLUMN `nomor_surat_backdate` VARCHAR(100) AFTER `petugas_no_wa`";
+            if (!$conn->query($alterSql)) {
+                error_log("Warning: Could not add nomor_surat_backdate column: " . $conn->error);
+            }
+        }
+        
+        // Check if petugas_id is NOT NULL, if yes, change to nullable
+        $checkPetugasId = $conn->query("SHOW COLUMNS FROM `permintaan_backdate` WHERE Field = 'petugas_id' AND `Null` = 'NO'");
+        if ($checkPetugasId && $checkPetugasId->num_rows > 0) {
+            $alterSql = "ALTER TABLE `permintaan_backdate` MODIFY COLUMN `petugas_id` INT";
+            if (!$conn->query($alterSql)) {
+                error_log("Warning: Could not modify petugas_id column: " . $conn->error);
+            }
+        }
+    }
+    
+    // Check if permintaan_backdate_logs table exists
+    $checkLogTable = $conn->query("SHOW TABLES LIKE 'permintaan_backdate_logs'");
+    if (!$checkLogTable || $checkLogTable->num_rows === 0) {
+        $createLogTableSql = "CREATE TABLE IF NOT EXISTS `permintaan_backdate_logs` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `permintaan_id` INT NOT NULL,
+            `user_id` INT NOT NULL,
+            `action` VARCHAR(50) NOT NULL,
+            `description` TEXT,
+            `old_status` VARCHAR(20),
+            `new_status` VARCHAR(20),
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX `idx_permintaan_id` (`permintaan_id`),
+            INDEX `idx_user_id` (`user_id`),
+            INDEX `idx_created_at` (`created_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createLogTableSql)) {
+            throw new Exception("Error creating permintaan_backdate_logs table: " . $conn->error);
+        }
+    }
+    
+    // Check if nomor_surat_backdate table exists
+    $checkNomorSuratTable = $conn->query("SHOW TABLES LIKE 'nomor_surat_backdate'");
+    if (!$checkNomorSuratTable || $checkNomorSuratTable->num_rows === 0) {
+        // Buat tabel tanpa foreign key dulu
+        $createNomorSuratTableSql = "CREATE TABLE IF NOT EXISTS `nomor_surat_backdate` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `permintaan_id` INT NOT NULL,
+            `unit_kerja` VARCHAR(200) NOT NULL,
+            `nomor_surat` VARCHAR(200) NOT NULL,
+            `perihal` TEXT,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_permintaan_id` (`permintaan_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createNomorSuratTableSql)) {
+            error_log("Error creating nomor_surat_backdate table: " . $conn->error);
+        } else {
+            // Tambahkan foreign key setelah tabel dibuat
+            // Cek apakah foreign key sudah ada
+            $checkFK = $conn->query("SELECT CONSTRAINT_NAME 
+                FROM information_schema.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'nomor_surat_backdate' 
+                AND COLUMN_NAME = 'permintaan_id' 
+                AND REFERENCED_TABLE_NAME = 'permintaan_backdate'");
+            
+            if (!$checkFK || $checkFK->num_rows === 0) {
+                // Tambahkan foreign key
+                $addFKSql = "ALTER TABLE `nomor_surat_backdate` 
+                    ADD CONSTRAINT `fk_nomor_surat_permintaan` 
+                    FOREIGN KEY (`permintaan_id`) 
+                    REFERENCES `permintaan_backdate`(`id`) 
+                    ON DELETE CASCADE 
+                    ON UPDATE CASCADE";
+                
+                if (!$conn->query($addFKSql)) {
+                    // Jika gagal, log warning tapi lanjutkan (mungkin constraint sudah ada dengan nama lain)
+                    error_log("Warning: Could not add foreign key: " . $conn->error);
+                }
+            }
+        }
+    } else {
+        // Jika tabel sudah ada, pastikan foreign key ada
+        $checkFK = $conn->query("SELECT CONSTRAINT_NAME 
+            FROM information_schema.KEY_COLUMN_USAGE 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'nomor_surat_backdate' 
+            AND COLUMN_NAME = 'permintaan_id' 
+            AND REFERENCED_TABLE_NAME = 'permintaan_backdate'");
+        
+        if (!$checkFK || $checkFK->num_rows === 0) {
+            // Tambahkan foreign key jika belum ada
+            $addFKSql = "ALTER TABLE `nomor_surat_backdate` 
+                ADD CONSTRAINT `fk_nomor_surat_permintaan` 
+                FOREIGN KEY (`permintaan_id`) 
+                REFERENCES `permintaan_backdate`(`id`) 
+                ON DELETE CASCADE 
+                ON UPDATE CASCADE";
+            
+            if (!$conn->query($addFKSql)) {
+                error_log("Warning: Could not add foreign key: " . $conn->error);
+            }
+        }
+    }
+}
+
+// Handler untuk getPermintaanBackdate (detail) - bisa diakses tanpa login (public)
+function handleGetPermintaanBackdate($conn) {
+    // Ensure tables exist
+    ensureBackdateTables($conn);
+    
+    $permintaanId = intval(getRequestParam('id', 0));
+    
+    if ($permintaanId <= 0) {
+        throw new Exception("ID permintaan tidak valid");
+    }
+    
+    $sql = "SELECT p.*, 
+            u.username, u.name as user_name,
+            pt.nama as petugas_nama,
+            COALESCE(p.petugas_no_wa, pt.no_wa) as petugas_no_wa
+            FROM `permintaan_backdate` p
+            LEFT JOIN `users` u ON u.id = p.user_id
+            LEFT JOIN `petugas` pt ON pt.id = p.petugas_id
+            WHERE p.id = ?";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('i', $permintaanId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$data) {
+        throw new Exception("Permintaan tidak ditemukan");
+    }
+    
+    // Get logs
+    $logSql = "SELECT l.*, u.username, u.name as user_name
+               FROM `permintaan_backdate_logs` l
+               LEFT JOIN `users` u ON u.id = l.user_id
+               WHERE l.permintaan_id = ?
+               ORDER BY l.created_at DESC";
+    
+    $logStmt = $conn->prepare($logSql);
+    $logs = [];
+    if ($logStmt) {
+        $logStmt->bind_param('i', $permintaanId);
+        $logStmt->execute();
+        $logResult = $logStmt->get_result();
+        while ($logRow = $logResult->fetch_assoc()) {
+            $logs[] = $logRow;
+        }
+        $logStmt->close();
+    }
+    
+    $data['logs'] = $logs;
+    
+    sendJSONResponse(true, $data);
+}
+
+// Handler untuk getListPermintaanBackdate
+function handleGetListPermintaanBackdate($conn) {
+    $session = requireAuth($conn);
+    
+    // Ensure tables exist
+    ensureBackdateTables($conn);
+    
+    $userId = $session['user_id'];
+    $role = $session['role'];
+    
+    $statusFilter = trim(getRequestParam('status', ''));
+    $userFilter = trim(getRequestParam('user_id', ''));
+    
+    $sql = "SELECT p.*, 
+            u.username, u.name as user_name,
+            pt.nama as petugas_nama,
+            COALESCE(p.petugas_no_wa, pt.no_wa) as petugas_no_wa
+            FROM `permintaan_backdate` p
+            LEFT JOIN `users` u ON u.id = p.user_id
+            LEFT JOIN `petugas` pt ON pt.id = p.petugas_id
+            WHERE 1=1";
+    
+    $params = [];
+    $types = '';
+    
+    // Filter berdasarkan role
+    if ($role === 'user') {
+        $sql .= " AND p.user_id = ?";
+        $params[] = $userId;
+        $types .= 'i';
+    } elseif ($role === 'approver' || $role === 'admin' || $role === 'super_admin') {
+        // Approver/admin bisa lihat semua
+        if ($statusFilter && $statusFilter !== 'all') {
+            $sql .= " AND p.status = ?";
+            $params[] = $statusFilter;
+            $types .= 's';
+        }
+    } elseif (isset($_REQUEST['as_petugas']) && $_REQUEST['as_petugas'] === '1' || $role === 'petugas') {
+        // Filter untuk petugas - perlu join dengan tabel petugas
+        // Cari petugas_id berdasarkan user yang login (matching nama atau NPK)
+        $userSql = "SELECT name, npk FROM `users` WHERE id = ? LIMIT 1";
+        $userStmt = $conn->prepare($userSql);
+        $userStmt->bind_param('i', $userId);
+        $userStmt->execute();
+        $userResult = $userStmt->get_result();
+        $userRow = $userResult->fetch_assoc();
+        $userStmt->close();
+        
+        if ($userRow) {
+            // Cari petugas berdasarkan nama atau NPK
+            $petugasMatchSql = "SELECT id FROM `petugas` WHERE (nama = ? OR npk = ?) AND is_active = 1 LIMIT 1";
+            $petugasMatchStmt = $conn->prepare($petugasMatchSql);
+            $petugasMatchStmt->bind_param('ss', $userRow['name'], $userRow['npk']);
+            $petugasMatchStmt->execute();
+            $petugasMatchResult = $petugasMatchStmt->get_result();
+            $petugasMatchRow = $petugasMatchResult->fetch_assoc();
+            $petugasMatchStmt->close();
+            
+            if ($petugasMatchRow) {
+                $petugasId = intval($petugasMatchRow['id']);
+                $sql .= " AND p.petugas_id = ? AND p.status IN ('Approved', 'In Progress', 'Closed')";
+                $params[] = $petugasId;
+                $types .= 'i';
+            } else {
+                // Jika tidak ditemukan petugas yang cocok, return empty result
+                $sql .= " AND 1=0"; // Always false condition
+            }
+        } else {
+            // Jika user tidak ditemukan, return empty result
+            $sql .= " AND 1=0"; // Always false condition
+        }
+    }
+    
+    if ($userFilter && ($role === 'admin' || $role === 'super_admin')) {
+        $sql .= " AND p.user_id = ?";
+        $params[] = intval($userFilter);
+        $types .= 'i';
+    }
+    
+    $sql .= " ORDER BY p.created_at DESC";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $result = $stmt->get_result();
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = $row;
+    }
+    
+    $stmt->close();
+    
+    sendJSONResponse(true, $data);
+}
+
+// Handler untuk getPermintaanBackdateLogs
+function handleGetPermintaanBackdateLogs($conn) {
+    $session = requireAuth($conn);
+    
+    // Ensure tables exist
+    ensureBackdateTables($conn);
+    
+    $permintaanId = intval(getRequestParam('id', 0));
+    
+    if ($permintaanId <= 0) {
+        throw new Exception("ID permintaan tidak valid");
+    }
+    
+    // Get logs
+    $logSql = "SELECT l.*, u.username, u.name as user_name
+               FROM `permintaan_backdate_logs` l
+               LEFT JOIN `users` u ON u.id = l.user_id
+               WHERE l.permintaan_id = ?
+               ORDER BY l.created_at DESC";
+    
+    $logStmt = $conn->prepare($logSql);
+    $logs = [];
+    if ($logStmt) {
+        $logStmt->bind_param('i', $permintaanId);
+        $logStmt->execute();
+        $logResult = $logStmt->get_result();
+        while ($logRow = $logResult->fetch_assoc()) {
+            $logs[] = $logRow;
+        }
+        $logStmt->close();
+    }
+    
+    sendJSONResponse(true, $logs);
+}
+
+// Handler untuk approvePermintaanBackdate
+function handleApprovePermintaanBackdate($conn) {
+    // Ensure tables exist
+    ensureBackdateTables($conn);
+    
+    // Check if using PIN or session auth
+    $pin = trim(getRequestParam('pin', ''));
+    $session = null;
+    $userId = 0;
+    $role = '';
+    
+    if (!empty($pin)) {
+        // Validate PIN
+        $normalizedInput = preg_replace('/[^0-9]/', '', $pin);
+        if (empty($normalizedInput) || strlen($normalizedInput) !== 4 || !ctype_digit($normalizedInput)) {
+            throw new Exception("PIN tidak valid");
+        }
+        
+        $sql = "SELECT `pin` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
+        $result = $conn->query($sql);
+        if ($result && $result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $storedPin = trim($row['pin']);
+            $normalizedStored = preg_replace('/[^0-9]/', '', $storedPin);
+            $normalizedInput = str_pad($normalizedInput, 4, '0', STR_PAD_LEFT);
+            $normalizedStored = str_pad($normalizedStored, 4, '0', STR_PAD_LEFT);
+            
+            if ($normalizedInput !== $normalizedStored || strlen($normalizedInput) !== 4 || strlen($normalizedStored) !== 4) {
+                throw new Exception("PIN tidak valid");
+            }
+        } else {
+            throw new Exception("PIN tidak ditemukan");
+        }
+        // Use system user for PIN-based approval
+        $userId = 0;
+        $role = 'approver';
+    } else {
+        // Use session auth
+        $session = requireAuth($conn);
+        $userId = $session['user_id'];
+        $role = $session['role'];
+        
+        // Hanya approver, admin, atau super_admin yang bisa approve
+        if ($role !== 'approver' && $role !== 'admin' && $role !== 'super_admin') {
+            throw new Exception("Akses ditolak: hanya approver yang bisa approve");
+        }
+    }
+    
+    $permintaanId = intval(getRequestParam('id', 0));
+    $petugasTunjuk = trim(getRequestParam('petugas_tunjuk', ''));
+    $petugasIdParam = intval(getRequestParam('petugas_id', 0));
+    
+    if ($permintaanId <= 0) {
+        throw new Exception("ID permintaan tidak valid");
+    }
+    
+    // Get current permintaan data
+    $getSql = "SELECT * FROM `permintaan_backdate` WHERE `id` = ?";
+    $getStmt = $conn->prepare($getSql);
+    $getStmt->bind_param('i', $permintaanId);
+    $getStmt->execute();
+    $permintaan = $getStmt->get_result()->fetch_assoc();
+    $getStmt->close();
+    
+    if (!$permintaan) {
+        throw new Exception("Permintaan tidak ditemukan");
+    }
+    
+    // Check status
+    $currentStatus = trim($permintaan['status']);
+    if (strcasecmp($currentStatus, 'Open') !== 0) {
+        throw new Exception("Status permintaan tidak valid untuk approve. Status saat ini: " . $currentStatus);
+    }
+    
+    // Petugas_id harus dipilih oleh approver
+    $petugasId = $petugasIdParam;
+    
+    // Jika petugas_id tidak ada, tidak bisa approve
+    if ($petugasId <= 0) {
+        throw new Exception("Pilih petugas terlebih dahulu");
+    }
+    
+    // Get petugas data
+    $petugasSql = "SELECT nama, no_wa FROM `petugas` WHERE id = ? AND is_active = 1";
+    $petugasStmt = $conn->prepare($petugasSql);
+    $petugasStmt->bind_param('i', $petugasId);
+    $petugasStmt->execute();
+    $petugasResult = $petugasStmt->get_result();
+    $petugasRow = $petugasResult->fetch_assoc();
+    $petugasStmt->close();
+    
+    if (!$petugasRow) {
+        throw new Exception("Petugas tidak ditemukan atau tidak aktif");
+    }
+    
+    // Format nomor WhatsApp
+    $petugasNoWa = preg_replace('/[^0-9]/', '', $petugasRow['no_wa']);
+    if (substr($petugasNoWa, 0, 1) === '0') {
+        $petugasNoWa = '62' . substr($petugasNoWa, 1);
+    }
+    
+    // Get keterangan_petugas (catatan pelaksanaan) dari request
+    $keteranganPetugas = trim(getRequestParam('keterangan_petugas', ''));
+    
+    // Update dengan petugas - status menjadi 'In Progress'
+    $updateSql = "UPDATE `permintaan_backdate` 
+                  SET `status` = 'In Progress', 
+                      `petugas_id` = ?,
+                      `petugas_no_wa` = ?,
+                      `keterangan_petugas` = ?,
+                      `updated_at` = NOW()
+                  WHERE `id` = ?";
+    
+    $stmt = $conn->prepare($updateSql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('issi', $petugasId, $petugasNoWa, $keteranganPetugas, $permintaanId);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $stmt->close();
+    
+    // Log activity
+    $logSql = "INSERT INTO `permintaan_backdate_logs` (
+        `permintaan_id`, `user_id`, `action`, `description`, `old_status`, `new_status`
+    ) VALUES (?, ?, 'Approve', 'Permintaan disetujui dan ditugaskan ke petugas', 'Open', 'In Progress')";
+    
+    $logStmt = $conn->prepare($logSql);
+    if ($logStmt) {
+        $logStmt->bind_param('ii', $permintaanId, $userId);
+        $logStmt->execute();
+        $logStmt->close();
+    }
+    
+    sendJSONResponse(true, ['message' => 'Permintaan berhasil disetujui']);
+}
+
+// Handler untuk rejectPermintaanBackdate
+function handleRejectPermintaanBackdate($conn) {
+    // Ensure tables exist
+    ensureBackdateTables($conn);
+    
+    // Check if using PIN or session auth
+    $pin = trim(getRequestParam('pin', ''));
+    $session = null;
+    $userId = 0;
+    $role = '';
+    
+    if (!empty($pin)) {
+        // Validate PIN
+        $normalizedInput = preg_replace('/[^0-9]/', '', $pin);
+        if (empty($normalizedInput) || strlen($normalizedInput) !== 4 || !ctype_digit($normalizedInput)) {
+            throw new Exception("PIN tidak valid");
+        }
+        
+        $sql = "SELECT `pin` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
+        $result = $conn->query($sql);
+        if ($result && $result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $storedPin = trim($row['pin']);
+            $normalizedStored = preg_replace('/[^0-9]/', '', $storedPin);
+            $normalizedInput = str_pad($normalizedInput, 4, '0', STR_PAD_LEFT);
+            $normalizedStored = str_pad($normalizedStored, 4, '0', STR_PAD_LEFT);
+            
+            if ($normalizedInput !== $normalizedStored || strlen($normalizedInput) !== 4 || strlen($normalizedStored) !== 4) {
+                throw new Exception("PIN tidak valid");
+            }
+        } else {
+            throw new Exception("PIN tidak ditemukan");
+        }
+        // Use system user for PIN-based rejection
+        $userId = 0;
+        $role = 'approver';
+    } else {
+        // Use session auth
+        $session = requireAuth($conn);
+        $userId = $session['user_id'];
+        $role = $session['role'];
+        
+        // Hanya approver, admin, atau super_admin yang bisa reject
+        if ($role !== 'approver' && $role !== 'admin' && $role !== 'super_admin') {
+            throw new Exception("Akses ditolak: hanya approver yang bisa reject");
+        }
+    }
+    
+    $permintaanId = intval(getRequestParam('id', 0));
+    
+    if ($permintaanId <= 0) {
+        throw new Exception("ID permintaan tidak valid");
+    }
+    
+    // Get current permintaan data
+    $getSql = "SELECT * FROM `permintaan_backdate` WHERE `id` = ?";
+    $getStmt = $conn->prepare($getSql);
+    $getStmt->bind_param('i', $permintaanId);
+    $getStmt->execute();
+    $permintaan = $getStmt->get_result()->fetch_assoc();
+    $getStmt->close();
+    
+    if (!$permintaan) {
+        throw new Exception("Permintaan tidak ditemukan");
+    }
+    
+    // Check status
+    $currentStatus = trim($permintaan['status']);
+    if (strcasecmp($currentStatus, 'Open') !== 0) {
+        throw new Exception("Status permintaan tidak valid untuk reject. Status saat ini: " . $currentStatus);
+    }
+    
+    // Update workflow
+    $updateSql = "UPDATE `permintaan_backdate` 
+                  SET `status` = 'Rejected',
+                      `updated_at` = NOW()
+                  WHERE `id` = ?";
+    
+    $stmt = $conn->prepare($updateSql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param('i', $permintaanId);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $stmt->close();
+    
+    // Log activity
+    $logSql = "INSERT INTO `permintaan_backdate_logs` (
+        `permintaan_id`, `user_id`, `action`, `description`, `old_status`, `new_status`
+    ) VALUES (?, ?, 'Reject', 'Permintaan ditolak', 'Open', 'Rejected')";
+    
+    $logStmt = $conn->prepare($logSql);
+    if ($logStmt) {
+        $logStmt->bind_param('ii', $permintaanId, $userId);
+        $logStmt->execute();
+        $logStmt->close();
+    }
+    
+    sendJSONResponse(true, ['message' => 'Permintaan ditolak']);
+}
+
+// Handler untuk updatePermintaanBackdatePetugas
+function handleUpdatePermintaanBackdatePetugas($conn) {
+    $session = requireAuth($conn);
+    
+    // Ensure tables exist
+    ensureBackdateTables($conn);
+    
+    $userId = $session['user_id'];
+    
+    $permintaanId = intval(getRequestParam('id', 0));
+    $keteranganPetugas = trim(getRequestParam('keterangan_petugas', ''));
+    $nomorSuratBackdate = trim(getRequestParam('nomor_surat_backdate', ''));
+    $status = trim(getRequestParam('status', ''));
+    
+    if ($permintaanId <= 0) {
+        throw new Exception("ID permintaan tidak valid");
+    }
+    
+    // Validasi: jika status Closed, nomor surat backdate wajib diisi
+    if ($status === 'Closed' && empty($nomorSuratBackdate)) {
+        throw new Exception("Nomor Surat Backdate wajib diisi untuk menutup permintaan");
+    }
+    
+    // Get current permintaan data
+    $getSql = "SELECT * FROM `permintaan_backdate` WHERE `id` = ?";
+    $getStmt = $conn->prepare($getSql);
+    $getStmt->bind_param('i', $permintaanId);
+    $getStmt->execute();
+    $permintaan = $getStmt->get_result()->fetch_assoc();
+    $getStmt->close();
+    
+    if (!$permintaan) {
+        throw new Exception("Permintaan tidak ditemukan");
+    }
+    
+    // Check role - admin dan super_admin bisa akses semua
+    $userRole = $session['role'] ?? '';
+    $isAdmin = ($userRole === 'admin' || $userRole === 'super_admin');
+    
+    // Jika bukan admin, cek apakah user adalah petugas yang ditunjuk
+    if (!$isAdmin) {
+        // Check if user is the assigned petugas
+        // petugas_id adalah ID dari tabel petugas, bukan user_id
+        // Jadi kita perlu cek apakah user yang login adalah petugas yang ditunjuk
+        $userSql = "SELECT name, npk FROM `users` WHERE id = ? LIMIT 1";
+        $userStmt = $conn->prepare($userSql);
+        $userStmt->bind_param('i', $userId);
+        $userStmt->execute();
+        $userResult = $userStmt->get_result();
+        $userRow = $userResult->fetch_assoc();
+        $userStmt->close();
+        
+        if (!$userRow) {
+            throw new Exception("Data user tidak ditemukan");
+        }
+        
+        // Cari petugas berdasarkan nama atau NPK
+        $petugasMatchSql = "SELECT id FROM `petugas` WHERE id = ? AND (nama = ? OR npk = ?) AND is_active = 1 LIMIT 1";
+        $petugasMatchStmt = $conn->prepare($petugasMatchSql);
+        $petugasId = intval($permintaan['petugas_id']);
+        $petugasMatchStmt->bind_param('iss', $petugasId, $userRow['name'], $userRow['npk']);
+        $petugasMatchStmt->execute();
+        $petugasMatchResult = $petugasMatchStmt->get_result();
+        $petugasMatchRow = $petugasMatchResult->fetch_assoc();
+        $petugasMatchStmt->close();
+        
+        if (!$petugasMatchRow) {
+            throw new Exception("Akses ditolak: Anda bukan petugas yang ditunjuk");
+        }
+    }
+    
+    $oldStatus = trim($permintaan['status']);
+    $newStatus = $status ?: $oldStatus;
+    
+    // Update permintaan
+    $updates = [];
+    $params = [];
+    $types = '';
+    
+    if ($nomorSuratBackdate !== '') {
+        $updates[] = "`nomor_surat_backdate` = ?";
+        $params[] = $nomorSuratBackdate;
+        $types .= 's';
+    }
+    
+    
+    if ($status && $status !== $oldStatus) {
+        $updates[] = "`status` = ?";
+        $params[] = $status;
+        $types .= 's';
+    }
+    
+    if (empty($updates)) {
+        throw new Exception("Tidak ada data untuk diupdate");
+    }
+    
+    $updates[] = "`updated_at` = NOW()";
+    $params[] = $permintaanId;
+    $types .= 'i';
+    
+    $updateSql = "UPDATE `permintaan_backdate` SET " . implode(', ', $updates) . " WHERE `id` = ?";
+    
+    $stmt = $conn->prepare($updateSql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    
+    $stmt->bind_param($types, ...$params);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    
+    $stmt->close();
+    
+    // Log activity
+    $action = $status === 'Closed' ? 'Close' : 'Update';
+    $description = $status === 'Closed' ? 'Pekerjaan selesai' : 'Laporan pelaksanaan diupdate';
+    
+    $logSql = "INSERT INTO `permintaan_backdate_logs` (
+        `permintaan_id`, `user_id`, `action`, `description`, `old_status`, `new_status`
+    ) VALUES (?, ?, ?, ?, ?, ?)";
+    
+    $logStmt = $conn->prepare($logSql);
+    if ($logStmt) {
+        $logStmt->bind_param('iissss', $permintaanId, $userId, $action, $description, $oldStatus, $newStatus);
+        $logStmt->execute();
+        $logStmt->close();
+    }
+    
+    // Jika status Closed, kirim notifikasi ke approver
+    if ($status === 'Closed') {
+        // Get approver info (bisa dari user yang approve sebelumnya atau admin)
+        // Untuk sementara, kita log notifikasi
+        $notifDescription = "Notifikasi: Proses backdate untuk " . $permintaan['nama_pegawai_backdate'] . 
+                           " (NPK: " . $permintaan['npk_pegawai_backdate'] . 
+                           ", Unit Kerja: " . $permintaan['unit_kerja'] . 
+                           ", Jumlah Surat: " . $permintaan['jumlah_surat'] . 
+                           ") telah selesai dilaksanakan";
+        
+        $notifSql = "INSERT INTO `permintaan_backdate_logs` (
+            `permintaan_id`, `user_id`, `action`, `description`, `new_status`
+        ) VALUES (?, ?, 'Notification', ?, 'Closed')";
+        
+        $notifStmt = $conn->prepare($notifSql);
+        if ($notifStmt) {
+            // Use system user (0) or current user for notification
+            $notifUserId = $userId;
+            $notifStmt->bind_param('iis', $permintaanId, $notifUserId, $notifDescription);
+            $notifStmt->execute();
+            $notifStmt->close();
+        }
+    }
+    
+    sendJSONResponse(true, ['message' => 'Data berhasil diupdate']);
 }

@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const roleText = {
             'super_admin': 'Super Administrator',
             'admin': 'Administrator',
+            'approver': 'Approver',
+            'petugas': 'Petugas',
             'user': 'User'
         };
         const role = session.user.role || 'user';
@@ -50,6 +52,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Show/hide menu items based on role
     const adminMenu = document.getElementById('adminMenuLink');
     const formPermintaanMenu = document.getElementById('formPermintaanMenuLink');
+    const dashboardUserBackdateMenu = document.getElementById('dashboardUserBackdateMenuLink');
+    const dashboardApproverBackdateMenu = document.getElementById('dashboardApproverBackdateMenuLink');
+    const dashboardPetugasBackdateMenu = document.getElementById('dashboardPetugasBackdateMenuLink');
+    
+    // Get backdate menu elements early (before they're used)
+    const backdateMenu = document.getElementById('backdateMenu');
+    const backdateSubmenu = document.getElementById('backdateSubmenu');
 
     if (adminMenu) {
         adminMenu.style.display = (session.user.role === 'super_admin') ? 'block' : 'none';
@@ -57,6 +66,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (formPermintaanMenu) {
         formPermintaanMenu.style.display = (session.user.role === 'user') ? 'block' : 'none';
+    }
+
+    // Show/hide backdate workflow menu based on role
+    const userRole = session.user.role || 'user';
+    
+    // Control visibility of Backdate main menu - selalu tampilkan untuk semua role yang memiliki akses
+    if (backdateMenu) {
+        const userHasBackdateAccess = ['user', 'approver', 'petugas', 'admin', 'super_admin'].includes(userRole);
+        backdateMenu.style.display = userHasBackdateAccess ? 'block' : 'none';
+        
+        // Pastikan submenu juga terlihat jika menu terlihat
+        if (backdateSubmenu && userHasBackdateAccess) {
+            backdateSubmenu.style.display = 'block';
+        }
+    }
+    
+    // Form Permintaan Backdate (form-permintaan.html) - untuk semua user
+    const formBackdateMenu = document.getElementById('formBackdateMenuLink');
+    if (formBackdateMenu) {
+        formBackdateMenu.style.display = 'block';
+    }
+    
+    // Dashboard User Backdate - untuk user biasa
+    if (dashboardUserBackdateMenu) {
+        dashboardUserBackdateMenu.style.display = (userRole === 'user') ? 'block' : 'none';
+    }
+    
+    // Dashboard Approver Backdate - untuk approver, admin, super_admin
+    if (dashboardApproverBackdateMenu) {
+        dashboardApproverBackdateMenu.style.display = 
+            (userRole === 'approver' || userRole === 'admin' || userRole === 'super_admin') ? 'block' : 'none';
+    }
+    
+    // Dashboard Petugas Backdate - hanya untuk admin dan super_admin
+    if (dashboardPetugasBackdateMenu) {
+        dashboardPetugasBackdateMenu.style.display = 
+            (userRole === 'admin' || userRole === 'super_admin') ? 'block' : 'none';
     }
 
     // Mobile menu toggle
@@ -82,38 +128,64 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Set active menu item based on current page
     const currentPath = window.location.pathname;
-    const menuItems = document.querySelectorAll('.sidebar-nav-item');
+    const menuItems = document.querySelectorAll('.sidebar-nav-item:not(.sidebar-nav-parent)');
     
     menuItems.forEach(item => {
         const href = item.getAttribute('href');
-        if (href && currentPath.includes(href.replace(/^\.\//, '').replace(/\.html$/, ''))) {
-            item.classList.add('active');
+        if (href) {
+            // Normalize paths for comparison
+            let normalizedHref = href.replace(/^\.\//, '').replace(/\.html$/, '');
+            let normalizedPath = currentPath.replace(/^\//, '').replace(/\.html$/, '');
+            
+            // Remove leading/trailing slashes
+            normalizedHref = normalizedHref.replace(/^\/+|\/+$/g, '');
+            normalizedPath = normalizedPath.replace(/^\/+|\/+$/g, '');
+            
+            // Exact match to avoid conflicts (e.g., form-permintaan.html should not match backdate/form-permintaan.html)
+            if (normalizedPath === normalizedHref || normalizedPath.endsWith('/' + normalizedHref)) {
+                item.classList.add('active');
+            }
         }
     });
 
     // Backdate menu click handler - toggle submenu
-    const backdateMenu = document.getElementById('backdateMenu');
-    const backdateSubmenu = document.getElementById('backdateSubmenu');
-
+    // backdateMenu and backdateSubmenu are already declared above
     if (backdateMenu && backdateSubmenu) {
-        // Use a flag to prevent multiple event listeners
-        if (!backdateMenu.dataset.listenerAttached) {
-            backdateMenu.dataset.listenerAttached = 'true';
-            
-            backdateMenu.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const isActive = backdateMenu.classList.contains('active');
-                if (isActive) {
-                    backdateMenu.classList.remove('active');
-                    backdateSubmenu.classList.remove('active');
-                } else {
-                    backdateMenu.classList.add('active');
-                    backdateSubmenu.classList.add('active');
-                }
-            });
+        // Check if there's an active submenu item - if yes, expand by default
+        const hasActiveItem = backdateSubmenu.querySelector('.sidebar-submenu-item.active');
+        if (hasActiveItem) {
+            backdateMenu.classList.add('active');
+            backdateSubmenu.classList.add('active');
         }
+        
+        // Make sure menu is clickable
+        backdateMenu.style.cursor = 'pointer';
+        backdateMenu.style.userSelect = 'none';
+        
+        // Add click event listener
+        backdateMenu.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const isActive = backdateMenu.classList.contains('active');
+            
+            if (isActive) {
+                backdateMenu.classList.remove('active');
+                backdateSubmenu.classList.remove('active');
+            } else {
+                backdateMenu.classList.add('active');
+                backdateSubmenu.classList.add('active');
+            }
+        }, false);
+        
+        // Also handle click on the entire menu item area
+        const menuItems = backdateMenu.querySelectorAll('span');
+        menuItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                backdateMenu.click();
+            });
+        });
     }
 
     // Set active submenu item based on current page
@@ -125,28 +197,31 @@ document.addEventListener('DOMContentLoaded', function() {
     submenuItems.forEach(item => {
         const href = item.getAttribute('href');
         if (href) {
-            // Normalize path for comparison
-            let normalizedHref = href;
-            // Remove leading ../ or ./
-            normalizedHref = normalizedHref.replace(/^\.\.\//, '').replace(/^\.\//, '');
-            // Remove .html extension
-            normalizedHref = normalizedHref.replace(/\.html$/, '');
+            // Resolve href to absolute path
+            let resolvedHref = href;
             
-            // Normalize current path - get the full path segments
-            let normalizedPath = currentPath;
-            // Remove leading slash
-            normalizedPath = normalizedPath.replace(/^\//, '');
-            // Remove .html extension
-            normalizedPath = normalizedPath.replace(/\.html$/, '');
+            // Handle relative paths by resolving them relative to current page
+            if (resolvedHref.startsWith('../')) {
+                // Get current directory and resolve ../ path
+                const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+                resolvedHref = currentDir + '/' + resolvedHref.replace(/^\.\.\//, '');
+            } else if (resolvedHref.startsWith('./') || (!resolvedHref.startsWith('/') && !resolvedHref.startsWith('http'))) {
+                // Relative path (./ or no prefix), resolve relative to current directory
+                const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+                resolvedHref = currentDir + '/' + resolvedHref.replace(/^\.\//, '');
+            }
             
-            // Get just the filename from href (e.g., "backdate/backdate.html" -> "backdate")
-            const hrefFilename = normalizedHref.split('/').pop();
-            // Get just the filename from current path
-            const pathFilename = normalizedPath.split('/').pop();
+            // Normalize: remove leading slash and .html extension
+            resolvedHref = resolvedHref.replace(/^\//, '').replace(/\.html$/, '');
+            let normalizedPath = currentPath.replace(/^\//, '').replace(/\.html$/, '');
             
-            // Check if current page matches submenu item
-            // Match by filename (most reliable)
-            if (pathFilename === hrefFilename) {
+            // Remove leading/trailing slashes for comparison
+            resolvedHref = resolvedHref.replace(/^\/+|\/+$/g, '');
+            normalizedPath = normalizedPath.replace(/^\/+|\/+$/g, '');
+            
+            // Check if current path matches the resolved href path
+            // This prevents conflicts like form-permintaan.html matching backdate/form-permintaan.html
+            if (normalizedPath === resolvedHref) {
                 // Add active to current item
                 item.classList.add('active');
                 // Auto expand parent menu if submenu item is active
