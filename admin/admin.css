@@ -48,9 +48,14 @@
 .panel{
     background:#fff;
     border:1px solid rgba(0,0,0,.08);
-    border-radius:14px;
-    padding:24px;
-    box-shadow:0 2px 8px rgba(0,0,0,.05);
+    border-radius:16px;
+    padding:28px;
+    box-shadow:0 2px 12px rgba(0,0,0,.06);
+    transition: all 0.3s ease;
+}
+
+.panel:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,.08);
 }
 
 .panel-header{
@@ -196,6 +201,8 @@
     overflow:auto;
     border-radius:12px;
     border:1px solid rgba(0,0,0,.08);
+    background: white;
+    -webkit-overflow-scrolling: touch;
 }
 
 .admin-table{
@@ -851,25 +858,36 @@
 /* Mobile Card View Styles */
 .admin-cards {
     display: none;
-    padding: 12px;
-    gap: 12px;
+    flex-direction: column;
+    gap: 16px;
+    padding: 0;
 }
 
 .admin-card {
     background: white;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     border: 1px solid rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.admin-card:hover {
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
 }
 
 .admin-card-row {
     display: flex;
     flex-direction: column;
-    padding: 10px 0;
+    padding: 12px 0;
     border-bottom: 1px solid rgba(0,0,0,0.06);
-    gap: 4px;
+    gap: 6px;
+}
+
+.admin-card-row:first-child {
+    padding-top: 0;
 }
 
 .admin-card-row:last-child {
@@ -878,37 +896,66 @@
 }
 
 .admin-card-label {
-    font-size: 0.75rem;
-    color: #666;
+    font-size: 0.7rem;
+    color: #999;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 600;
-    margin-bottom: 4px;
+    letter-spacing: 0.8px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    line-height: 1.4;
 }
 
 .admin-card-value {
-    font-size: 0.95rem;
+    font-size: 1rem;
     color: #333;
     word-break: break-word;
     font-weight: 500;
+    line-height: 1.5;
+}
+
+.admin-card-value .badge {
+    display: inline-block;
+    margin-top: 4px;
 }
 
 .admin-card-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(0,0,0,0.06);
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 2px solid rgba(0,0,0,0.08);
 }
 
-.admin-card-actions .btn,
-.admin-card-actions .btn-icon-action {
-    flex: 1;
-    min-width: 80px;
-    min-height: 44px;
-    justify-content: center;
-}
+    .admin-card-actions .btn,
+    .admin-card-actions .btn-small,
+    .admin-card-actions .btn-icon-action {
+        width: 100%;
+        min-height: 48px;
+        justify-content: center;
+        padding: 12px 16px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .admin-card-actions .btn-small {
+        padding: 12px 20px;
+    }
+
+    .admin-card-actions .btn-danger {
+        background: #f44336;
+        color: white;
+        border-color: #f44336;
+    }
+
+    .admin-card-actions .btn-danger:hover {
+        background: #d32f2f;
+        border-color: #d32f2f;
+    }
 
 @media (max-width: 768px){
     /* Hide table, show cards */
@@ -917,13 +964,17 @@
     }
 
     .admin-cards {
-        display: flex;
+        display: flex !important;
         flex-direction: column;
+        padding: 16px;
+        background: #f8f9fa;
     }
 
     .table-wrap {
         overflow: visible;
         border: none;
+        background: transparent;
+        padding: 0;
     }
 
     .admin-container .subheader{ 
@@ -933,8 +984,15 @@
     }
 
     .panel {
-        padding: 16px;
-        border-radius: 12px;
+        padding: 20px 16px;
+        border-radius: 16px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .admin-main {
+        padding: 0;
+        gap: 20px;
     }
 
     .panel-header { 
@@ -947,12 +1005,28 @@
         width: 100%;
     }
 
+    .panel-title-with-icon {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .panel-title-with-icon svg {
+        width: 24px;
+        height: 24px;
+    }
+
     .panel-title-with-icon h2 {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
+        margin: 0;
+        line-height: 1.3;
     }
 
     .panel-description {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
+        margin-top: 4px;
+        line-height: 1.4;
+        color: #666;
     }
 
     .panel-actions { 
@@ -975,9 +1049,10 @@
     }
 
     .content-header {
-        padding: 20px 16px;
+        padding: 24px 20px;
         flex-direction: column;
-        gap: 16px;
+        gap: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
 
     .content-header > div:first-child {
@@ -992,37 +1067,102 @@
 
     .content-header h1 {
         font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1.3;
+        margin-bottom: 8px;
     }
 
     .content-header p {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
+        opacity: 0.95;
+        line-height: 1.5;
     }
 
     .header-logout-btn {
         width: 100%;
         justify-content: center;
+        min-height: 48px;
+        padding: 14px 20px;
+        font-size: 1rem;
+    }
+
+    .header-logout-btn span {
+        display: inline;
     }
 
     .user-cell {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-avatar {
+        width: 48px;
+        height: 48px;
+        font-size: 1rem;
+        flex-shrink: 0;
     }
 
     .user-info {
-        width: 100%;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .user-name {
+        font-size: 1rem;
+        margin-bottom: 2px;
+    }
+
+    .user-email {
+        font-size: 0.85rem;
+    }
+
+    .applicant-cell {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .applicant-icon {
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+    }
+
+    .applicant-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .applicant-name {
+        font-size: 1rem;
+        margin-bottom: 2px;
+    }
+
+    .applicant-email {
+        font-size: 0.85rem;
     }
 
     .row-actions {
-        flex-direction: column;
+        flex-direction: row;
         gap: 8px;
         width: 100%;
+        flex-wrap: wrap;
     }
 
     .btn-icon-action {
-        width: 100%;
+        flex: 1;
+        min-width: 80px;
         justify-content: center;
         min-height: 44px;
+        padding: 10px;
+    }
+
+    .btn-small {
+        flex: 1;
+        min-width: 100px;
+        min-height: 44px;
+        padding: 10px 16px;
     }
 
     .success-modal { 
@@ -1075,6 +1215,15 @@
     }
 
     /* PIN Section Mobile */
+    .pin-display {
+        margin-bottom: 20px;
+    }
+
+    .pin-label {
+        font-size: 0.7rem;
+        margin-bottom: 12px;
+    }
+
     .pin-input-wrapper {
         flex-direction: column;
         align-items: stretch;
@@ -1083,69 +1232,187 @@
 
     .pin-input {
         width: 100%;
-        font-size: 20px;
+        font-size: 24px;
+        padding: 16px;
+        text-align: center;
+        letter-spacing: 12px;
+    }
+
+    .pin-status-badge {
+        width: 100%;
+        justify-content: center;
+        padding: 12px;
+        font-size: 0.9rem;
     }
 
     .pin-actions {
         flex-direction: column;
+        gap: 12px;
+        margin-top: 20px;
     }
 
     .pin-actions .btn {
         width: 100%;
+        min-height: 48px;
+        padding: 14px 20px;
+        font-size: 1rem;
     }
 
     /* Badge adjustments */
     .badge {
-        font-size: 0.75rem;
-        padding: 5px 10px;
+        font-size: 0.8rem;
+        padding: 6px 12px;
+        border-radius: 20px;
     }
 
     /* Detail grid mobile */
     .detail-grid {
-        gap: 10px;
+        gap: 12px;
     }
 
     .detail-item {
-        padding: 10px;
+        padding: 14px;
+        background: rgba(0,0,0,0.02);
+        border-radius: 10px;
+    }
+
+    .detail-label {
+        font-size: 0.75rem;
+        margin-bottom: 6px;
+    }
+
+    .detail-value {
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    /* Better spacing for main content */
+    .main-content {
+        padding: 16px;
+    }
+
+    /* Panel actions better spacing */
+    .panel-actions {
+        gap: 12px;
+    }
+
+    .panel-actions .btn {
+        font-size: 0.95rem;
+    }
+
+    /* Button improvements */
+    .btn {
+        font-size: 0.95rem;
+        border-radius: 10px;
+    }
+
+    .btn-small {
+        font-size: 0.9rem;
+        padding: 10px 16px;
     }
 }
 
 @media (max-width: 480px) {
-    .panel {
-        padding: 12px;
+    .admin-main {
+        padding: 0;
     }
 
-    .panel-header h2 {
-        font-size: 1rem;
+    .panel {
+        padding: 16px 12px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+
+    .panel-header {
+        gap: 12px;
+    }
+
+    .panel-title-with-icon h2 {
+        font-size: 1.1rem;
+    }
+
+    .panel-description {
+        font-size: 0.85rem;
+    }
+
+    .admin-cards {
+        padding: 12px;
+        gap: 12px;
     }
 
     .admin-card {
-        padding: 12px;
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    .admin-card-row {
+        padding: 10px 0;
     }
 
     .admin-card-label {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
+        margin-bottom: 4px;
     }
 
     .admin-card-value {
+        font-size: 0.95rem;
+    }
+
+    .admin-card-actions {
+        margin-top: 12px;
+        padding-top: 12px;
+        gap: 8px;
+    }
+
+    .admin-card-actions .btn,
+    .admin-card-actions .btn-small {
+        min-height: 44px;
+        padding: 10px 16px;
         font-size: 0.9rem;
     }
 
     .content-header {
-        padding: 16px 12px;
+        padding: 20px 16px;
     }
 
     .content-header h1 {
-        font-size: 1.25rem;
+        font-size: 1.3rem;
+    }
+
+    .content-header p {
+        font-size: 0.9rem;
+    }
+
+    .header-logout-btn {
+        padding: 12px 18px;
+        font-size: 0.95rem;
     }
 
     .modal-content {
         padding: 16px;
-        margin: 5px;
+        margin: 10px;
+        border-radius: 12px;
+    }
+
+    .modal-header {
+        padding-bottom: 12px;
+        margin-bottom: 16px;
     }
 
     .modal-header h3 {
-        font-size: 1rem;
+        font-size: 1.1rem;
+    }
+
+    .pin-input {
+        font-size: 22px;
+        padding: 14px;
+        letter-spacing: 10px;
+    }
+
+    .user-avatar,
+    .applicant-icon {
+        width: 44px;
+        height: 44px;
     }
 }
 
@@ -1157,5 +1424,12 @@
 
     .admin-table {
         display: table !important;
+    }
+
+    .table-wrap {
+        background: white;
+        border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 12px;
+        overflow: auto;
     }
 }
