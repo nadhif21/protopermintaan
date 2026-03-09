@@ -420,14 +420,15 @@
         }
 
         // Open WhatsApp
-        function openWhatsApp() {
+        async function openWhatsApp() {
             if (!permintaanData.petugas_no_wa || !permintaanData.petugas_nama) {
                 await showAlert('Data petugas tidak tersedia', 'error');
                 return;
             }
             
             const baseUrl = window.location.origin;
-            const detailUrl = `${baseUrl}/backdate/detail.html?id=${permintaanData.id}`;
+            // LINK UNTUK PETUGAS: gunakan dashboard-approver-backdate.html
+            const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${permintaanData.id}`;
             
             const message = `Halo ${permintaanData.petugas_nama},
 
@@ -516,25 +517,6 @@ Mohon informasi progress terbaru. Terima kasih.`;
                 }
                 html += '</div>';
                 
-                
-                // Log Aktivitas
-                if (permintaanData.logs && permintaanData.logs.length > 0) {
-                    html += '<div class="detail-section">';
-                    html += '<h3>Log Aktivitas</h3>';
-                    html += '<div class="logs-section">';
-                    permintaanData.logs.forEach(log => {
-                        html += `<div class="log-item">
-                            <div class="log-header">
-                                <span class="log-action">${log.action || '-'}</span>
-                                <span class="log-time">${new Date(log.created_at).toLocaleString('id-ID')}</span>
-                            </div>
-                            <div class="log-description">${log.description || '-'}</div>
-                            ${log.user_name ? `<div style="font-size: 0.85rem; color: #666; margin-top: 5px;">Oleh: ${log.user_name}</div>` : ''}
-                        </div>`;
-                    });
-                    html += '</div>';
-                    html += '</div>';
-                }
                 
                 // Action Buttons (hanya untuk status Open)
                 const currentStatus = (permintaanData.status || '').trim().toLowerCase();

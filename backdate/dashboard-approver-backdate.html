@@ -529,9 +529,16 @@
             <span class="close-btn" onclick="closeDetailModal()">&times;</span>
             <h2>Detail Permintaan</h2>
             <div id="detailContent" class="detail-content"></div>
-            <div id="logsContent" style="margin-top: 20px;">
-                <h3>Log Aktivitas</h3>
-                <div id="logsList"></div>
+        </div>
+    </div>
+
+    <!-- Modal Detail Nomor Surat -->
+    <div id="detailNomorSuratModal" class="popup">
+        <div class="popup-content" style="max-width: 600px;">
+            <span class="close-btn" onclick="closeDetailNomorSuratModal()">&times;</span>
+            <h2>Detail Nomor Surat</h2>
+            <div id="detailNomorSuratContent" style="padding: 20px;">
+                <p>Memuat data...</p>
             </div>
         </div>
     </div>
@@ -731,10 +738,11 @@
                 // Tentukan tombol aksi berdasarkan role
                 let actionButtons = '';
                 if (isAdmin) {
-                    // Admin: hanya Detail dan Hubungi Approver (untuk status Open)
+                    // Admin: Detail, Hubungi Approver (untuk status Open), dan Hubungi Petugas (jika ada petugas)
+                    actionButtons = `<button class="action-btn btn-detail" onclick="showDetail(${req.id})">Detail</button>`;
+                    
                     if (currentStatus === 'Open') {
-                        actionButtons = `
-                            <button class="action-btn btn-detail" onclick="showDetail(${req.id})">Detail</button>
+                        actionButtons += `
                             <button class="action-btn btn-whatsapp" onclick="requestApprovalViaWhatsApp(${req.id})" style="background: #25D366; color: white;">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
                                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
@@ -742,8 +750,19 @@
                                 Hubungi Approver
                             </button>
                         `;
-                    } else {
-                        actionButtons = `<button class="action-btn btn-detail" onclick="showDetail(${req.id})">Detail</button>`;
+                    }
+                    
+                    // Tampilkan tombol Hubungi Petugas jika ada petugas_id dan status bukan Open/Closed
+                    // Status Closed sudah selesai, tidak perlu hubungi petugas lagi
+                    if (req.petugas_id && (currentStatus === 'Approved' || currentStatus === 'In Progress')) {
+                        actionButtons += `
+                            <button class="action-btn btn-whatsapp" onclick="requestPetugasViaWhatsApp(${req.id})" style="background: #25D366; color: white;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                </svg>
+                                Hubungi Petugas
+                            </button>
+                        `;
                     }
                 } else if (isApprover) {
                     // Approver: Approve/Reject (untuk status Open) + Detail
@@ -911,7 +930,14 @@
                 </div>
                 <div class="detail-item">
                     <label>Jumlah Surat:</label>
-                    <div class="value">${req.jumlah_surat || 'N/A'}</div>
+                    <div class="value" style="display: flex; align-items: center; gap: 10px;">
+                        <span>${req.jumlah_surat || 'N/A'}</span>
+                        ${req.jumlah_surat && parseInt(req.jumlah_surat) > 0 ? `
+                            <button class="action-btn btn-detail" onclick="showDetailNomorSurat(${req.id})" style="padding: 6px 12px; font-size: 0.9rem;" title="Lihat detail nomor surat">
+                                Detail
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
                 <div class="detail-item">
                     <label>Status:</label>
@@ -1034,15 +1060,27 @@
                     return;
                 }
                 
-                // Generate WhatsApp message (hanya link untuk approval)
+                // Generate WhatsApp message menggunakan template
+                // LINK UNTUK APPROVER: gunakan detail.html
                 const baseUrl = window.location.origin;
                 const detailUrl = `${baseUrl}/backdate/detail.html?id=${id}`;
                 
-                let message = `*Permintaan Approval Backdate*\n\n`;
-                message += `Halo ${approver.name || approver.username || 'Approver'},\n\n`;
-                message += `Mohon untuk review dan approve/reject permintaan backdate melalui link berikut:\n\n`;
-                message += `${detailUrl}\n\n`;
-                message += `Terima kasih.`;
+                // Load template dari localStorage atau gunakan default
+                const template = getWhatsAppTemplate();
+                
+                // Replace variabel dalam template
+                const date = new Date(req.created_at);
+                const dateStr = date.toLocaleDateString('id-ID');
+                
+                let message = template
+                    .replace(/{approver_name}/g, approver.name || approver.username || 'Approver')
+                    .replace(/{detail_url}/g, detailUrl)
+                    .replace(/{nomor_permintaan}/g, req.row_number || 'N/A')
+                    .replace(/{nama_pegawai}/g, req.nama_pegawai_backdate || req.nama_pegawai || 'N/A')
+                    .replace(/{npk}/g, req.npk_pegawai_backdate || req.npk || 'N/A')
+                    .replace(/{jumlah_surat}/g, req.jumlah_surat || 'N/A')
+                    .replace(/{alasan}/g, req.alasan || req.alasan_permintaan || 'N/A')
+                    .replace(/{tanggal}/g, dateStr);
                 
                 // Format nomor WhatsApp (remove non-digit, add 62 if starts with 0)
                 let cleanPhone = approverNoWa.replace(/\D/g, '');
@@ -1059,6 +1097,149 @@
                 console.error('Error:', error);
                 await showAlert('Error: ' + error.message, 'error');
             }
+        }
+        
+        // Function untuk admin: Hubungi Petugas via WhatsApp
+        async function requestPetugasViaWhatsApp(id) {
+            const req = allRequests.find(r => r.id === id) || filteredRequests.find(r => r.id === id);
+            if (!req) {
+                await showAlert('Data permintaan tidak ditemukan', 'error');
+                return;
+            }
+            
+            // Cek apakah ada petugas_id
+            if (!req.petugas_id) {
+                await showAlert('Petugas belum ditunjuk untuk permintaan ini', 'warning');
+                return;
+            }
+            
+            try {
+                // Get petugas data dari request atau fetch dari API
+                const petugasNama = req.petugas_nama || req.petugas_tunjuk || 'Petugas';
+                const petugasNoWa = req.petugas_no_wa || null;
+                
+                if (!petugasNoWa) {
+                    // Jika tidak ada nomor WA di request, coba fetch dari API
+                    const token = getAuthToken();
+                    const response = await fetch(`${API_URL}?action=getPetugas`, {
+                        headers: { 'X-Auth-Token': token || '' }
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        const petugas = result.data.find(p => p.id == req.petugas_id);
+                        if (petugas && petugas.no_wa) {
+                            const finalNoWa = petugas.no_wa;
+                            const finalNama = petugas.nama || petugasNama;
+                            
+                            // Generate WhatsApp message - format sama seperti user chat ke admin setelah submit
+                            // LINK UNTUK PETUGAS: gunakan dashboard-approver-backdate.html (BUKAN detail.html)
+                            const baseUrl = window.location.origin;
+                            const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${id}`;
+                            
+                            const namaPegawai = req.nama_pegawai_backdate || req.nama_pegawai || 'N/A';
+                            const npkPegawai = req.npk_pegawai_backdate || req.npk || 'N/A';
+                            const jumlahSurat = req.jumlah_surat || 'N/A';
+                            const alasan = req.alasan || req.alasan_permintaan || 'N/A';
+                            
+                            // Format pesan sama persis seperti user chat ke admin setelah submit
+                            let message = `*Permintaan Backdate - Tindak Lanjut*\n\n`;
+                            message += `Halo ${finalNama},\n\n`;
+                            message += `Saya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n`;
+                            message += `• Nomor Permintaan: ${req.row_number || 'N/A'}\n`;
+                            message += `• Nama Pegawai: ${namaPegawai}\n`;
+                            message += `• NPK: ${npkPegawai}\n`;
+                            message += `• Jumlah Surat: ${jumlahSurat}\n`;
+                            message += `• Alasan: ${alasan}\n\n`;
+                            message += `Mohon untuk dapat ditindaklanjuti. Detail permintaan:\n`;
+                            message += `${detailUrl}\n\n`;
+                            message += `Terima kasih.`;
+                            
+                            // Format nomor WhatsApp (remove non-digit, add 62 if starts with 0)
+                            let cleanPhone = finalNoWa.replace(/\D/g, '');
+                            if (cleanPhone.startsWith('0')) {
+                                cleanPhone = '62' + cleanPhone.substring(1);
+                            } else if (!cleanPhone.startsWith('62')) {
+                                cleanPhone = '62' + cleanPhone;
+                            }
+                            
+                            const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+                            window.open(whatsappUrl, '_blank');
+                            return;
+                        }
+                    }
+                    
+                    await showAlert(`Nomor WhatsApp petugas tidak tersedia.\n\nPetugas: ${petugasNama}\n\nSilakan hubungi admin.`, 'warning');
+                    return;
+                }
+                
+                // Jika sudah ada nomor WA di request
+                // Generate WhatsApp message - format sama seperti user chat ke admin setelah submit
+                // LINK UNTUK PETUGAS: gunakan dashboard-approver-backdate.html (BUKAN detail.html)
+                const baseUrl = window.location.origin;
+                const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${id}`;
+                
+                const namaPegawai = req.nama_pegawai_backdate || req.nama_pegawai || 'N/A';
+                const npkPegawai = req.npk_pegawai_backdate || req.npk || 'N/A';
+                const jumlahSurat = req.jumlah_surat || 'N/A';
+                const alasan = req.alasan || req.alasan_permintaan || 'N/A';
+                
+                // Format pesan sama persis seperti user chat ke admin setelah submit
+                let message = `*Permintaan Backdate - Tindak Lanjut*\n\n`;
+                message += `Halo ${petugasNama},\n\n`;
+                message += `Saya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n`;
+                message += `• Nomor Permintaan: ${req.row_number || 'N/A'}\n`;
+                message += `• Nama Pegawai: ${namaPegawai}\n`;
+                message += `• NPK: ${npkPegawai}\n`;
+                message += `• Jumlah Surat: ${jumlahSurat}\n`;
+                message += `• Alasan: ${alasan}\n\n`;
+                message += `Mohon untuk dapat ditindaklanjuti. Detail permintaan:\n`;
+                message += `${detailUrl}\n\n`;
+                message += `Terima kasih.`;
+                
+                // Format nomor WhatsApp (remove non-digit, add 62 if starts with 0)
+                let cleanPhone = petugasNoWa.replace(/\D/g, '');
+                if (cleanPhone.startsWith('0')) {
+                    cleanPhone = '62' + cleanPhone.substring(1);
+                } else if (!cleanPhone.startsWith('62')) {
+                    cleanPhone = '62' + cleanPhone;
+                }
+                
+                const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                await showAlert('Error: ' + error.message, 'error');
+            }
+        }
+        
+        // WhatsApp Template Functions
+        // Default Templates
+        const defaultWaTemplates = {
+            'approval-backdate': `*Permintaan Approval Backdate*\n\nHalo {approver_name},\n\nMohon untuk review dan approve/reject permintaan backdate melalui link berikut:\n\n{detail_url}\n\nTerima kasih.`,
+            'hubungi-petugas': `Halo {petugas_name},\n\nSaya telah mengajukan permintaan pembukaan Backdate dengan nomor:\n\n#{nomor_permintaan}\n\nMohon untuk dapat direview melalui link berikut:\n{detail_url}\n\nTerima kasih.`,
+            'hubungi-admin': `*Notifikasi Permintaan Backdate*\n\nHalo {admin_name},\n\nSaya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n• Nomor Permintaan: {nomor_permintaan}\n• Nama Pegawai: {nama_pegawai}\n• NPK: {npk}\n• Jumlah Surat: {jumlah_surat}\n• Alasan: {alasan}\n\nMohon untuk dapat direview dan disetujui. Detail permintaan:\n{detail_url}\n\nTerima kasih.`,
+            'tanya-progress': `Halo {petugas_name},\n\nSaya ingin menanyakan progress permintaan backdate saya.\n\nDetail permintaan:\nNomor: {nomor_permintaan}\nNama Pegawai: {nama_pegawai}\nNPK: {npk}\nJumlah Surat: {jumlah_surat}\nStatus: {status}\n\nLink detail: {detail_url}\n\nMohon informasi progress terbaru. Terima kasih.`,
+            'info-akun': `*Informasi Akun*\n\nDetail Akun:\n• Nama: {nama}\n• Username: {username}\n• Password: {password}\n• NPK: {npk}\n• Email: {email}\n• Unit Kerja: {unit_kerja}\n• Role: {role}\n\nSilakan login menggunakan username dan password di atas.\nSangat disarankan untuk mengubah password setelah login pertama kali.\n\nTerima kasih.`,
+            'registrasi': `Halo {nama},\n\nTerima kasih telah mendaftar. Data pendaftaran Anda:\n\nNama: {nama}\nNPK: {npk}\nEmail: {email}\nUnit Kerja: {unit_kerja}\n\nSilakan tunggu proses approval dari admin.\n\nTerima kasih.`
+        };
+        
+        // Get template key for localStorage
+        function getWaTemplateKey(tab) {
+            return `wa_template_${tab}`;
+        }
+        
+        // Get template (saved or default)
+        function getWaTemplate(tab) {
+            const key = getWaTemplateKey(tab);
+            const saved = localStorage.getItem(key);
+            return saved || defaultWaTemplates[tab] || '';
+        }
+        
+        // Get WhatsApp template (for use in functions)
+        function getWhatsAppTemplate() {
+            return getWaTemplate('approval-backdate');
         }
         
         async function showDetail(id) {
@@ -1083,7 +1264,14 @@
                 </div>
                 <div class="detail-item">
                     <label>Jumlah Surat:</label>
-                    <div class="value">${req.jumlah_surat || 'N/A'}</div>
+                    <div class="value" style="display: flex; align-items: center; gap: 10px;">
+                        <span>${req.jumlah_surat || 'N/A'}</span>
+                        ${req.jumlah_surat && parseInt(req.jumlah_surat) > 0 ? `
+                            <button class="action-btn btn-detail" onclick="showDetailNomorSurat(${req.id})" style="padding: 6px 12px; font-size: 0.9rem;" title="Lihat detail nomor surat">
+                                Detail
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
                 <div class="detail-item">
                     <label>Status:</label>
@@ -1107,39 +1295,75 @@
                 </div>
             `;
             
-            // Load logs
-            await loadLogs(id);
-            
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
         }
         
-        async function loadLogs(workflowId) {
+        // Function untuk menampilkan detail nomor surat
+        async function showDetailNomorSurat(id) {
+            const modal = document.getElementById('detailNomorSuratModal');
+            const content = document.getElementById('detailNomorSuratContent');
+            
+            if (!modal || !content) return;
+            
+            content.innerHTML = '<p>Memuat data...</p>';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
             try {
                 const token = getAuthToken();
-                const response = await fetch(`${API_URL}?action=getBackdateWorkflowLogs&id=${workflowId}`, {
+                const response = await fetch(`${API_URL}?action=getNomorSuratBackdate&permintaan_id=${id}`, {
                     headers: { 'X-Auth-Token': token || '' }
                 });
                 
                 const result = await response.json();
-                const logs = result.success ? (result.data || []) : [];
                 
-                const logsList = document.getElementById('logsList');
-                if (logs.length === 0) {
-                    logsList.innerHTML = '<p style="color: #999;">Tidak ada log aktivitas</p>';
+                if (!result.success) {
+                    throw new Error(result.error || 'Gagal memuat data nomor surat');
+                }
+                
+                const nomorSuratList = result.data || [];
+                
+                if (nomorSuratList.length === 0) {
+                    content.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Belum ada nomor surat yang ditambahkan</p>';
                     return;
                 }
                 
-                logsList.innerHTML = logs.map(log => `
-                    <div style="padding: 10px; border-bottom: 1px solid #eee;">
-                        <strong>${escapeHtml(log.action)}</strong> - ${escapeHtml(log.description || '')}
-                        <br><small style="color: #999;">${new Date(log.created_at).toLocaleString('id-ID')} oleh ${escapeHtml(log.user_name || 'System')}</small>
+                content.innerHTML = `
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f5f5f5;">
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">No</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Unit Kerja</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Nomor Surat</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Perihal</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Tanggal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${nomorSuratList.map((surat, index) => `
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 10px;">${index + 1}</td>
+                                        <td style="padding: 10px;">${escapeHtml(surat.unit_kerja || 'N/A')}</td>
+                                        <td style="padding: 10px;">${escapeHtml(surat.nomor_surat || 'N/A')}</td>
+                                        <td style="padding: 10px;">${escapeHtml(surat.perihal || 'N/A')}</td>
+                                        <td style="padding: 10px;">${new Date(surat.created_at).toLocaleString('id-ID')}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
-                `).join('');
+                `;
             } catch (error) {
-                console.error('Error loading logs:', error);
-                document.getElementById('logsList').innerHTML = '<p style="color: #f44336;">Error memuat log</p>';
+                console.error('Error loading nomor surat:', error);
+                content.innerHTML = `<p style="color: #f44336; text-align: center; padding: 20px;">Error: ${error.message}</p>`;
             }
+        }
+        
+        function closeDetailNomorSuratModal() {
+            document.getElementById('detailNomorSuratModal').classList.remove('show');
+            document.body.style.overflow = 'auto';
         }
         
         function closeDetailModal() {

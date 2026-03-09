@@ -398,7 +398,14 @@
                 <h1>Form Permintaan Pembukaan Backdate</h1>
                 <p>Silakan isi form di bawah ini dengan lengkap</p>
             </div>
-            <button id="headerLogoutBtn" class="btn-logout">Logout</button>
+            <button id="headerLogoutBtn" class="header-logout-btn">
+                <svg viewBox="0 0 24 24">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Logout</span>
+            </button>
         </header>
 
         <main class="main-content">
@@ -504,10 +511,6 @@
                 const confirmed = await showConfirm('Apakah Anda yakin ingin logout?', 'Konfirmasi Logout', 'Logout', 'Batal', 'warning');
                 if (confirmed) {
                     localStorage.removeItem('authToken');
-                    window.location.href = '../index.html';
-                }
-                    window.location.href = '../index.html';
-                }
                     localStorage.removeItem('userData');
                     window.location.href = '../login.html';
                 }
@@ -556,7 +559,8 @@
         // Open WhatsApp
         function openWhatsAppBackdate(permintaanId, nomorPermintaan, petugasNama, petugasNoWa) {
             const baseUrl = window.location.origin;
-            const detailUrl = `${baseUrl}/backdate/detail.html?id=${permintaanId}`;
+            // LINK UNTUK PETUGAS: gunakan dashboard-approver-backdate.html
+            const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${permintaanId}`;
             
             const message = `Halo ${petugasNama},
 
@@ -696,7 +700,7 @@ Terima kasih.`;
         }
         
         // Function untuk membuka WhatsApp ke contact (admin atau petugas)
-        function openWhatsAppToContact() {
+        async function openWhatsAppToContact() {
             if (!window.currentContact || !submittedData) {
                 await showAlert('Data contact tidak tersedia', 'error');
                 return;

@@ -284,9 +284,16 @@
             <span class="close-btn" onclick="closeDetailModal()">&times;</span>
             <h2>Detail Permintaan</h2>
             <div id="detailContent" class="detail-content"></div>
-            <div id="logsContent" style="margin-top: 20px;">
-                <h3>Log Aktivitas</h3>
-                <div id="logsList"></div>
+        </div>
+    </div>
+
+    <!-- Modal Detail Nomor Surat -->
+    <div id="detailNomorSuratModal" class="popup">
+        <div class="popup-content" style="max-width: 600px;">
+            <span class="close-btn" onclick="closeDetailNomorSuratModal()">&times;</span>
+            <h2>Detail Nomor Surat</h2>
+            <div id="detailNomorSuratContent" style="padding: 20px;">
+                <p>Memuat data...</p>
             </div>
         </div>
     </div>
@@ -620,7 +627,14 @@
                 </div>
                 <div class="detail-item">
                     <label>Jumlah Surat:</label>
-                    <div class="value">${req.jumlah_surat || 'N/A'}</div>
+                    <div class="value" style="display: flex; align-items: center; gap: 10px;">
+                        <span>${req.jumlah_surat || 'N/A'}</span>
+                        ${req.jumlah_surat && parseInt(req.jumlah_surat) > 0 ? `
+                            <button class="action-btn btn-detail" onclick="showDetailNomorSurat(${req.id})" style="padding: 6px 12px; font-size: 0.9rem;" title="Lihat detail nomor surat">
+                                Detail
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
                 <div class="detail-item">
                     <label>Status:</label>
@@ -632,43 +646,79 @@
                 </div>
             `;
             
-            // Load logs
-            await loadLogs(id);
-            
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
         }
         
-        async function loadLogs(permintaanId) {
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Function untuk menampilkan detail nomor surat
+        async function showDetailNomorSurat(id) {
+            const modal = document.getElementById('detailNomorSuratModal');
+            const content = document.getElementById('detailNomorSuratContent');
+            
+            if (!modal || !content) return;
+            
+            content.innerHTML = '<p>Memuat data...</p>';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
             try {
                 const token = getAuthToken();
-                const response = await fetch(`${API_URL}?action=getPermintaanBackdateLogs&id=${permintaanId}`, {
+                const response = await fetch(`${API_URL}?action=getNomorSuratBackdate&permintaan_id=${id}`, {
                     headers: { 'X-Auth-Token': token || '' }
                 });
                 
                 const result = await response.json();
-                const logs = result.success ? (result.data || []) : [];
                 
-                const logsList = document.getElementById('logsList');
-                if (logs.length === 0) {
-                    logsList.innerHTML = '<p style="color: #999;">Tidak ada log aktivitas</p>';
+                if (!result.success) {
+                    throw new Error(result.error || 'Gagal memuat data nomor surat');
+                }
+                
+                const nomorSuratList = result.data || [];
+                
+                if (nomorSuratList.length === 0) {
+                    content.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Belum ada nomor surat yang ditambahkan</p>';
                     return;
                 }
                 
-                logsList.innerHTML = logs.map(log => `
-                    <div style="padding: 10px; border-bottom: 1px solid #eee;">
-                        <strong>${escapeHtml(log.action)}</strong> - ${escapeHtml(log.description || '')}
-                        <br><small style="color: #999;">${new Date(log.created_at).toLocaleString('id-ID')} oleh ${escapeHtml(log.user_name || 'System')}</small>
+                content.innerHTML = `
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f5f5f5;">
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">No</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Unit Kerja</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Nomor Surat</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Perihal</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Tanggal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${nomorSuratList.map((surat, index) => `
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 10px;">${index + 1}</td>
+                                        <td style="padding: 10px;">${escapeHtml(surat.unit_kerja || 'N/A')}</td>
+                                        <td style="padding: 10px;">${escapeHtml(surat.nomor_surat || 'N/A')}</td>
+                                        <td style="padding: 10px;">${escapeHtml(surat.perihal || 'N/A')}</td>
+                                        <td style="padding: 10px;">${new Date(surat.created_at).toLocaleString('id-ID')}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
-                `).join('');
+                `;
             } catch (error) {
-                console.error('Error loading logs:', error);
-                document.getElementById('logsList').innerHTML = '<p style="color: #f44336;">Error memuat log</p>';
+                console.error('Error loading nomor surat:', error);
+                content.innerHTML = `<p style="color: #f44336; text-align: center; padding: 20px;">Error: ${error.message}</p>`;
             }
         }
         
-        function closeDetailModal() {
-            document.getElementById('detailModal').classList.remove('show');
+        function closeDetailNomorSuratModal() {
+            document.getElementById('detailNomorSuratModal').classList.remove('show');
             document.body.style.overflow = 'auto';
         }
         
