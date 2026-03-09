@@ -1,9 +1,5 @@
 function getIndexPath() {
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('/permintaan/') || currentPath.includes('/backdate/')) {
-        return '../index.html';
-    }
-    return 'index.html';
+    return getAppUrl('/index.html');
 }
 
 document.addEventListener('DOMContentLoaded', function() {

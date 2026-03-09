@@ -1,6 +1,25 @@
 const SESSION_KEY = "dof_auth_session";
 const SESSION_DURATION = 24 * 60 * 60 * 1000;
 
+// Base path untuk aplikasi (untuk subfolder deployment)
+const APP_BASE_PATH = '/permintaandof';
+
+// Fungsi untuk mendapatkan base path aplikasi
+function getBasePath() {
+    return APP_BASE_PATH;
+}
+
+// Fungsi untuk membuat URL dengan base path
+function getAppUrl(path) {
+    // Pastikan path dimulai dengan /
+    const cleanPath = path.startsWith('/') ? path : '/' + path;
+    // Hapus base path jika sudah ada di path
+    if (cleanPath.startsWith(APP_BASE_PATH)) {
+        return cleanPath;
+    }
+    return APP_BASE_PATH + cleanPath;
+}
+
 function setSession(sessionPayload) {
     // sessionPayload: { token, expiresAt, user: { id, username, name, role } }
     const isSuperAdmin = (sessionPayload?.user?.role === 'super_admin');
@@ -66,22 +85,11 @@ function getAuthToken() {
 }
 
 function getLoginPath() {
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('/permintaan/') || currentPath.includes('/backdate/') || currentPath.includes('/admin/')) {
-        return '../login.html';
-    }
-    return 'login.html';
+    return getAppUrl('/login.html');
 }
 
 function getAdminPath() {
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('/permintaan/') || currentPath.includes('/backdate/')) {
-        return '../admin/admin.html';
-    }
-    if (currentPath.includes('/admin/')) {
-        return 'admin.html';
-    }
-    return 'admin/admin.html';
+    return getAppUrl('/admin/admin.html');
 }
 
 function checkAuth() {
@@ -113,11 +121,7 @@ function getUserRole() {
 }
 
 function getIndexPathSafe() {
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('/permintaan/') || currentPath.includes('/backdate/') || currentPath.includes('/admin/')) {
-        return '../index.html';
-    }
-    return 'index.html';
+    return getAppUrl('/index.html');
 }
 
 function logout() {

@@ -29,7 +29,7 @@ let currentUser = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!checkAuth()) {
-        window.location.href = 'login.html';
+        window.location.href = getAppUrl('/login.html');
         return;
     }
 
@@ -48,7 +48,7 @@ function setupLogout() {
                 if (confirm('Apakah Anda yakin ingin logout?')) {
                     localStorage.removeItem('authToken');
                     localStorage.removeItem('userData');
-                    window.location.href = 'login.html';
+                    window.location.href = getAppUrl('/login.html');
                 }
             }
         });

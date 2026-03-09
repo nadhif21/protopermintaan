@@ -37,7 +37,7 @@ const SKIP_BAGIAN3_OPTIONS = ['Revisi', 'Pembatalan', 'Perubahan Plt'];
 document.addEventListener('DOMContentLoaded', async () => {
     // Check authentication
     if (!checkAuth()) {
-        window.location.href = 'login.html';
+        window.location.href = getAppUrl('/login.html');
         return;
     }
     
@@ -614,15 +614,33 @@ async function deletePilihPermintaanOption(id) {
 
 async function loadPetugas() {
     try {
+        const token = getAuthToken();
         const apiUrl = getApiUrl();
         const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
         const fullUrl = window.location.origin + path;
-        const response = await fetch(`${fullUrl}?action=getPetugas`);
+        
+        const fetchHeaders = {};
+        if (token) {
+            fetchHeaders['X-Auth-Token'] = token;
+        }
+        
+        const response = await fetch(`${fullUrl}?action=getPetugas`, {
+            method: 'GET',
+            headers: fetchHeaders,
+            mode: 'cors',
+            cache: 'no-cache'
+        });
+        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const result = await response.json();
         console.log('Petugas API response:', result);
+        
+        if (!result) {
+            console.error('API returned null or undefined response');
+            return;
+        }
         
         if (result.success && result.data) {
             // Handle nested data structure (backward compatibility)
@@ -631,22 +649,44 @@ async function loadPetugas() {
             if (Array.isArray(dataArray) && dataArray.length > 0) {
                 const select = document.getElementById('petugas');
                 if (select) {
+                    // Clear existing options except the first one (placeholder)
+                    while (select.options.length > 1) {
+                        select.remove(1);
+                    }
+                    
                     dataArray.forEach(petugas => {
                         const option = document.createElement('option');
                         option.value = petugas.id;
-                        option.textContent = petugas.nama;
-                        option.setAttribute('data-wa', petugas.no_wa);
+                        option.textContent = petugas.nama || 'Tanpa Nama';
+                        option.setAttribute('data-wa', petugas.no_wa || '');
                         select.appendChild(option);
                     });
                     
+                    console.log(`Petugas loaded: ${dataArray.length} petugas`);
+                    
                     // Copy options to bagian2 petugas select
                     copyPetugasOptions();
+                } else {
+                    console.error('Petugas select element not found');
                 }
             } else {
-                console.error('No valid data array found:', typeof result.data, result.data);
+                console.warn('No valid data array found. Data type:', typeof result.data, 'Data:', result.data);
+                // Jika tidak ada data, set placeholder
+                const select = document.getElementById('petugas');
+                if (select && select.options.length === 1) {
+                    console.warn('No petugas available in database');
+                }
             }
         } else {
-            console.error('API returned error or no data:', result);
+            const errorMsg = result.error || 'Unknown error';
+            console.error('API returned error or no data:', errorMsg, result);
+            
+            // Tampilkan pesan error ke user jika diperlukan
+            const select = document.getElementById('petugas');
+            if (select && select.options.length === 1) {
+                // Hanya tampilkan error jika belum ada option selain placeholder
+                console.warn('Failed to load petugas:', errorMsg);
+            }
         }
     } catch (error) {
         console.error('Error loading petugas:', error);
@@ -1332,7 +1372,7 @@ function setupLogout() {
                 if (confirm('Apakah Anda yakin ingin logout?')) {
                     localStorage.removeItem('authToken');
                     localStorage.removeItem('userData');
-                    window.location.href = 'login.html';
+                    window.location.href = getAppUrl('/login.html');
                 }
             }
         });
