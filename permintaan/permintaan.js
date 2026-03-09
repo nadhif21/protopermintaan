@@ -1,4 +1,44 @@
-const API_URL = 'api.php';
+// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
+function getApiUrl() {
+    const currentPath = window.location.pathname;
+    let basePath = '';
+    
+    // Deteksi base path aplikasi (misalnya /permintaandof/)
+    if (currentPath.includes('/permintaan/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+    } else if (currentPath.includes('/backdate/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+    } else if (currentPath.includes('/admin/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+    } else {
+        // Jika di root folder aplikasi, ambil path sampai sebelum nama file
+        const lastSlash = currentPath.lastIndexOf('/');
+        basePath = currentPath.substring(0, lastSlash + 1);
+    }
+    
+    // Pastikan basePath selalu diakhiri dengan /
+    if (basePath && !basePath.endsWith('/')) {
+        basePath += '/';
+    }
+    
+    // Return path absolut
+    return basePath + 'api.php';
+}
+
+// Fungsi helper untuk membuat URL API dengan query parameters
+function getApiUrlWithParams(action, params = {}) {
+    const apiUrl = getApiUrl();
+    const fullUrl = apiUrl.startsWith('http') ? apiUrl : window.location.origin + (apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl);
+    const url = new URL(fullUrl);
+    url.searchParams.append('action', action);
+    Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.append(key, String(value));
+    });
+    url.searchParams.append('_t', Date.now());
+    return url;
+}
+
+const API_URL = getApiUrl();
 
 let allData = [];
 let filteredData = [];
@@ -248,10 +288,8 @@ async function loadData() {
         allData = [];
         filteredData = [];
         
-        const url = new URL(API_URL, window.location.origin);
-        url.searchParams.append('action', 'getData');
-        url.searchParams.append('table', 'permintaan');
-        url.searchParams.append('_t', Date.now());
+        // Buat URL dengan helper function
+        const url = getApiUrlWithParams('getData', { table: 'permintaan' });
         
         // Get auth token for filtering by user
         const token = getAuthToken();
@@ -2562,13 +2600,9 @@ function showDetail(rowId) {
         console.log('Update params:', updateParams);
         
         // Use existing batchUpdate but with new endpoint for field updates
-        const url = new URL(API_URL, window.location.origin);
-        url.searchParams.append('action', 'updatePermintaanFields');
-        // Ensure rowNumber is an integer
-        url.searchParams.append('rowNumber', parseInt(rowNumber, 10));
-        
-        Object.entries(updateParams).forEach(([key, value]) => {
-            url.searchParams.append(key, value);
+        const url = getApiUrlWithParams('updatePermintaanFields', { 
+            rowNumber: parseInt(rowNumber, 10),
+            ...updateParams
         });
         
         console.log('Request URL:', url.toString());
@@ -2612,29 +2646,16 @@ async function batchUpdate(rowNumber, updateData) {
         throw new Error('RowNumber tidak valid: ' + rowNumber);
     }
     
-    const url = new URL(API_URL, window.location.origin);
-    url.searchParams.append('action', 'batchUpdate');
-    url.searchParams.append('table', 'permintaan');
-    url.searchParams.append('rowNumber', rowNumber);
+    // Build params object
+    const params = { table: 'permintaan', rowNumber: rowNumber };
+    if (updateData.status !== undefined) params.status = updateData.status;
+    if (updateData.flag !== undefined) params.flag = updateData.flag;
+    if (updateData.petugas !== undefined) params.petugas = updateData.petugas;
+    if (updateData.waktuSelesai !== undefined) params.waktuSelesai = updateData.waktuSelesai;
+    if (updateData.keterangan !== undefined) params.keterangan = updateData.keterangan;
+    if (updateData.persetujuan !== undefined) params.persetujuan = updateData.persetujuan;
     
-    if (updateData.status !== undefined) {
-        url.searchParams.append('status', updateData.status);
-    }
-    if (updateData.flag !== undefined) {
-        url.searchParams.append('flag', updateData.flag);
-    }
-    if (updateData.petugas !== undefined) {
-        url.searchParams.append('petugas', updateData.petugas);
-    }
-    if (updateData.waktuSelesai !== undefined) {
-        url.searchParams.append('waktuSelesai', updateData.waktuSelesai);
-    }
-    if (updateData.keterangan !== undefined) {
-        url.searchParams.append('keterangan', updateData.keterangan);
-    }
-    if (updateData.persetujuan !== undefined) {
-        url.searchParams.append('persetujuan', updateData.persetujuan);
-    }
+    const url = getApiUrlWithParams('batchUpdate', params);
     
     const response = await fetch(url.toString(), {
         method: 'GET',

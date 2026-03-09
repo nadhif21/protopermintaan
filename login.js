@@ -86,9 +86,7 @@ async function doLogin(username, password) {
             submitBtn.style.opacity = '0.8';
         }
 
-        const apiUrl = (window.location.pathname.includes('/permintaan/') || window.location.pathname.includes('/backdate/') || window.location.pathname.includes('/admin/'))
-            ? '../api.php'
-            : 'api.php';
+        const apiUrl = getApiUrlSafe();
 
         const res = await fetch(apiUrl, {
             method: 'POST',

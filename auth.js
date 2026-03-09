@@ -139,8 +139,26 @@ function logout() {
 
 function getApiUrlSafe() {
     const currentPath = window.location.pathname;
-    if (currentPath.includes('/permintaan/') || currentPath.includes('/backdate/') || currentPath.includes('/admin/')) {
-        return '../api.php';
+    let basePath = '';
+    
+    // Deteksi base path aplikasi (misalnya /permintaandof/)
+    if (currentPath.includes('/permintaan/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+    } else if (currentPath.includes('/backdate/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+    } else if (currentPath.includes('/admin/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+    } else {
+        // Jika di root folder aplikasi, ambil path sampai sebelum nama file
+        const lastSlash = currentPath.lastIndexOf('/');
+        basePath = currentPath.substring(0, lastSlash + 1);
     }
-    return 'api.php';
+    
+    // Pastikan basePath selalu diakhiri dengan /
+    if (basePath && !basePath.endsWith('/')) {
+        basePath += '/';
+    }
+    
+    // Return path absolut
+    return basePath + 'api.php';
 }
