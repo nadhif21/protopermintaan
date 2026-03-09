@@ -553,6 +553,8 @@ select.form-input {
 @media (max-width: 768px) {
     .table-container {
         display: none;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .cards-container {
@@ -657,10 +659,34 @@ select.form-input {
         padding: 20px;
         margin: 10px;
         max-height: 90vh;
+        width: 95%;
+        max-width: 95%;
     }
 
     .popup-content h2 {
         font-size: 1.3rem;
+        padding-right: 30px;
+    }
+
+    /* Ensure all form inputs are touch-friendly */
+    .form-input,
+    select.form-input,
+    input[type="text"],
+    input[type="email"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+        min-height: 44px;
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 12px 16px;
+    }
+
+    /* Better button sizing */
+    button, .btn, .action-btn {
+        min-height: 44px;
+        padding: 10px 16px;
+        font-size: 0.95rem;
     }
 
     .status-flag-container {
@@ -702,6 +728,72 @@ select.form-input {
     
     .pagination-size {
         justify-content: center;
+    }
+
+    /* Better spacing for detail items */
+    .detail-item {
+        padding: 12px 0;
+    }
+
+    .detail-item label {
+        font-size: 0.75rem;
+        margin-bottom: 4px;
+    }
+
+    .detail-item .value {
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    /* Ensure status badges are readable */
+    .status-badge,
+    .flag-badge {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .card {
+        padding: 16px;
+    }
+
+    .card-row {
+        padding: 10px 0;
+    }
+
+    .card-label {
+        font-size: 0.7rem;
+    }
+
+    .card-value {
+        font-size: 0.9rem;
+    }
+
+    .popup-content {
+        padding: 16px;
+        margin: 5px;
+    }
+
+    .popup-content h2 {
+        font-size: 1.1rem;
+    }
+
+    .detail-content {
+        font-size: 0.85rem;
+    }
+
+    .status-flag-container {
+        gap: 16px;
+    }
+
+    .status-select {
+        font-size: 0.95rem;
+    }
+
+    .save-status-btn {
+        font-size: 0.9rem;
+        padding: 12px 20px;
     }
 }
 

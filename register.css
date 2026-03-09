@@ -40,22 +40,14 @@ body {
 }
 
 .auth-logo-icon {
-    width: 48px;
-    height: 48px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 1.2rem;
+    display: none;
 }
 
 .auth-logo-text {
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: 2rem;
+    font-weight: 700;
     color: white;
+    letter-spacing: -0.5px;
 }
 
 .auth-box {

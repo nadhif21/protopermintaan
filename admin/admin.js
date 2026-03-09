@@ -192,8 +192,101 @@ async function loadUsers() {
         const users = await apiGet('listUsers');
         tbody.innerHTML = users.map(u => userRowHtml(u)).join('');
         bindUserRowActions();
+
+        // Update cards for mobile
+        const cardsContainer = document.getElementById('usersCards');
+        if (cardsContainer) {
+            if (users.length === 0) {
+                cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada user</div>';
+            } else {
+                cardsContainer.innerHTML = users.map(u => {
+                    const statusBadge = u.isActive
+                        ? `<span class="badge badge-active">Active</span>`
+                        : `<span class="badge badge-inactive">Inactive</span>`;
+                    const roleBadge = `<span class="badge badge-role">${escapeHtml(u.role.toUpperCase())}</span>`;
+                    const initials = getInitials(u.name || u.username);
+                    const email = u.email || `${u.username}@company.com`;
+                    const lastLogin = formatLastLogin(u.updatedAt);
+
+                    return `
+                        <div class="admin-card" data-user-id="${u.id}">
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">User</div>
+                                <div class="admin-card-value">
+                                    <div class="user-cell">
+                                        <div class="user-avatar">${initials}</div>
+                                        <div class="user-info">
+                                            <div class="user-name">${escapeHtml(u.name || u.username)}</div>
+                                            <div class="user-email">${escapeHtml(email)}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Role</div>
+                                <div class="admin-card-value">${roleBadge}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Status</div>
+                                <div class="admin-card-value">${statusBadge}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Last Login</div>
+                                <div class="admin-card-value">${lastLogin}</div>
+                            </div>
+                            <div class="admin-card-actions">
+                                <button class="btn-icon-action" data-action="edit" data-user-id="${u.id}" title="Edit">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                    Edit
+                                </button>
+                                <button class="btn-icon-action" data-action="reset" data-user-id="${u.id}" title="Reset Password">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+                                    </svg>
+                                    Reset
+                                </button>
+                                <button class="btn-icon-action btn-icon-danger" data-action="delete" data-user-id="${u.id}" title="Delete">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                    Hapus
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Bind actions for cards
+                cardsContainer.querySelectorAll('button[data-action]').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const action = btn.getAttribute('data-action');
+                        const userId = parseInt(btn.getAttribute('data-user-id') || '0');
+                        if (!userId) return;
+
+                        if (action === 'reset') {
+                            await resetPasswordFlow(userId);
+                        } else if (action === 'edit') {
+                            await openEditUserModal(userId);
+                        } else if (action === 'delete') {
+                            await deleteUser(userId);
+                        }
+                    });
+                });
+            }
+        }
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
+        const tbody = document.getElementById('usersTbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="5" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
+        }
+        const cardsContainer = document.getElementById('usersCards');
+        if (cardsContainer) {
+            cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${escapeHtml(e.message)}</div>`;
+        }
     }
 }
 
@@ -532,6 +625,93 @@ async function loadRegistrations(status = '') {
         const registrations = await apiGet('listRegistrations', params);
         tbody.innerHTML = registrations.map(r => registrationRowHtml(r)).join('');
         bindRegistrationRowActions();
+
+        // Update cards for mobile
+        const cardsContainer = document.getElementById('registrationsCards');
+        if (cardsContainer) {
+            if (registrations.length === 0) {
+                cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada registrasi</div>';
+            } else {
+                cardsContainer.innerHTML = registrations.map(r => {
+                    const email = r.email || `${r.nama?.toLowerCase().replace(/\s+/g, '.')}@external.io`;
+                    const requestedRole = r.requestedRole || 'User';
+                    const date = formatDateShort(r.createdAt);
+
+                    let actions = '';
+                    if (r.status === 'pending') {
+                        actions = `
+                            <div class="admin-card-actions">
+                                <button class="btn btn-approve" data-action="approve" data-registration-id="${r.id}">Approve</button>
+                                <button class="btn btn-reject" data-action="reject" data-registration-id="${r.id}">Reject</button>
+                            </div>
+                        `;
+                    } else {
+                        actions = `<div class="admin-card-value" style="color:#666; font-size:0.85rem;">${r.approvedByName ? `Oleh: ${escapeHtml(r.approvedByName)}` : '-'}</div>`;
+                    }
+
+                    return `
+                        <div class="admin-card" data-registration-id="${r.id}" style="cursor: pointer;">
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Applicant</div>
+                                <div class="admin-card-value">
+                                    <div class="applicant-cell">
+                                        <div class="applicant-icon">
+                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="12" cy="7" r="4"></circle>
+                                            </svg>
+                                        </div>
+                                        <div class="applicant-info">
+                                            <div class="applicant-name">${escapeHtml(r.nama)}</div>
+                                            <div class="applicant-email">${escapeHtml(email)}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Requested Role</div>
+                                <div class="admin-card-value">${escapeHtml(requestedRole)}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Date</div>
+                                <div class="admin-card-value">${date}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Approval Actions</div>
+                                ${actions}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Bind actions for cards
+                cardsContainer.querySelectorAll('button[data-action]').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const action = btn.getAttribute('data-action');
+                        const registrationId = parseInt(btn.getAttribute('data-registration-id') || '0');
+                        if (!registrationId) return;
+
+                        if (action === 'approve') {
+                            await approveRegistrationFlow(registrationId);
+                        } else if (action === 'reject') {
+                            await openRejectModal(registrationId);
+                        }
+                    });
+                });
+
+                // Click on card to show detail
+                cardsContainer.querySelectorAll('.admin-card[data-registration-id]').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        if (e.target.closest('button')) return;
+                        const registrationId = parseInt(card.getAttribute('data-registration-id') || '0');
+                        if (registrationId) {
+                            showDetailModal(registrationId);
+                        }
+                    });
+                });
+            }
+        }
         
         // Update pending count badge
         const pendingCount = registrations.filter(r => r.status === 'pending').length;
@@ -545,7 +725,14 @@ async function loadRegistrations(status = '') {
             }
         }
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="4" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
+        const tbody = document.getElementById('registrationsTbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="4" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
+        }
+        const cardsContainer = document.getElementById('registrationsCards');
+        if (cardsContainer) {
+            cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${escapeHtml(e.message)}</div>`;
+        }
     }
 }
 
@@ -1375,10 +1562,62 @@ async function loadApprovers() {
                 </tr>
             `;
         }).join('');
+
+        // Update cards for mobile
+        const cardsContainer = document.getElementById('approversCards');
+        if (cardsContainer) {
+            if (approvers.length === 0) {
+                cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada approver</div>';
+            } else {
+                cardsContainer.innerHTML = approvers.map(approver => {
+                    const status = approver.is_active !== false ? 'Active' : 'Inactive';
+                    const statusClass = approver.is_active !== false ? 'badge-active' : 'badge-inactive';
+                    
+                    return `
+                        <div class="admin-card" data-id="${approver.id}">
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Nama</div>
+                                <div class="admin-card-value">${escapeHtml(approver.name || '')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Username</div>
+                                <div class="admin-card-value">${escapeHtml(approver.username || '')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Nomor Telepon</div>
+                                <div class="admin-card-value">${escapeHtml(approver.nomor_telepon || '-')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Email</div>
+                                <div class="admin-card-value">${escapeHtml(approver.email || '-')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Unit Kerja</div>
+                                <div class="admin-card-value">${escapeHtml(approver.unit_kerja || '-')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Status</div>
+                                <div class="admin-card-value"><span class="badge ${statusClass}">${status}</span></div>
+                            </div>
+                            <div class="admin-card-actions">
+                                <button class="btn-small" onclick="openApproverModal(${approver.id})" title="Edit">✏️ Edit</button>
+                                <button class="btn-small btn-danger" onclick="deleteApprover(${approver.id})" title="Hapus">🗑️ Hapus</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
     } catch (error) {
         console.error('Error loading approvers:', error);
-        document.getElementById('approversTbody').innerHTML = 
-            `<tr><td colspan="7" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
+        const tbody = document.getElementById('approversTbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="7" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
+        }
+        const cardsContainer = document.getElementById('approversCards');
+        if (cardsContainer) {
+            cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${error.message}</div>`;
+        }
     }
 }
 
@@ -1550,10 +1789,58 @@ async function loadPetugas() {
                 </tr>
             `;
         }).join('');
+
+        // Update cards for mobile
+        const cardsContainer = document.getElementById('petugasCards');
+        if (cardsContainer) {
+            if (petugasList.length === 0) {
+                cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada petugas</div>';
+            } else {
+                cardsContainer.innerHTML = petugasList.map(petugas => {
+                    const status = petugas.is_active !== false ? 'Active' : 'Inactive';
+                    const statusClass = petugas.is_active !== false ? 'badge-active' : 'badge-inactive';
+                    
+                    return `
+                        <div class="admin-card" data-id="${petugas.id}">
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Nama</div>
+                                <div class="admin-card-value">${escapeHtml(petugas.nama || '')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">NPK</div>
+                                <div class="admin-card-value">${escapeHtml(petugas.npk || '-')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Jabatan</div>
+                                <div class="admin-card-value">${escapeHtml(petugas.jabatan || '-')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Nomor WhatsApp</div>
+                                <div class="admin-card-value">${escapeHtml(petugas.no_wa || '-')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Status</div>
+                                <div class="admin-card-value"><span class="badge ${statusClass}">${status}</span></div>
+                            </div>
+                            <div class="admin-card-actions">
+                                <button class="btn-small" onclick="openPetugasModal(${petugas.id})" title="Edit">✏️ Edit</button>
+                                <button class="btn-small btn-danger" onclick="deletePetugas(${petugas.id})" title="Hapus">🗑️ Hapus</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
     } catch (error) {
         console.error('Error loading petugas:', error);
-        document.getElementById('petugasTbody').innerHTML = 
-            `<tr><td colspan="6" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
+        const tbody = document.getElementById('petugasTbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="6" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
+        }
+        const cardsContainer = document.getElementById('petugasCards');
+        if (cardsContainer) {
+            cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${error.message}</div>`;
+        }
     }
 }
 

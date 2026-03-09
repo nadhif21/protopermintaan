@@ -306,6 +306,269 @@
         .custom-modal-btn-danger:hover {
             background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
         }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 12px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+
+            .stat-card {
+                padding: 16px;
+            }
+
+            .stat-card h3 {
+                font-size: 0.8rem;
+            }
+
+            .stat-card .value {
+                font-size: 1.5rem;
+            }
+
+            .filter-section {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .search-box {
+                min-width: 100%;
+            }
+
+            .filter-section label {
+                font-size: 0.9rem;
+            }
+
+            .filter-section select {
+                width: 100%;
+                padding: 10px;
+                font-size: 0.95rem;
+                min-height: 44px;
+            }
+
+            .filter-section button {
+                width: 100%;
+                padding: 12px;
+                font-size: 1rem;
+                min-height: 44px;
+            }
+
+            /* Hide table on mobile, show cards */
+            .requests-table table {
+                display: none !important;
+            }
+
+            .requests-table-header {
+                padding: 12px;
+                flex-direction: column;
+                gap: 12px;
+                align-items: stretch;
+            }
+
+            .requests-table-header h2 {
+                font-size: 1rem;
+            }
+
+            .requests-table-header > div {
+                width: 100%;
+            }
+
+            .requests-table-header select {
+                width: 100%;
+                padding: 8px;
+                font-size: 0.9rem;
+                min-height: 44px;
+            }
+
+            /* Card view for mobile */
+            .requests-cards {
+                display: block !important;
+                padding: 12px;
+            }
+
+            .request-card {
+                background: white;
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                border: 1px solid #e0e0e0;
+            }
+
+            .request-card-row {
+                display: flex;
+                flex-direction: column;
+                padding: 8px 0;
+                border-bottom: 1px solid #f0f0f0;
+                gap: 4px;
+            }
+
+            .request-card-row:last-child {
+                border-bottom: none;
+            }
+
+            .request-card-label {
+                font-size: 0.75rem;
+                color: #666;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                font-weight: 600;
+            }
+
+            .request-card-value {
+                font-size: 0.95rem;
+                color: #333;
+                word-break: break-word;
+            }
+
+            .request-card-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 12px;
+            }
+
+            .action-btn {
+                flex: 1;
+                min-width: 80px;
+                padding: 10px 12px;
+                font-size: 0.9rem;
+                min-height: 44px;
+            }
+
+            .pagination {
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 12px;
+            }
+
+            .pagination button {
+                padding: 10px 14px;
+                font-size: 0.9rem;
+                min-height: 44px;
+                min-width: 44px;
+            }
+
+            /* Modal responsive */
+            .custom-modal {
+                width: 95%;
+                max-width: 95%;
+                margin: 10px;
+            }
+
+            .custom-modal-header {
+                padding: 16px;
+            }
+
+            .custom-modal-title {
+                font-size: 1.1rem;
+            }
+
+            .custom-modal-body {
+                padding: 0 16px 16px;
+                font-size: 0.9rem;
+            }
+
+            .custom-modal-footer {
+                padding: 12px 16px;
+                flex-direction: column;
+            }
+
+            .custom-modal-btn {
+                width: 100%;
+                padding: 12px;
+                min-height: 44px;
+            }
+
+            .popup-content {
+                width: 95%;
+                max-width: 95%;
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .popup-content h2 {
+                font-size: 1.2rem;
+                padding-right: 30px;
+            }
+
+            .detail-content {
+                font-size: 0.9rem;
+            }
+
+            .detail-item {
+                padding: 12px 0;
+            }
+
+            .detail-item label {
+                font-size: 0.75rem;
+            }
+
+            .detail-item .value {
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-card .value {
+                font-size: 1.25rem;
+            }
+
+            .content-header {
+                padding: 16px;
+            }
+
+            .content-header h1 {
+                font-size: 1.25rem;
+            }
+
+            .content-header p {
+                font-size: 0.85rem;
+            }
+
+            .header-logout-btn {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+            }
+
+            .header-logout-btn span {
+                display: none;
+            }
+
+            .dashboard-container {
+                padding: 8px;
+            }
+
+            .request-card {
+                padding: 12px;
+            }
+
+            .action-btn {
+                font-size: 0.85rem;
+                padding: 8px 10px;
+            }
+        }
+
+        /* Desktop: Hide cards, show table */
+        @media (min-width: 769px) {
+            .requests-cards {
+                display: none !important;
+            }
+
+            .requests-table table {
+                display: table !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -315,8 +578,7 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-logo">DOF</div>
-            <div class="sidebar-logo-text">DOF Admin</div>
+            <div class="sidebar-logo-text">Digital Office</div>
         </div>
         <nav class="sidebar-nav">
             <a href="../index.html" class="sidebar-nav-item">
@@ -462,7 +724,7 @@
 
                 <!-- Requests Table -->
                 <div class="requests-table">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f5f5f5; border-bottom: 2px solid #2196f3;">
+                    <div class="requests-table-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f5f5f5; border-bottom: 2px solid #2196f3;">
                         <h2 style="margin: 0; font-size: 1.1rem;">Daftar Permintaan</h2>
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <label for="itemsPerPageSelect" style="font-size: 0.9rem; color: #666;">Tampilkan:</label>
@@ -491,10 +753,14 @@
                         </thead>
                         <tbody id="requestsTableBody">
                             <tr>
-                                <td colspan="8" style="padding: 20px; text-align: center;">Memuat data...</td>
+                                <td colspan="9" style="padding: 20px; text-align: center;">Memuat data...</td>
                             </tr>
                         </tbody>
                     </table>
+                    <!-- Mobile Card View -->
+                    <div class="requests-cards" id="requestsCards" style="display: none;">
+                        <!-- Cards will be generated by JavaScript -->
+                    </div>
                     <div id="pagination" style="padding: 15px; background: #f5f5f5; border-top: 1px solid #ddd;"></div>
                 </div>
             </div>
@@ -707,17 +973,20 @@
         
         function displayRequests() {
             const tbody = document.getElementById('requestsTableBody');
+            const cardsContainer = document.getElementById('requestsCards');
             const paginationDiv = document.getElementById('pagination');
             const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
             
             if (filteredRequests.length === 0 && allRequests.length > 0) {
                 tbody.innerHTML = '<tr><td colspan="9" style="padding: 20px; text-align: center;">Tidak ada permintaan yang ditemukan</td></tr>';
+                if (cardsContainer) cardsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Tidak ada permintaan yang ditemukan</div>';
                 if (paginationDiv) paginationDiv.innerHTML = '';
                 return;
             }
             
             if (allRequests.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="9" style="padding: 20px; text-align: center;">Tidak ada permintaan</td></tr>';
+                if (cardsContainer) cardsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Tidak ada permintaan</div>';
                 if (paginationDiv) paginationDiv.innerHTML = '';
                 return;
             }
@@ -728,6 +997,7 @@
             const endIndex = startIndex + itemsPerPage;
             const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
             
+            // Generate table rows
             tbody.innerHTML = paginatedRequests.map((req, index) => {
                 const globalIndex = startIndex + index;
                 const date = new Date(req.created_at);
@@ -791,6 +1061,93 @@
                     </tr>
                 `;
             }).join('');
+            
+            // Generate cards for mobile view
+            if (cardsContainer) {
+                cardsContainer.innerHTML = paginatedRequests.map((req, index) => {
+                    const globalIndex = startIndex + index;
+                    const date = new Date(req.created_at);
+                    const dateStr = date.toLocaleDateString('id-ID');
+                    
+                    const currentStatus = (req.status || '').trim();
+                    
+                    // Tentukan tombol aksi berdasarkan role
+                    let actionButtons = '';
+                    if (isAdmin) {
+                        actionButtons = `<button class="action-btn btn-detail" onclick="showDetail(${req.id})">Detail</button>`;
+                        
+                        if (currentStatus === 'Open') {
+                            actionButtons += `
+                                <button class="action-btn btn-whatsapp" onclick="requestApprovalViaWhatsApp(${req.id})" style="background: #25D366; color: white;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
+                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                    </svg>
+                                    Hubungi Approver
+                                </button>
+                            `;
+                        }
+                        
+                        if (req.petugas_id && (currentStatus === 'Approved' || currentStatus === 'In Progress')) {
+                            actionButtons += `
+                                <button class="action-btn btn-whatsapp" onclick="requestPetugasViaWhatsApp(${req.id})" style="background: #25D366; color: white;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
+                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                    </svg>
+                                    Hubungi Petugas
+                                </button>
+                            `;
+                        }
+                    } else if (isApprover) {
+                        if (currentStatus === 'Open') {
+                            actionButtons = `
+                                <button class="action-btn btn-approve" onclick="showApprovalModal(${req.id})">Approve</button>
+                                <button class="action-btn btn-reject" onclick="rejectRequest(${req.id})">Reject</button>
+                            `;
+                        }
+                        actionButtons += `<button class="action-btn btn-detail" onclick="showDetail(${req.id})">Detail</button>`;
+                    }
+                    
+                    return `
+                        <div class="request-card">
+                            <div class="request-card-row">
+                                <div class="request-card-label">No</div>
+                                <div class="request-card-value">${globalIndex + 1}</div>
+                            </div>
+                            <div class="request-card-row">
+                                <div class="request-card-label">Nomor Permintaan</div>
+                                <div class="request-card-value">${highlightText(req.row_number || 'N/A', searchQuery)}</div>
+                            </div>
+                            <div class="request-card-row">
+                                <div class="request-card-label">Tanggal</div>
+                                <div class="request-card-value">${dateStr}</div>
+                            </div>
+                            <div class="request-card-row">
+                                <div class="request-card-label">User</div>
+                                <div class="request-card-value">${highlightText(req.user_name || req.nama_user || 'N/A', searchQuery)}</div>
+                            </div>
+                            <div class="request-card-row">
+                                <div class="request-card-label">Nama Pegawai</div>
+                                <div class="request-card-value">${highlightText(req.nama_pegawai_backdate || req.nama_pegawai || 'N/A', searchQuery)}</div>
+                            </div>
+                            <div class="request-card-row">
+                                <div class="request-card-label">NPK</div>
+                                <div class="request-card-value">${highlightText(req.npk_pegawai_backdate || req.npk || 'N/A', searchQuery)}</div>
+                            </div>
+                            <div class="request-card-row">
+                                <div class="request-card-label">Jumlah Surat</div>
+                                <div class="request-card-value">${req.jumlah_surat || 'N/A'}</div>
+                            </div>
+                            <div class="request-card-row">
+                                <div class="request-card-label">Status</div>
+                                <div class="request-card-value">${getStatusBadge(req.status)}</div>
+                            </div>
+                            <div class="request-card-actions">
+                                ${actionButtons}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
             
             // Generate pagination
             if (paginationDiv && totalPages > 1) {

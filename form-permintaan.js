@@ -1265,7 +1265,7 @@ function openWhatsApp() {
     
     const message = encodeURIComponent(
         `Halo ${selectedPetugas.nama},\n\n` +
-        `Saya telah mengajukan permintaan DOF dengan nomor: #${submittedRequestId}\n\n` +
+        `Saya telah mengajukan permintaan dengan nomor: #${submittedRequestId}\n\n` +
         `Silakan review permintaan saya melalui link berikut:\n${detailUrl}\n\n` +
         `Terima kasih.`
     );
