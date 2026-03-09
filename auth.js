@@ -3,13 +3,19 @@ const SESSION_DURATION = 24 * 60 * 60 * 1000;
 
 // Base path untuk aplikasi (untuk subfolder deployment)
 const APP_BASE_PATH = '/permintaandof';
+const APP_BASE_URL = 'https://infoadkor.com/permintaandof';
 
 // Fungsi untuk mendapatkan base path aplikasi
 function getBasePath() {
     return APP_BASE_PATH;
 }
 
-// Fungsi untuk membuat URL dengan base path
+// Fungsi untuk mendapatkan base URL aplikasi
+function getBaseUrl() {
+    return APP_BASE_URL;
+}
+
+// Fungsi untuk membuat URL dengan base path (relative)
 function getAppUrl(path) {
     // Pastikan path dimulai dengan /
     const cleanPath = path.startsWith('/') ? path : '/' + path;
@@ -18,6 +24,17 @@ function getAppUrl(path) {
         return cleanPath;
     }
     return APP_BASE_PATH + cleanPath;
+}
+
+// Fungsi untuk membuat full URL dengan domain
+function getAppFullUrl(path) {
+    // Pastikan path dimulai dengan /
+    const cleanPath = path.startsWith('/') ? path : '/' + path;
+    // Hapus base path jika sudah ada di path
+    if (cleanPath.startsWith(APP_BASE_PATH)) {
+        return APP_BASE_URL + cleanPath.substring(APP_BASE_PATH.length);
+    }
+    return APP_BASE_URL + cleanPath;
 }
 
 function setSession(sessionPayload) {
@@ -85,11 +102,11 @@ function getAuthToken() {
 }
 
 function getLoginPath() {
-    return getAppUrl('/login.html');
+    return getAppFullUrl('/login.html');
 }
 
 function getAdminPath() {
-    return getAppUrl('/admin/admin.html');
+    return getAppFullUrl('/admin/admin.html');
 }
 
 function checkAuth() {
@@ -121,7 +138,7 @@ function getUserRole() {
 }
 
 function getIndexPathSafe() {
-    return getAppUrl('/index.html');
+    return getAppFullUrl('/index.html');
 }
 
 function logout() {
@@ -138,7 +155,7 @@ function logout() {
         }).catch(() => {});
     }
     clearSession();
-    window.location.href = getLoginPath();
+    window.location.href = getAppFullUrl('/login.html');
 }
 
 function getApiUrlSafe() {

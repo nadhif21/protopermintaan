@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const session = getSession();
     if (!session || !session.user) {
-        window.location.href = getAppUrl('/login.html');
+        window.location.href = getAppFullUrl('/login.html');
         return;
     }
 
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (confirm('Apakah Anda yakin ingin logout?')) {
                     localStorage.removeItem('authToken');
                     localStorage.removeItem('userData');
-                    window.location.href = getAppUrl('/login.html');
+                    window.location.href = getAppFullUrl('/login.html');
                 }
             }
         });

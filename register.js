@@ -28,7 +28,7 @@ function getApiUrl() {
 document.addEventListener('DOMContentLoaded', function() {
     // Jika sudah login, redirect ke halaman utama
     if (typeof isAuthenticated === 'function' && isAuthenticated()) {
-        window.location.href = getAppUrl('/index.html');
+        window.location.href = getAppFullUrl('/index.html');
         return;
     }
 
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Optional: redirect after 3 seconds
             setTimeout(() => {
-                window.location.href = getAppUrl('/login.html');
+                window.location.href = getAppFullUrl('/login.html');
             }, 3000);
 
         } catch (error) {

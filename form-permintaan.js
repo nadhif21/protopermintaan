@@ -37,7 +37,7 @@ const SKIP_BAGIAN3_OPTIONS = ['Revisi', 'Pembatalan', 'Perubahan Plt'];
 document.addEventListener('DOMContentLoaded', async () => {
     // Check authentication
     if (!checkAuth()) {
-        window.location.href = getAppUrl('/login.html');
+        window.location.href = getAppFullUrl('/login.html');
         return;
     }
     
@@ -1372,7 +1372,7 @@ function setupLogout() {
                 if (confirm('Apakah Anda yakin ingin logout?')) {
                     localStorage.removeItem('authToken');
                     localStorage.removeItem('userData');
-                    window.location.href = getAppUrl('/login.html');
+                    window.location.href = getAppFullUrl('/login.html');
                 }
             }
         });

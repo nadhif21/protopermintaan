@@ -1,5 +1,5 @@
 function getIndexPath() {
-    return getAppUrl('/index.html');
+    return getAppFullUrl('/index.html');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
