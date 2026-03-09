@@ -1435,7 +1435,8 @@
                     return;
                 }
                 
-                const baseUrl = window.location.origin;
+                // Pastikan baseUrl selalu benar
+                const baseUrl = 'https://infoadkor.com/permintaandof';
                 const detailUrl = `${baseUrl}/backdate/detail.html?id=${id}`;
                 
                 const template = getWhatsAppTemplate();
@@ -1443,15 +1444,28 @@
                 const date = new Date(req.created_at);
                 const dateStr = date.toLocaleDateString('id-ID');
                 
+                // Pastikan detailUrl yang akan digunakan sudah benar
+                const correctDetailUrl = 'https://infoadkor.com/permintaandof/backdate/detail.html?id=' + id;
+                
                 let message = template
                     .replace(/{approver_name}/g, approver.name || approver.username || 'Approver')
-                    .replace(/{detail_url}/g, detailUrl)
+                    .replace(/{detail_url}/g, correctDetailUrl)
                     .replace(/{nomor_permintaan}/g, req.row_number || 'N/A')
                     .replace(/{nama_pegawai}/g, req.nama_pegawai_backdate || req.nama_pegawai || 'N/A')
                     .replace(/{npk}/g, req.npk_pegawai_backdate || req.npk || 'N/A')
                     .replace(/{jumlah_surat}/g, req.jumlah_surat || 'N/A')
                     .replace(/{alasan}/g, req.alasan || req.alasan_permintaan || 'N/A')
                     .replace(/{tanggal}/g, dateStr);
+                
+                // Fix URL jika masih ada yang salah (untuk memastikan)
+                // Perbaiki semua URL yang tidak memiliki /permintaandof/
+                message = message.replace(/https?:\/\/infoadkor\.com\/backdate\//g, 'https://infoadkor.com/permintaandof/backdate/');
+                message = message.replace(/https?:\/\/infoadkor\.com\/permintaan\//g, 'https://infoadkor.com/permintaandof/permintaan/');
+                message = message.replace(/https?:\/\/infoadkor\.com\/admin\//g, 'https://infoadkor.com/permintaandof/admin/');
+                // Perbaiki URL dari domain lain juga
+                message = message.replace(/https?:\/\/([^\/]+)\/backdate\//g, 'https://infoadkor.com/permintaandof/backdate/');
+                message = message.replace(/https?:\/\/([^\/]+)\/permintaan\//g, 'https://infoadkor.com/permintaandof/permintaan/');
+                message = message.replace(/https?:\/\/([^\/]+)\/admin\//g, 'https://infoadkor.com/permintaandof/admin/');
                 
                 // Format nomor WhatsApp (remove non-digit, add 62 if starts with 0)
                 let cleanPhone = approverNoWa.replace(/\D/g, '');
@@ -1501,7 +1515,7 @@
                             const finalNoWa = petugas.no_wa;
                             const finalNama = petugas.nama || petugasNama;
                             
-                            const baseUrl = window.location.origin;
+                            const baseUrl = 'https://infoadkor.com/permintaandof';
                             const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${id}`;
                             
                             const namaPegawai = req.nama_pegawai_backdate || req.nama_pegawai || 'N/A';
@@ -1521,6 +1535,9 @@
                             message += `${detailUrl}\n\n`;
                             message += `Terima kasih.`;
                             
+                            // Fix URL jika masih ada yang salah
+                            message = message.replace(/https?:\/\/[^\/]+\/backdate\//g, 'https://infoadkor.com/permintaandof/backdate/');
+                            
                             let cleanPhone = finalNoWa.replace(/\D/g, '');
                             if (cleanPhone.startsWith('0')) {
                                 cleanPhone = '62' + cleanPhone.substring(1);
@@ -1538,7 +1555,7 @@
                     return;
                 }
                 
-                const baseUrl = window.location.origin;
+                const baseUrl = 'https://infoadkor.com/permintaandof';
                 const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${id}`;
                 
                 const namaPegawai = req.nama_pegawai_backdate || req.nama_pegawai || 'N/A';
@@ -1557,6 +1574,9 @@
                 message += `Mohon untuk dapat ditindaklanjuti. Detail permintaan:\n`;
                 message += `${detailUrl}\n\n`;
                 message += `Terima kasih.`;
+                
+                // Fix URL jika masih ada yang salah
+                message = message.replace(/https?:\/\/[^\/]+\/backdate\//g, 'https://infoadkor.com/permintaandof/backdate/');
                 
                 // Format nomor WhatsApp (remove non-digit, add 62 if starts with 0)
                 let cleanPhone = petugasNoWa.replace(/\D/g, '');
@@ -1591,7 +1611,21 @@
         function getWaTemplate(tab) {
             const key = getWaTemplateKey(tab);
             const saved = localStorage.getItem(key);
-            return saved || defaultWaTemplates[tab] || '';
+            let template = saved || defaultWaTemplates[tab] || '';
+            
+            // Fix URL jika masih menggunakan path lama tanpa /permintaandof/
+            if (template) {
+                // Perbaiki URL infoadkor.com yang tidak memiliki /permintaandof/
+                template = template.replace(/https?:\/\/infoadkor\.com\/backdate\//g, 'https://infoadkor.com/permintaandof/backdate/');
+                template = template.replace(/https?:\/\/infoadkor\.com\/permintaan\//g, 'https://infoadkor.com/permintaandof/permintaan/');
+                template = template.replace(/https?:\/\/infoadkor\.com\/admin\//g, 'https://infoadkor.com/permintaandof/admin/');
+                // Perbaiki URL dari domain lain juga
+                template = template.replace(/https?:\/\/([^\/]+)\/backdate\//g, 'https://infoadkor.com/permintaandof/backdate/');
+                template = template.replace(/https?:\/\/([^\/]+)\/permintaan\//g, 'https://infoadkor.com/permintaandof/permintaan/');
+                template = template.replace(/https?:\/\/([^\/]+)\/admin\//g, 'https://infoadkor.com/permintaandof/admin/');
+            }
+            
+            return template;
         }
         
         function getWhatsAppTemplate() {

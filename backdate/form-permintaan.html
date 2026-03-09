@@ -805,7 +805,7 @@
         
         // Open WhatsApp
         function openWhatsAppBackdate(permintaanId, nomorPermintaan, petugasNama, petugasNoWa) {
-            const baseUrl = window.location.origin;
+            const baseUrl = 'https://infoadkor.com/permintaandof';
             // LINK UNTUK PETUGAS: gunakan dashboard-approver-backdate.html
             const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${permintaanId}`;
             
@@ -967,7 +967,7 @@ Terima kasih.`;
             }
             
             // Generate WhatsApp message
-            const baseUrl = window.location.origin;
+            const baseUrl = 'https://infoadkor.com/permintaandof';
             // Link untuk admin: mengarah ke dashboard dengan modal detail terbuka
             const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${submittedData.id}`;
             console.log('Link WhatsApp ke Admin:', detailUrl); // Debug

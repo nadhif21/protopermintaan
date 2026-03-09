@@ -912,10 +912,10 @@
             }
             
             // Generate WhatsApp message
-            const baseUrl = window.location.origin;
+            const baseUrl = 'https://infoadkor.com/permintaandof';
             // LINK UNTUK PETUGAS: gunakan dashboard-approver-backdate.html
             // LINK UNTUK ADMIN: gunakan dashboard-approver-backdate.html
-            const detailUrl = type === 'petugas' 
+            const detailUrl = type === 'petugas'
                 ? `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${req.id}`
                 : `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${req.id}`;
             
@@ -985,7 +985,7 @@
         
         // Open WhatsApp
         function openWhatsAppBackdate(permintaanId, nomorPermintaan, petugasNama, petugasNoWa) {
-            const baseUrl = window.location.origin;
+            const baseUrl = 'https://infoadkor.com/permintaandof';
             // LINK UNTUK PETUGAS: gunakan dashboard-approver-backdate.html
             const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${permintaanId}`;
             

@@ -429,7 +429,7 @@
                 return;
             }
             
-            const baseUrl = window.location.origin;
+            const baseUrl = 'https://infoadkor.com/permintaandof';
             // LINK UNTUK PETUGAS: gunakan dashboard-approver-backdate.html
             const detailUrl = `${baseUrl}/backdate/dashboard-approver-backdate.html?id=${permintaanData.id}`;
             
@@ -726,9 +726,7 @@ Mohon informasi progress terbaru. Terima kasih.`;
                         }
                         
                         const apiUrl = getApiUrl();
-                        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
-                        const fullUrl = window.location.origin + path;
-                        const validateUrl = new URL(fullUrl);
+                        const validateUrl = new URL(apiUrl);
                         validateUrl.searchParams.append('action', 'validateApprovalPin');
                         validateUrl.searchParams.append('pin', cleanPin);
                         
@@ -737,6 +735,17 @@ Mohon informasi progress terbaru. Terima kasih.`;
                             mode: 'cors',
                             cache: 'no-cache'
                         });
+                        
+                        if (!validateResponse.ok) {
+                            const errorText = await validateResponse.text();
+                            throw new Error(`HTTP error! status: ${validateResponse.status}. ${errorText.substring(0, 100)}`);
+                        }
+                        
+                        const contentType = validateResponse.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            const text = await validateResponse.text();
+                            throw new Error(`Expected JSON but got ${contentType}. Response: ${text.substring(0, 200)}`);
+                        }
                         
                         const validateResult = await validateResponse.json();
                         
