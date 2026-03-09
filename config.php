@@ -1,10 +1,10 @@
 <?php
 // Konfigurasi database MySQL
 
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'protopermintaan');
+define('DB_HOST', 'auth-db1637.hstgr.io');
+define('DB_USER', 'u207689956_andaladkorpkt');
+define('DB_PASS', 'Permintaandof2025!');
+define('DB_NAME', 'u207689956_permintaandof');
 
 // Koneksi database
 function getDBConnection() {
