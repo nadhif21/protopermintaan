@@ -38,7 +38,7 @@ function sendJSONResponse($success, $data = null, $error = null, $headers = null
     header('Content-Type: application/json; charset=utf-8');
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
+    header('Access-Control-Allow-Headers: Content-Type, X-Auth-Token');
     
     $response = [
         'success' => $success

@@ -1,0 +1,12 @@
+# Protect admin folder
+# Allow access to HTML files
+<FilesMatch "\.(html|js|css|png|jpg|jpeg|gif|svg|ico)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Deny direct access to other files
+<FilesMatch "\.(php|ini|log|sql|bak)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>

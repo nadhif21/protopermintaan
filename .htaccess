@@ -5,7 +5,12 @@ RewriteEngine On
 <IfModule mod_headers.c>
     Header set Access-Control-Allow-Origin "*"
     Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
-    Header set Access-Control-Allow-Headers "Content-Type"
+    Header set Access-Control-Allow-Headers "Content-Type, X-Auth-Token"
+    
+    # Security headers
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
 </IfModule>
 
 # Handle OPTIONS request for CORS preflight
@@ -18,7 +23,32 @@ Options -Indexes
 # Set default charset
 AddDefaultCharset UTF-8
 
-# PHP settings (if allowed)
-<IfModule mod_php7.c>
+# PHP settings for Hostinger (PHP 8.x)
+<IfModule mod_php.c>
     php_value default_charset "UTF-8"
+    php_value upload_max_filesize "10M"
+    php_value post_max_size "10M"
+    php_value max_execution_time "300"
+    php_value max_input_time "300"
+    php_value memory_limit "256M"
 </IfModule>
+
+# Protect sensitive files
+<FilesMatch "\.(htaccess|htpasswd|ini|log|sh|sql|bak)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Protect config.php
+<Files "config.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Force HTTPS (uncomment jika sudah setup SSL di Hostinger)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Custom error pages (optional)
+# ErrorDocument 404 /404.html
+# ErrorDocument 500 /500.html
