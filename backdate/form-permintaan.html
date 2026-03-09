@@ -728,7 +728,32 @@
     <script src="../auth.js"></script>
     <script src="../sidebar.js"></script>
     <script>
-        const API_URL = '../api.php';
+        // Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
+        function getApiUrl() {
+            const currentPath = window.location.pathname;
+            let basePath = '';
+            
+            if (currentPath.includes('/permintaan/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+            } else if (currentPath.includes('/backdate/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+            } else if (currentPath.includes('/admin/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+            } else {
+                const lastSlash = currentPath.lastIndexOf('/');
+                basePath = currentPath.substring(0, lastSlash + 1);
+            }
+            
+            if (basePath && !basePath.endsWith('/')) {
+                basePath += '/';
+            }
+            
+            if (!basePath || basePath === '/') {
+                return '/api.php';
+            }
+            
+            return basePath + 'api.php';
+        }
         
         if (!checkAuth()) {
             window.location.href = '../login.html';
@@ -766,7 +791,10 @@
         async function loadUserData() {
             try {
                 const token = getAuthToken();
-                const response = await fetch(`${API_URL}?action=me`, {
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=me`, {
                     headers: { 'X-Auth-Token': token || '' }
                 });
                 
@@ -852,7 +880,10 @@ Terima kasih.`;
                     // Jika sudah ada petugas, ambil data petugas
                     try {
                         const token = getAuthToken();
-                        const response = await fetch(`${API_URL}?action=getPetugas`, {
+                        const apiUrl = getApiUrl();
+                        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                        const fullUrl = window.location.origin + path;
+                        const response = await fetch(`${fullUrl}?action=getPetugas`, {
                             headers: { 'X-Auth-Token': token || '' }
                         });
                         
@@ -888,7 +919,10 @@ Terima kasih.`;
                 // Jika belum ada petugas, ambil admin abdul jalal
                 console.log('Loading admin...');
                 const token = getAuthToken();
-                const response = await fetch(`${API_URL}?action=getAdminForWhatsApp`, {
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=getAdminForWhatsApp`, {
                     headers: { 'X-Auth-Token': token || '' }
                 });
                 
@@ -1042,7 +1076,10 @@ Terima kasih.`;
             
             try {
                 const token = getAuthToken();
-                const url = new URL(API_URL, window.location.origin);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const url = new URL(fullUrl);
                 url.searchParams.append('action', 'submitPermintaanBackdate');
                 url.searchParams.append('nama_pegawai_backdate', namaPegawaiBackdate);
                 url.searchParams.append('npk_pegawai_backdate', npkPegawaiBackdate);
@@ -1062,7 +1099,10 @@ Terima kasih.`;
                 
                 // Fetch ulang data permintaan untuk mendapatkan status terbaru dan petugas_id
                 try {
-                    const detailResponse = await fetch(`${API_URL}?action=getPermintaanBackdate&id=${result.data.id}`, {
+                    const apiUrl = getApiUrl();
+                    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                    const fullUrl = window.location.origin + path;
+                    const detailResponse = await fetch(`${fullUrl}?action=getPermintaanBackdate&id=${result.data.id}`, {
                         headers: { 'X-Auth-Token': token || '' }
                     });
                     const detailResult = await detailResponse.json();

@@ -3,6 +3,9 @@ function getApiUrl() {
     const currentPath = window.location.pathname;
     let basePath = '';
     
+    // Debug: log current path
+    console.log('Current path:', currentPath);
+    
     // Deteksi base path aplikasi (misalnya /permintaandof/)
     if (currentPath.includes('/permintaan/')) {
         basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
@@ -21,14 +24,30 @@ function getApiUrl() {
         basePath += '/';
     }
     
-    // Return path absolut
-    return basePath + 'api.php';
+    // Jika basePath kosong atau hanya '/', berarti di root domain
+    // Jika tidak, berarti di subfolder
+    if (!basePath || basePath === '/') {
+        const result = '/api.php';
+        console.log('API URL (root):', result);
+        return result;
+    }
+    
+    // Return path absolut dengan leading slash
+    const result = basePath + 'api.php';
+    console.log('API URL (subfolder):', result, 'basePath:', basePath);
+    return result;
 }
 
 // Fungsi helper untuk membuat URL API dengan query parameters
 function getApiUrlWithParams(action, params = {}) {
     const apiUrl = getApiUrl();
-    const fullUrl = apiUrl.startsWith('http') ? apiUrl : window.location.origin + (apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl);
+    // Pastikan apiUrl selalu dimulai dengan /
+    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+    const fullUrl = window.location.origin + path;
+    
+    // Debug: log URL untuk troubleshooting
+    console.log('API URL:', fullUrl);
+    
     const url = new URL(fullUrl);
     url.searchParams.append('action', action);
     Object.entries(params).forEach(([key, value]) => {

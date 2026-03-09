@@ -1,4 +1,49 @@
-const API_URL = '../api.php';
+// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
+function getApiUrl() {
+    const currentPath = window.location.pathname;
+    let basePath = '';
+    
+    // Deteksi base path aplikasi (misalnya /permintaandof/)
+    if (currentPath.includes('/permintaan/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+    } else if (currentPath.includes('/backdate/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+    } else if (currentPath.includes('/admin/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+    } else {
+        // Jika di root folder aplikasi, ambil path sampai sebelum nama file
+        const lastSlash = currentPath.lastIndexOf('/');
+        basePath = currentPath.substring(0, lastSlash + 1);
+    }
+    
+    // Pastikan basePath selalu diakhiri dengan /
+    if (basePath && !basePath.endsWith('/')) {
+        basePath += '/';
+    }
+    
+    // Jika basePath kosong atau hanya '/', berarti di root domain
+    if (!basePath || basePath === '/') {
+        return '/api.php';
+    }
+    
+    // Return path absolut dengan leading slash
+    return basePath + 'api.php';
+}
+
+// Fungsi helper untuk membuat URL API dengan query parameters
+function getApiUrlWithParams(action, params = {}) {
+    const apiUrl = getApiUrl();
+    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+    const fullUrl = window.location.origin + path;
+    
+    const url = new URL(fullUrl);
+    url.searchParams.append('action', action);
+    Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.append(key, String(value));
+    });
+    url.searchParams.append('_t', Date.now());
+    return url;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Hanya super_admin yang bisa akses halaman ini
@@ -546,10 +591,7 @@ async function apiGet(action, params = {}) {
     const token = getAuthToken();
     if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
 
-    const url = new URL(API_URL, window.location.origin);
-    url.searchParams.append('action', action);
-    Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, String(v)));
-    url.searchParams.append('_t', Date.now());
+    const url = getApiUrlWithParams(action, params);
 
     const res = await fetch(url.toString(), {
         method: 'GET',
@@ -566,7 +608,11 @@ async function apiPost(action, data = {}) {
     const token = getAuthToken();
     if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
 
-    const res = await fetch(API_URL, {
+    const apiUrl = getApiUrl();
+    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+    const fullUrl = window.location.origin + path;
+
+    const res = await fetch(fullUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -1231,9 +1277,7 @@ function bindPinApproval() {
         }
         
         try {
-            const url = new URL(API_URL, window.location.origin);
-            url.searchParams.append('action', 'setApprovalPin');
-            url.searchParams.append('pin', pin);
+            const url = getApiUrlWithParams('setApprovalPin', { pin: pin });
             
             const response = await fetch(url.toString(), {
                 method: 'GET',
@@ -1297,9 +1341,7 @@ async function loadApprovalPin() {
     }
     
     try {
-        const url = new URL(API_URL, window.location.origin);
-        url.searchParams.append('action', 'getApprovalPin');
-        url.searchParams.append('_t', Date.now()); // Cache busting
+        const url = getApiUrlWithParams('getApprovalPin', {});
         
         const headers = {
             'X-Auth-Token': getAuthToken(),
@@ -1407,7 +1449,10 @@ async function openApproverModal(id = null) {
     if (!id) {
         try {
             const token = getAuthToken();
-            const response = await fetch(`${API_URL}?action=getApprovers`, {
+            const apiUrl = getApiUrl();
+            const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+            const fullUrl = window.location.origin + path;
+            const response = await fetch(`${fullUrl}?action=getApprovers`, {
                 headers: { 'X-Auth-Token': token || '' }
             });
             
@@ -1447,7 +1492,10 @@ async function openApproverModal(id = null) {
 async function loadUnitKerjaForApprover() {
     try {
         const token = getAuthToken();
-        const response = await fetch(`${API_URL}?action=getUnitKerja`, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getUnitKerja`, {
             headers: { 'X-Auth-Token': token || '' }
         });
         
@@ -1510,7 +1558,10 @@ async function saveApprover(e) {
     
     try {
         const token = getAuthToken();
-        const url = new URL(`${API_URL}?action=${currentApproverId ? 'updateApprover' : 'createApprover'}`, window.location.origin);
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const url = new URL(`${fullUrl}?action=${currentApproverId ? 'updateApprover' : 'createApprover'}`);
         if (currentApproverId) url.searchParams.append('id', currentApproverId);
         url.searchParams.append('name', name);
         // Generate username dari nama (lowercase, replace space dengan underscore)
@@ -1546,7 +1597,10 @@ function closeApproverModal() {
 async function loadApprovers() {
     try {
         const token = getAuthToken();
-        const response = await fetch(`${API_URL}?action=getApprovers`, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getApprovers`, {
             headers: { 'X-Auth-Token': token || '' }
         });
         
@@ -1659,7 +1713,10 @@ async function deleteApprover(id) {
     
     try {
         const token = getAuthToken();
-        const response = await fetch(`${API_URL}?action=deleteApprover&id=${id}`, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=deleteApprover&id=${id}`, {
             headers: { 'X-Auth-Token': token || '' }
         });
         
@@ -1752,7 +1809,10 @@ async function savePetugas(e) {
     
     try {
         const token = getAuthToken();
-        const url = new URL(`${API_URL}?action=${currentPetugasId ? 'updatePetugas' : 'createPetugas'}`, window.location.origin);
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const url = new URL(`${fullUrl}?action=${currentPetugasId ? 'updatePetugas' : 'createPetugas'}`);
         if (currentPetugasId) url.searchParams.append('id', currentPetugasId);
         url.searchParams.append('nama', nama);
         if (npk) url.searchParams.append('npk', npk);
@@ -1785,7 +1845,10 @@ function closePetugasModal() {
 async function loadPetugas() {
     try {
         const token = getAuthToken();
-        const response = await fetch(`${API_URL}?action=getPetugas`, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getPetugas`, {
             headers: { 'X-Auth-Token': token || '' }
         });
         
@@ -1882,7 +1945,10 @@ async function deletePetugas(id) {
     
     try {
         const token = getAuthToken();
-        const response = await fetch(`${API_URL}?action=deletePetugas&id=${id}`, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=deletePetugas&id=${id}`, {
             headers: { 'X-Auth-Token': token || '' }
         });
         

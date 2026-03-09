@@ -300,7 +300,32 @@
     <script src="../auth.js"></script>
     <script src="../sidebar.js"></script>
     <script>
-        const API_URL = '../api.php';
+        // Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
+        function getApiUrl() {
+            const currentPath = window.location.pathname;
+            let basePath = '';
+            
+            if (currentPath.includes('/permintaan/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+            } else if (currentPath.includes('/backdate/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+            } else if (currentPath.includes('/admin/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+            } else {
+                const lastSlash = currentPath.lastIndexOf('/');
+                basePath = currentPath.substring(0, lastSlash + 1);
+            }
+            
+            if (basePath && !basePath.endsWith('/')) {
+                basePath += '/';
+            }
+            
+            if (!basePath || basePath === '/') {
+                return '/api.php';
+            }
+            
+            return basePath + 'api.php';
+        }
         
         if (!checkAuth()) {
             window.location.href = '../login.html';
@@ -344,7 +369,10 @@
             try {
                 const token = getAuthToken();
                 // Admin bisa lihat semua permintaan backdate
-                const response = await fetch(`${API_URL}?action=getListPermintaanBackdate`, {
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=getListPermintaanBackdate`, {
                     headers: { 'X-Auth-Token': token || '' }
                 });
                 
@@ -490,7 +518,10 @@
             // Ambil nomor surat terbaru dari database (jika ada)
             try {
                 const token = getAuthToken();
-                const response = await fetch(`${API_URL}?action=getNomorSuratBackdate&permintaan_id=${id}`, {
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${id}`, {
                     headers: { 'X-Auth-Token': token || '' }
                 });
                 const result = await response.json();
@@ -536,7 +567,10 @@
             
             try {
                 const token = getAuthToken();
-                const url = `${API_URL}?action=updatePermintaanBackdatePetugas&id=${id}&status=Closed`;
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const url = `${fullUrl}?action=updatePermintaanBackdatePetugas&id=${id}&status=Closed`;
                 
                 const response = await fetch(url, {
                     headers: { 'X-Auth-Token': token || '' }
@@ -566,7 +600,10 @@
             
             try {
                 const token = getAuthToken();
-                const url = new URL(API_URL, window.location.origin);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const url = new URL(fullUrl);
                 url.searchParams.append('action', 'updatePermintaanBackdatePetugas');
                 url.searchParams.append('id', currentRequestId);
                 url.searchParams.append('status', status);
@@ -667,7 +704,10 @@
             
             try {
                 const token = getAuthToken();
-                const response = await fetch(`${API_URL}?action=getNomorSuratBackdate&permintaan_id=${id}`, {
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${id}`, {
                     headers: { 'X-Auth-Token': token || '' }
                 });
                 
@@ -849,7 +889,10 @@
         async function loadUnitKerjaForAdd() {
             try {
                 const token = getAuthToken();
-                const response = await fetch(`${API_URL}?action=getUnitKerja`, {
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=getUnitKerja`, {
                     headers: { 'X-Auth-Token': token || '' }
                 });
                 const result = await response.json();
@@ -917,11 +960,17 @@
                         perihal: perihal || ''
                     };
                     
-                    console.log('Sending request to:', `${API_URL}?action=addNomorSuratBackdate`);
+                    const apiUrl = getApiUrl();
+                    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                    const fullUrl = window.location.origin + path;
+                    console.log('Sending request to:', `${fullUrl}?action=addNomorSuratBackdate`);
                     console.log('Request body:', requestBody);
                     console.log('Token:', token ? 'Present' : 'Missing');
                     
-                    const response = await fetch(`${API_URL}?action=addNomorSuratBackdate`, {
+                    const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=addNomorSuratBackdate`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
@@ -1007,7 +1056,10 @@
                 
                 try {
                     const token = getAuthToken();
-                    const url = `${API_URL}?action=getNomorSuratBackdate&permintaan_id=${currentRequestId}`;
+                    const apiUrl = getApiUrl();
+                    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                    const fullUrl = window.location.origin + path;
+                    const url = `${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${currentRequestId}`;
                     console.log('Fetching nomor surat from:', url);
                     
                     const response = await fetch(url, {
@@ -1067,7 +1119,10 @@
             
             try {
                 const token = getAuthToken();
-                const response = await fetch(`${API_URL}?action=deleteNomorSuratBackdate`, {
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=deleteNomorSuratBackdate`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

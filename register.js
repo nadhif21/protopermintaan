@@ -1,4 +1,29 @@
-const API_URL = 'api.php';
+// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
+function getApiUrl() {
+    const currentPath = window.location.pathname;
+    let basePath = '';
+    
+    if (currentPath.includes('/permintaan/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+    } else if (currentPath.includes('/backdate/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+    } else if (currentPath.includes('/admin/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+    } else {
+        const lastSlash = currentPath.lastIndexOf('/');
+        basePath = currentPath.substring(0, lastSlash + 1);
+    }
+    
+    if (basePath && !basePath.endsWith('/')) {
+        basePath += '/';
+    }
+    
+    if (!basePath || basePath === '/') {
+        return '/api.php';
+    }
+    
+    return basePath + 'api.php';
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     // Jika sudah login, redirect ke halaman utama
@@ -95,7 +120,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 unit_kerja: unitKerjaText
             });
 
-            const response = await fetch(API_URL, {
+            const apiUrl = getApiUrl();
+            const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+            const fullUrl = window.location.origin + path;
+            const response = await fetch(fullUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -148,7 +176,10 @@ function showSuccess(message) {
 
 async function loadUnitKerja() {
     try {
-        const response = await fetch(`${API_URL}?action=getUnitKerja`);
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getUnitKerja`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }

@@ -1,4 +1,29 @@
-const API_URL = 'api.php';
+// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
+function getApiUrl() {
+    const currentPath = window.location.pathname;
+    let basePath = '';
+    
+    if (currentPath.includes('/permintaan/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+    } else if (currentPath.includes('/backdate/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+    } else if (currentPath.includes('/admin/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+    } else {
+        const lastSlash = currentPath.lastIndexOf('/');
+        basePath = currentPath.substring(0, lastSlash + 1);
+    }
+    
+    if (basePath && !basePath.endsWith('/')) {
+        basePath += '/';
+    }
+    
+    if (!basePath || basePath === '/') {
+        return '/api.php';
+    }
+    
+    return basePath + 'api.php';
+}
 
 let currentUser = null;
 
@@ -91,7 +116,10 @@ async function loadUserProfile() {
             throw new Error('Token tidak ditemukan');
         }
 
-        const response = await fetch(`${API_URL}?action=me&_t=${Date.now()}`, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=me&_t=${Date.now()}`, {
             method: 'GET',
             headers: {
                 'X-Auth-Token': token,
@@ -248,7 +276,10 @@ async function handlePasswordChange(e) {
             throw new Error('Token tidak ditemukan');
         }
         
-        const response = await fetch(API_URL, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(fullUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',

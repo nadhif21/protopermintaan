@@ -814,7 +814,32 @@
     </div>
 
     <script>
-        const API_URL = '../api.php';
+        // Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
+        function getApiUrl() {
+            const currentPath = window.location.pathname;
+            let basePath = '';
+            
+            if (currentPath.includes('/permintaan/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+            } else if (currentPath.includes('/backdate/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+            } else if (currentPath.includes('/admin/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+            } else {
+                const lastSlash = currentPath.lastIndexOf('/');
+                basePath = currentPath.substring(0, lastSlash + 1);
+            }
+            
+            if (basePath && !basePath.endsWith('/')) {
+                basePath += '/';
+            }
+            
+            if (!basePath || basePath === '/') {
+                return '/api.php';
+            }
+            
+            return basePath + 'api.php';
+        }
         
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -998,7 +1023,10 @@
                             throw new Error('PIN harus 4 digit angka');
                         }
                         
-                        const validateUrl = new URL(API_URL, window.location.origin);
+                        const apiUrl = getApiUrl();
+                        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                        const fullUrl = window.location.origin + path;
+                        const validateUrl = new URL(fullUrl);
                         validateUrl.searchParams.append('action', 'validateApprovalPin');
                         validateUrl.searchParams.append('pin', cleanPin);
                         
@@ -1083,7 +1111,10 @@
             }
             
             try {
-                const url = new URL(API_URL, window.location.origin);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const url = new URL(fullUrl);
                 url.searchParams.append('action', 'getData');
                 url.searchParams.append('table', 'permintaan');
                 url.searchParams.append('_t', Date.now());
@@ -1122,7 +1153,10 @@
                 if (!petugasWa) {
                     if (petugasName) {
                         try {
-                            const petugasUrl = new URL(API_URL, window.location.origin);
+                            const apiUrl = getApiUrl();
+                            const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                            const fullUrl = window.location.origin + path;
+                            const petugasUrl = new URL(fullUrl);
                             petugasUrl.searchParams.append('action', 'getPetugas');
                             petugasUrl.searchParams.append('nama', petugasName);
                             
@@ -1170,7 +1204,10 @@
 
         async function processApproval(rowId, action, pin, keterangan = '') {
             try {
-                const url = new URL(API_URL, window.location.origin);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const url = new URL(fullUrl);
                 url.searchParams.append('action', 'batchUpdate');
                 url.searchParams.append('table', 'permintaan');
                 url.searchParams.append('rowNumber', rowId);
@@ -1425,7 +1462,10 @@
                 console.log('Rejection processed successfully, reloading data...');
                 
                 // Reload data
-                const reloadUrl = new URL(API_URL, window.location.origin);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const reloadUrl = new URL(fullUrl);
                 reloadUrl.searchParams.append('action', 'getData');
                 reloadUrl.searchParams.append('table', 'permintaan');
                 reloadUrl.searchParams.append('_t', Date.now());
@@ -1541,7 +1581,10 @@
                 await processApproval(currentRowNumber, 'approve', currentValidatedPin);
                 
                 // Reload data
-                const reloadUrl = new URL(API_URL, window.location.origin);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const reloadUrl = new URL(fullUrl);
                 reloadUrl.searchParams.append('action', 'getData');
                 reloadUrl.searchParams.append('table', 'permintaan');
                 reloadUrl.searchParams.append('_t', Date.now());
@@ -1596,7 +1639,10 @@
             try {
                 showStatus('Memuat data...', 'loading');
                 
-                const url = new URL(API_URL, window.location.origin);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const url = new URL(fullUrl);
                 url.searchParams.append('action', 'getData');
                 url.searchParams.append('table', 'permintaan');
                 url.searchParams.append('_t', Date.now());
@@ -1652,7 +1698,10 @@
                     const petugasName = foundRowData['Petugas'] || foundRowData['petugas'] || '';
                     if (petugasName) {
                         try {
-                            const petugasUrl = new URL(API_URL, window.location.origin);
+                            const apiUrl = getApiUrl();
+                            const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                            const fullUrl = window.location.origin + path;
+                            const petugasUrl = new URL(fullUrl);
                             petugasUrl.searchParams.append('action', 'getPetugas');
                             petugasUrl.searchParams.append('nama', petugasName);
                             

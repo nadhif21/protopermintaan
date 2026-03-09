@@ -364,7 +364,32 @@
     </div>
 
     <script>
-        const API_URL = '../api.php';
+        // Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
+        function getApiUrl() {
+            const currentPath = window.location.pathname;
+            let basePath = '';
+            
+            if (currentPath.includes('/permintaan/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+            } else if (currentPath.includes('/backdate/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+            } else if (currentPath.includes('/admin/')) {
+                basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+            } else {
+                const lastSlash = currentPath.lastIndexOf('/');
+                basePath = currentPath.substring(0, lastSlash + 1);
+            }
+            
+            if (basePath && !basePath.endsWith('/')) {
+                basePath += '/';
+            }
+            
+            if (!basePath || basePath === '/') {
+                return '/api.php';
+            }
+            
+            return basePath + 'api.php';
+        }
         
         let validatedPin = null;
         let permintaanData = null;
@@ -462,7 +487,10 @@ Mohon informasi progress terbaru. Terima kasih.`;
             detailInfoEl.style.display = 'none';
             
             try {
-                const response = await fetch(`${API_URL}?action=getPermintaanBackdate&id=${permintaanId}`);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=getPermintaanBackdate&id=${permintaanId}`);
                 const result = await response.json();
                 
                 if (!result.success) {
@@ -563,7 +591,10 @@ Mohon informasi progress terbaru. Terima kasih.`;
         async function loadPetugasForApproval() {
             try {
                 // Gunakan parameter for_approval=true untuk akses tanpa autentikasi
-                const response = await fetch(`${API_URL}?action=getPetugas&for_approval=true`);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=getPetugas&for_approval=true`);
                 const result = await response.json();
                 
                 if (result.success && result.data && Array.isArray(result.data)) {
@@ -626,7 +657,10 @@ Mohon informasi progress terbaru. Terima kasih.`;
                 const petugasNama = petugasOption ? petugasOption.getAttribute('data-nama') : '';
                 const catatanPelaksanaan = document.getElementById('catatanPelaksanaan')?.value.trim() || '';
                 
-                const response = await fetch(`${API_URL}?action=approvePermintaanBackdate&id=${permintaanId}&petugas_id=${petugasId}&petugas_tunjuk=${encodeURIComponent(petugasNama)}&keterangan_petugas=${encodeURIComponent(catatanPelaksanaan)}&pin=${validatedPin}`);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=approvePermintaanBackdate&id=${permintaanId}&petugas_id=${petugasId}&petugas_tunjuk=${encodeURIComponent(petugasNama)}&keterangan_petugas=${encodeURIComponent(catatanPelaksanaan)}&pin=${validatedPin}`);
                 const result = await response.json();
                 
                 if (!result.success) {
@@ -648,7 +682,10 @@ Mohon informasi progress terbaru. Terima kasih.`;
             }
             
             try {
-                const response = await fetch(`${API_URL}?action=rejectPermintaanBackdate&id=${permintaanId}&pin=${validatedPin}`);
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=rejectPermintaanBackdate&id=${permintaanId}&pin=${validatedPin}`);
                 const result = await response.json();
                 
                 if (!result.success) {
@@ -714,7 +751,10 @@ Mohon informasi progress terbaru. Terima kasih.`;
                             throw new Error('PIN harus 4 digit angka');
                         }
                         
-                        const validateUrl = new URL(API_URL, window.location.origin);
+                        const apiUrl = getApiUrl();
+                        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                        const fullUrl = window.location.origin + path;
+                        const validateUrl = new URL(fullUrl);
                         validateUrl.searchParams.append('action', 'validateApprovalPin');
                         validateUrl.searchParams.append('pin', cleanPin);
                         

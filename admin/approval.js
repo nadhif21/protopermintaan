@@ -1,4 +1,43 @@
-const API_URL = '../api.php';
+// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
+function getApiUrl() {
+    const currentPath = window.location.pathname;
+    let basePath = '';
+    
+    if (currentPath.includes('/permintaan/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+    } else if (currentPath.includes('/backdate/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+    } else if (currentPath.includes('/admin/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+    } else {
+        const lastSlash = currentPath.lastIndexOf('/');
+        basePath = currentPath.substring(0, lastSlash + 1);
+    }
+    
+    if (basePath && !basePath.endsWith('/')) {
+        basePath += '/';
+    }
+    
+    if (!basePath || basePath === '/') {
+        return '/api.php';
+    }
+    
+    return basePath + 'api.php';
+}
+
+function getApiUrlWithParams(action, params = {}) {
+    const apiUrl = getApiUrl();
+    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+    const fullUrl = window.location.origin + path;
+    
+    const url = new URL(fullUrl);
+    url.searchParams.append('action', action);
+    Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.append(key, String(value));
+    });
+    url.searchParams.append('_t', Date.now());
+    return url;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Check auth, but allow admin and super_admin
@@ -60,10 +99,7 @@ async function apiGet(action, params = {}) {
     const token = getAuthToken();
     if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
 
-    const url = new URL(API_URL, window.location.origin);
-    url.searchParams.append('action', action);
-    Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, String(v)));
-    url.searchParams.append('_t', Date.now());
+    const url = getApiUrlWithParams(action, params);
 
     const res = await fetch(url.toString(), {
         method: 'GET',
@@ -80,7 +116,11 @@ async function apiPost(action, data = {}) {
     const token = getAuthToken();
     if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
 
-    const res = await fetch(API_URL, {
+    const apiUrl = getApiUrl();
+    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+    const fullUrl = window.location.origin + path;
+    
+    const res = await fetch(fullUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

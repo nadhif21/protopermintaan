@@ -159,6 +159,12 @@ function getApiUrlSafe() {
         basePath += '/';
     }
     
-    // Return path absolut
+    // Jika basePath kosong atau hanya '/', berarti di root domain
+    // Jika tidak, berarti di subfolder
+    if (!basePath || basePath === '/') {
+        return '/api.php';
+    }
+    
+    // Return path absolut dengan leading slash
     return basePath + 'api.php';
 }

@@ -1,4 +1,29 @@
-const API_URL = 'api.php';
+// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
+function getApiUrl() {
+    const currentPath = window.location.pathname;
+    let basePath = '';
+    
+    if (currentPath.includes('/permintaan/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
+    } else if (currentPath.includes('/backdate/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
+    } else if (currentPath.includes('/admin/')) {
+        basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
+    } else {
+        const lastSlash = currentPath.lastIndexOf('/');
+        basePath = currentPath.substring(0, lastSlash + 1);
+    }
+    
+    if (basePath && !basePath.endsWith('/')) {
+        basePath += '/';
+    }
+    
+    if (!basePath || basePath === '/') {
+        return '/api.php';
+    }
+    
+    return basePath + 'api.php';
+}
 let currentSection = 1;
 let selectedPilihPermintaan = '';
 let customOptions = [];
@@ -119,8 +144,10 @@ async function loadUserData() {
         console.log('Loading user data from API...');
         
         // Force fresh data - add timestamp to prevent cache
-        const apiUrl = `${API_URL}?action=me&_t=${Date.now()}`;
-        const response = await fetch(apiUrl, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=me&_t=${Date.now()}`, {
             method: 'GET',
             headers: {
                 'X-Auth-Token': token,
@@ -347,7 +374,10 @@ function fillUserFields(user) {
 
 async function loadUnitKerja() {
     try {
-        const response = await fetch(`${API_URL}?action=getUnitKerja`);
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getUnitKerja`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -460,7 +490,10 @@ async function loadUnitKerja() {
 
 async function loadPilihPermintaanOptions() {
     try {
-        const response = await fetch(`${API_URL}?action=getPilihPermintaanOptions`);
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getPilihPermintaanOptions`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -539,7 +572,10 @@ async function updatePilihPermintaanOption(id, data) {
             formData.append(key, value);
         });
         
-        const response = await fetch(API_URL, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(fullUrl, {
             method: 'POST',
             body: formData
         });
@@ -559,7 +595,10 @@ async function deletePilihPermintaanOption(id) {
         formData.append('action', 'deletePilihPermintaanOption');
         formData.append('id', id);
         
-        const response = await fetch(API_URL, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(fullUrl, {
             method: 'POST',
             body: formData
         });
@@ -575,7 +614,10 @@ async function deletePilihPermintaanOption(id) {
 
 async function loadPetugas() {
     try {
-        const response = await fetch(`${API_URL}?action=getPetugas`);
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getPetugas`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -658,7 +700,10 @@ async function addPilihPermintaanOption(nama) {
         formData.append('nama_opsi', nama);
         formData.append('bagian_target', 'bagian_2');
         
-        const response = await fetch(API_URL, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(fullUrl, {
             method: 'POST',
             body: formData
         });
@@ -1199,7 +1244,10 @@ async function handleSubmit(e) {
             fetchHeaders['X-Auth-Token'] = token;
         }
         
-        const response = await fetch(API_URL, {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(fullUrl, {
             method: 'POST',
             headers: fetchHeaders,
             body: submitData
