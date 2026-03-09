@@ -467,7 +467,15 @@ Mohon informasi progress terbaru. Terima kasih.`;
             try {
                 const apiUrl = getApiUrl();
                 const fullUrl = apiUrl;
-                const response = await fetch(`${fullUrl}?action=getPermintaanBackdate&id=${permintaanId}`);
+                // Tambahkan timestamp untuk cache-busting agar selalu mendapatkan data terbaru
+                const timestamp = Date.now();
+                const response = await fetch(`${fullUrl}?action=getPermintaanBackdate&id=${permintaanId}&_t=${timestamp}`, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    },
+                    cache: 'no-cache'
+                });
                 const result = await response.json();
                 
                 if (!result.success) {
@@ -643,7 +651,12 @@ Mohon informasi progress terbaru. Terima kasih.`;
                 }
                 
                 await showAlert('Permintaan berhasil disetujui', 'success');
+                // Refresh langsung setelah approve selesai tanpa delay untuk update cepat
                 await loadAndShowData();
+                // Retry refresh setelah 1 detik untuk memastikan data terbaru ter-load
+                setTimeout(async () => {
+                    await loadAndShowData();
+                }, 1000);
             } catch (error) {
                 await showAlert('Error: ' + error.message, 'error');
             }
@@ -667,7 +680,12 @@ Mohon informasi progress terbaru. Terima kasih.`;
                 }
                 
                 await showAlert('Permintaan berhasil ditolak', 'success');
+                // Refresh langsung setelah reject selesai tanpa delay untuk update cepat
                 await loadAndShowData();
+                // Retry refresh setelah 1 detik untuk memastikan data terbaru ter-load
+                setTimeout(async () => {
+                    await loadAndShowData();
+                }, 1000);
             } catch (error) {
                 await showAlert('Error: ' + error.message, 'error');
             }
@@ -1169,6 +1187,7 @@ Mohon informasi progress terbaru. Terima kasih.`;
                 });
             });
         }
+        
     </script>
 </body>
 </html>

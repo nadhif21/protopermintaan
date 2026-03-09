@@ -593,7 +593,7 @@
                 <span class="sidebar-nav-arrow">▼</span>
             </div>
             <div class="sidebar-submenu" id="backdateSubmenu">
-                <a href="https://infoadkor.com/permintaandof/backdate/form-permintaan.html" class="sidebar-submenu-item active" id="formBackdateMenuLink">
+                <a href="https://infoadkor.com/permintaandof/backdate/form-permintaan.html" class="sidebar-submenu-item" id="formBackdateMenuLink">
                     <span class="sidebar-submenu-icon">
                         <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     </span>
@@ -1247,8 +1247,59 @@ Terima kasih.`;
             });
         }
         
+        // Aktifkan sidebar menu sesuai halaman saat ini
+        function activateSidebarMenu() {
+            const currentPath = window.location.pathname;
+            
+            // Hapus semua active class dari sidebar items
+            document.querySelectorAll('.sidebar-nav-item, .sidebar-submenu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Aktifkan menu Backdate (parent menu)
+            const backdateMenu = document.getElementById('backdateMenu');
+            if (backdateMenu) {
+                backdateMenu.classList.add('active');
+                // Buka submenu
+                const backdateSubmenu = document.getElementById('backdateSubmenu');
+                if (backdateSubmenu) {
+                    backdateSubmenu.style.display = 'block';
+                }
+            }
+            
+            // Aktifkan menu sesuai halaman yang sedang dibuka
+            if (currentPath.includes('dashboard-user-backdate.html')) {
+                const userMenuLink = document.getElementById('dashboardUserBackdateMenuLink');
+                if (userMenuLink) {
+                    userMenuLink.classList.add('active');
+                }
+            } else if (currentPath.includes('form-permintaan.html')) {
+                const formMenuLink = document.getElementById('formBackdateMenuLink');
+                if (formMenuLink) {
+                    formMenuLink.classList.add('active');
+                }
+            } else if (currentPath.includes('dashboard-approver-backdate.html')) {
+                const approverMenuLink = document.getElementById('dashboardApproverBackdateMenuLink');
+                if (approverMenuLink) {
+                    approverMenuLink.classList.add('active');
+                }
+            } else if (currentPath.includes('dashboard-petugas-backdate.html')) {
+                const petugasMenuLink = document.getElementById('dashboardPetugasBackdateMenuLink');
+                if (petugasMenuLink) {
+                    petugasMenuLink.classList.add('active');
+                }
+            }
+        }
+        
         // Initialize
         loadUserData();
+        
+        // Aktifkan sidebar menu setelah DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', activateSidebarMenu);
+        } else {
+            activateSidebarMenu();
+        }
     </script>
 </body>
 </html>
