@@ -194,39 +194,45 @@ document.addEventListener('DOMContentLoaded', function() {
     // First, remove all active classes from submenu items
     submenuItems.forEach(subItem => subItem.classList.remove('active'));
     
+    // Get current URL for more accurate matching
+    const currentUrl = window.location.href;
+    const currentPathname = window.location.pathname;
+    
     submenuItems.forEach(item => {
         const href = item.getAttribute('href');
         if (href) {
-            // Resolve href to absolute path
-            let resolvedHref = href;
+            let isActive = false;
             
-            // Handle relative paths by resolving them relative to current page
-            if (resolvedHref.startsWith('../')) {
-                // Get current directory and resolve ../ path
-                const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-                resolvedHref = currentDir + '/' + resolvedHref.replace(/^\.\.\//, '');
-            } else if (resolvedHref.startsWith('./') || (!resolvedHref.startsWith('/') && !resolvedHref.startsWith('http'))) {
-                // Relative path (./ or no prefix), resolve relative to current directory
-                const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-                resolvedHref = currentDir + '/' + resolvedHref.replace(/^\.\//, '');
+            // Extract filename from href
+            const hrefFileName = href.split('/').pop();
+            const currentFileName = currentPathname.split('/').pop();
+            
+            // Method 1: Exact filename match (most reliable)
+            if (hrefFileName === currentFileName) {
+                isActive = true;
+            }
+            // Method 2: Check if current URL includes the full href path
+            else if (currentUrl.includes(href) || currentPathname.includes(href)) {
+                isActive = true;
+            }
+            // Method 3: Check if current pathname ends with the href filename
+            else if (currentPathname.endsWith(hrefFileName)) {
+                isActive = true;
+            }
+            // Method 4: For backdate pages, check if both are in backdate folder
+            else if (hrefFileName.includes('backdate') && currentPathname.includes('backdate')) {
+                if (hrefFileName === currentFileName) {
+                    isActive = true;
+                }
             }
             
-            // Normalize: remove leading slash and .html extension
-            resolvedHref = resolvedHref.replace(/^\//, '').replace(/\.html$/, '');
-            let normalizedPath = currentPath.replace(/^\//, '').replace(/\.html$/, '');
-            
-            // Remove leading/trailing slashes for comparison
-            resolvedHref = resolvedHref.replace(/^\/+|\/+$/g, '');
-            normalizedPath = normalizedPath.replace(/^\/+|\/+$/g, '');
-            
-            // Check if current path matches the resolved href path
-            // This prevents conflicts like form-permintaan.html matching backdate/form-permintaan.html
-            if (normalizedPath === resolvedHref) {
+            if (isActive) {
                 // Add active to current item
                 item.classList.add('active');
                 // Auto expand parent menu if submenu item is active
                 if (backdateMenu && backdateSubmenu) {
                     backdateMenu.classList.add('active');
+                    backdateSubmenu.style.display = 'block';
                     backdateSubmenu.classList.add('active');
                 }
             }

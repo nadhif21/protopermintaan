@@ -1290,50 +1290,6 @@
             }
         }
         
-        // Aktifkan sidebar menu sesuai halaman saat ini
-        function activateSidebarMenu() {
-            const currentPath = window.location.pathname;
-            
-            // Hapus semua active class dari sidebar items
-            document.querySelectorAll('.sidebar-nav-item, .sidebar-submenu-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            // Aktifkan menu Backdate (parent menu)
-            const backdateMenu = document.getElementById('backdateMenu');
-            if (backdateMenu) {
-                backdateMenu.classList.add('active');
-                // Buka submenu
-                const backdateSubmenu = document.getElementById('backdateSubmenu');
-                if (backdateSubmenu) {
-                    backdateSubmenu.style.display = 'block';
-                }
-            }
-            
-            // Aktifkan menu sesuai halaman yang sedang dibuka
-            if (currentPath.includes('dashboard-user-backdate.html')) {
-                const userMenuLink = document.getElementById('dashboardUserBackdateMenuLink');
-                if (userMenuLink) {
-                    userMenuLink.classList.add('active');
-                }
-            } else if (currentPath.includes('form-permintaan.html')) {
-                const formMenuLink = document.getElementById('formBackdateMenuLink');
-                if (formMenuLink) {
-                    formMenuLink.classList.add('active');
-                }
-            } else if (currentPath.includes('dashboard-approver-backdate.html')) {
-                const approverMenuLink = document.getElementById('dashboardApproverBackdateMenuLink');
-                if (approverMenuLink) {
-                    approverMenuLink.classList.add('active');
-                }
-            } else if (currentPath.includes('dashboard-petugas-backdate.html')) {
-                const petugasMenuLink = document.getElementById('dashboardPetugasBackdateMenuLink');
-                if (petugasMenuLink) {
-                    petugasMenuLink.classList.add('active');
-                }
-            }
-        }
-        
         // Auto refresh setiap 30 detik untuk update data otomatis
         let autoRefreshInterval = null;
         
@@ -1369,12 +1325,6 @@
         if (session && session.user) {
             const userRole = session.user.role || 'user';
             if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'petugas') {
-                // Aktifkan sidebar menu setelah DOM ready
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', activateSidebarMenu);
-                } else {
-                    activateSidebarMenu();
-                }
                 loadRequests();
                 initializeItemsPerPage();
                 startAutoRefresh(); // Mulai auto refresh
