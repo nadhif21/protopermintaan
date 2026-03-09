@@ -836,8 +836,7 @@
                         try {
                             const token = getAuthToken();
                             const apiUrl = getApiUrl();
-                            const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
-                            const fullUrl = window.location.origin + path;
+                            const fullUrl = apiUrl;
                             const petugasResponse = await fetch(`${fullUrl}?action=getPetugas`, {
                                 headers: { 'X-Auth-Token': token || '' }
                             });

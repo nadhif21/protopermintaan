@@ -933,14 +933,10 @@
                     };
                     
                     const apiUrl = getApiUrl();
-                    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
-                    const fullUrl = window.location.origin + path;
+                    const fullUrl = apiUrl;
                     console.log('Sending request to:', `${fullUrl}?action=addNomorSuratBackdate`);
                     console.log('Request body:', requestBody);
                     console.log('Token:', token ? 'Present' : 'Missing');
-                    
-                    const apiUrl = getApiUrl();
-                const fullUrl = apiUrl;
                 const response = await fetch(`${fullUrl}?action=addNomorSuratBackdate`, {
                         method: 'POST',
                         headers: {
@@ -1028,8 +1024,7 @@
                 try {
                     const token = getAuthToken();
                     const apiUrl = getApiUrl();
-                    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
-                    const fullUrl = window.location.origin + path;
+                    const fullUrl = apiUrl;
                     const url = `${fullUrl}?action=getNomorSuratBackdate&permintaan_id=${currentRequestId}`;
                     console.log('Fetching nomor surat from:', url);
                     

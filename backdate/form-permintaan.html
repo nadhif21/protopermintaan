@@ -858,8 +858,7 @@ Terima kasih.`;
                     try {
                         const token = getAuthToken();
                         const apiUrl = getApiUrl();
-                        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
-                        const fullUrl = window.location.origin + path;
+                        const fullUrl = apiUrl;
                         const response = await fetch(`${fullUrl}?action=getPetugas`, {
                             headers: { 'X-Auth-Token': token || '' }
                         });
@@ -1075,8 +1074,7 @@ Terima kasih.`;
                 // Fetch ulang data permintaan untuk mendapatkan status terbaru dan petugas_id
                 try {
                     const apiUrl = getApiUrl();
-                    const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
-                    const fullUrl = window.location.origin + path;
+                    const fullUrl = apiUrl;
                     const detailResponse = await fetch(`${fullUrl}?action=getPermintaanBackdate&id=${result.data.id}`, {
                         headers: { 'X-Auth-Token': token || '' }
                     });
