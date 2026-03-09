@@ -1,7 +1,7 @@
 <?php
 // Konfigurasi database MySQL
 
-define('DB_HOST', 'auth-db1637.hstgr.io');
+define('DB_HOST', 'localhost');
 define('DB_USER', 'u207689956_andaladkorpkt');
 define('DB_PASS', 'Permintaandof2025!');
 define('DB_NAME', 'u207689956_permintaandof');
