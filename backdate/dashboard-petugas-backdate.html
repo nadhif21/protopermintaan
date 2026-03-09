@@ -397,13 +397,12 @@
                 console.log('Total requests loaded:', allRequests.length);
                 console.log('All requests:', allRequests);
                 
-                // Filter untuk petugas: tampilkan semua yang statusnya In Progress, Approved, atau Closed
-                // Admin/super_admin akan melihat semua, tapi untuk display kita filter yang relevan
+                // Filter untuk petugas: tampilkan hanya yang statusnya In Progress atau Approved
+                // CLOSED tidak ditampilkan karena sudah selesai
                 approvedRequests = allRequests.filter(r => {
                     const status = (r.status || '').trim().toLowerCase();
-                    // Tampilkan jika status In Progress, Approved, atau Closed
-                    // (Closed tetap ditampilkan karena mungkin perlu dilihat history)
-                    return status === 'in progress' || status === 'approved' || status === 'closed' || status === 'close';
+                    // Hanya tampilkan jika status In Progress atau Approved
+                    return status === 'in progress' || status === 'approved';
                 });
                 
                 console.log('Approved requests (filtered):', approvedRequests.length);
@@ -1291,14 +1290,86 @@
             }
         }
         
+        // Aktifkan sidebar menu sesuai halaman saat ini
+        function activateSidebarMenu() {
+            const currentPath = window.location.pathname;
+            
+            // Hapus semua active class dari sidebar items
+            document.querySelectorAll('.sidebar-nav-item, .sidebar-submenu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Aktifkan menu Backdate (parent menu)
+            const backdateMenu = document.getElementById('backdateMenu');
+            if (backdateMenu) {
+                backdateMenu.classList.add('active');
+                // Buka submenu
+                const backdateSubmenu = document.getElementById('backdateSubmenu');
+                if (backdateSubmenu) {
+                    backdateSubmenu.style.display = 'block';
+                }
+            }
+            
+            // Aktifkan menu "Tugas Backdate" jika di halaman dashboard petugas
+            if (currentPath.includes('dashboard-petugas-backdate.html')) {
+                const petugasMenuLink = document.getElementById('dashboardPetugasBackdateMenuLink');
+                if (petugasMenuLink) {
+                    petugasMenuLink.classList.add('active');
+                }
+            }
+        }
+        
+        // Auto refresh setiap 30 detik untuk update data otomatis
+        let autoRefreshInterval = null;
+        
+        function startAutoRefresh() {
+            // Hentikan interval yang sudah ada jika ada
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            
+            // Refresh setiap 30 detik
+            autoRefreshInterval = setInterval(async () => {
+                // Hanya refresh jika tidak ada modal yang terbuka
+                const detailModal = document.getElementById('detailNomorSuratModal');
+                const updateModal = document.getElementById('updateModal');
+                
+                if (!detailModal?.classList.contains('show') && !updateModal?.classList.contains('show')) {
+                    console.log('Auto refreshing data...');
+                    await loadRequests();
+                } else {
+                    console.log('Skipping auto refresh - modal is open');
+                }
+            }, 30000); // 30 detik
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+        
         // Load data on page load
         if (session && session.user) {
             const userRole = session.user.role || 'user';
             if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'petugas') {
+                // Aktifkan sidebar menu setelah DOM ready
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', activateSidebarMenu);
+                } else {
+                    activateSidebarMenu();
+                }
                 loadRequests();
                 initializeItemsPerPage();
+                startAutoRefresh(); // Mulai auto refresh
             }
         }
+        
+        // Hentikan auto refresh saat halaman di-unload
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+        });
     </script>
     
     <!-- Modal Add Nomor Surat Backdate -->
