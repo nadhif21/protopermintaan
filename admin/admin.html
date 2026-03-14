@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Super Admin - Digital Office</title>
+    <title>Panel Admin - Permintaan DOF</title>
     <link rel="stylesheet" href="../layout.css">
     <link rel="stylesheet" href="admin.css">
     <link rel="stylesheet" href="../icons.css">
@@ -15,7 +15,7 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-logo-text">Digital Office</div>
+            <div class="sidebar-logo-text">Permintaan DOF</div>
         </div>
         <nav class="sidebar-nav">
             <a href="https://infoadkor.com/permintaandof/index.html" class="sidebar-nav-item">
@@ -90,6 +90,14 @@
                     <div class="sidebar-user-role" id="sidebarUserRole">User</div>
                 </div>
             </div>
+            <button id="sidebarLogoutBtn" class="sidebar-logout-btn">
+                <svg viewBox="0 0 24 24">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Logout</span>
+            </button>
         </div>
     </aside>
 
@@ -113,14 +121,6 @@
                         <line x1="23" y1="11" x2="17" y2="11"></line>
                     </svg>
                     <span>Add New User</span>
-                </button>
-                <button id="headerLogoutBtn" class="header-logout-btn">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                        <polyline points="16 17 21 12 16 7"></polyline>
-                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                    </svg>
-                    <span>Logout</span>
                 </button>
             </div>
         </div>
@@ -224,15 +224,13 @@
                         <thead>
                             <tr>
                                 <th>NAMA</th>
-                                <th>NPK</th>
-                                <th>JABATAN</th>
-                                <th>NOMOR TELEPON</th>
+                                <th>STATUS APPROVER</th>
                                 <th>STATUS</th>
                                 <th>ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody id="petugasTbody">
-                            <tr><td colspan="6" class="loading">Memuat...</td></tr>
+                            <tr><td colspan="4" class="loading">Memuat...</td></tr>
                         </tbody>
                     </table>
                     <!-- Mobile Card View -->
@@ -472,11 +470,15 @@
                     <input type="text" id="editName" placeholder="Nama lengkap" required>
                 </div>
                 <div class="form-row">
+                    <label>Username</label>
+                    <input type="text" id="editUsername" placeholder="username">
+                </div>
+                <div class="form-row">
                     <label>Role</label>
                     <select id="editRole" required>
                         <option value="user">user</option>
-                        <option value="admin">admin</option>
-                        <option value="super_admin">super_admin</option>
+                        <option value="admin">petugas</option>
+                        <option value="super_admin">admin</option>
                     </select>
                 </div>
                 <div class="form-row">
@@ -525,8 +527,8 @@
                     <label>Role</label>
                     <select id="newRole" required>
                         <option value="user">user</option>
-                        <option value="admin">admin</option>
-                        <option value="super_admin">super_admin</option>
+                        <option value="admin">petugas</option>
+                        <option value="super_admin">admin</option>
                     </select>
                 </div>
                 <div class="form-row">
@@ -575,6 +577,10 @@
                 <div class="form-row">
                     <label>Nama <span style="color: red;">*</span></label>
                     <input type="text" id="approverName" placeholder="Nama lengkap" required>
+                </div>
+                <div class="form-row">
+                    <label>Username</label>
+                    <input type="text" id="approverUsername" placeholder="username">
                 </div>
                 <div class="form-row">
                     <label>Email</label>

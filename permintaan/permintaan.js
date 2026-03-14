@@ -130,9 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupLogout() {
-    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
-    if (headerLogoutBtn) {
-        headerLogoutBtn.addEventListener('click', function() {
+    const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+    if (sidebarLogoutBtn) {
+        sidebarLogoutBtn.addEventListener('click', function() {
             if (typeof logout === 'function') {
                 logout();
             } else {
@@ -438,7 +438,7 @@ async function loadData() {
         const tableBody = document.getElementById('tableBody');
         if (tableBody) {
             tableBody.innerHTML = 
-                '<tr><td colspan="8" class="loading">' +
+                '<tr><td colspan="10" class="loading">' +
             '<strong style="color: #dc3545;">Error: ' + escapeHtml(error.message) + '</strong>' +
             '</td></tr>';
         }
@@ -730,7 +730,7 @@ function displayData() {
     
     if (filteredData.length === 0) {
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="8" class="loading">Tidak ada data yang ditemukan</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="loading">Tidak ada data yang ditemukan</td></tr>';
         }
         if (cardsContainer) {
         cardsContainer.innerHTML = '<div class="loading">Tidak ada data yang ditemukan</div>';
@@ -908,23 +908,34 @@ function formatPersetujuan(persetujuan, flag) {
     return '<span class="persetujuan-badge">' + escapeHtml(persetujuan) + '</span>';
 }
 
+function formatStatusApprover(persetujuan) {
+    if (!persetujuan || persetujuan.trim() === '') {
+        return '<span class="badge badge-inactive">-</span>';
+    }
+    
+    const persetujuanLower = persetujuan.toLowerCase();
+    if (persetujuanLower.includes('disetujui') || persetujuanLower.includes('approved') || persetujuanLower.includes('setuju')) {
+        return '<span class="badge badge-approved">Approved</span>';
+    } else if (persetujuanLower.includes('ditolak') || persetujuanLower.includes('rejected') || persetujuanLower.includes('tidak setuju')) {
+        return '<span class="badge badge-rejected">Rejected</span>';
+    }
+    return '<span class="badge badge-inactive">-</span>';
+}
+
 function displayTable() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     
-    // Kolom sesuai gambar: Tanggal Minta, Jenis Permintaan, NPK, Nama Lengkap, Unit Kerja, No Surat
-    // Mapping: Timestamp (0), Pilih Permintaan (6), NPK (1), Nama Lengkap (2), Unit Kerja (3), No Surat (cari)
-    
     tbody.innerHTML = paginatedData.map((row) => {
-        // 1. Tanggal Minta - format dengan tanggal dan waktu di 2 baris
+        // 1. ID (rowNumber atau dbId)
+        const rowId = row.dbId || row.rowNumber || row.originalRowNumber || row.id || '-';
+        
+        // 2. Tanggal Minta - format dengan tanggal dan waktu di 2 baris
         const timestamp = row.timestamp || row.A || '';
         const tanggalMinta = formatTanggalMinta(timestamp);
         
-        // 2. Jenis Permintaan (Pilih Permintaan)
+        // 3. Jenis Permintaan (Pilih Permintaan)
         const jenisPermintaan = row.pilihPermintaan || row.G || '';
-        
-        // 3. NPK
-        const npk = findColumnValueFromRow(row, 'NPK') || row.B || '';
         
         // 4. Nama Lengkap
         const namaLengkap = findColumnValueFromRow(row, 'Nama Lengkap') || row.C || '';
@@ -935,17 +946,25 @@ function displayTable() {
         // 6. No Surat
         const noSurat = findColumnValueFromRow(row, 'No Surat') || findColumnValueFromRow(row, 'Nomor Surat') || '';
         
+        // 7. Petugas
+        const petugas = row.petugas || '';
+        
+        // 8. Status Approver (dari persetujuan)
+        const statusApproverCell = formatStatusApprover(row.persetujuan);
+        
         const statusCell = formatStatus(row.status);
         const flagCell = formatFlag(row.flag);
 
         return `
             <tr data-row-id="${row.id}" class="data-row">
+                <td>${escapeHtml(rowId)}</td>
                 <td>${tanggalMinta}</td>
                 <td>${highlightText(escapeHtml(jenisPermintaan))}</td>
-                <td>${highlightText(escapeHtml(npk))}</td>
                 <td>${highlightText(escapeHtml(namaLengkap))}</td>
                 <td>${highlightText(escapeHtml(unitKerja))}</td>
                 <td>${highlightText(escapeHtml(noSurat))}</td>
+                <td>${highlightText(escapeHtml(petugas))}</td>
+                <td onclick="event.stopPropagation()" style="text-align: center;">${statusApproverCell}</td>
                 <td onclick="event.stopPropagation()" style="text-align: center;">${statusCell}</td>
                 <td onclick="event.stopPropagation()" style="text-align: center;">${flagCell}</td>
             </tr>
@@ -971,10 +990,18 @@ function displayTable() {
 
 function displayCards() {
     const cardsContainer = document.getElementById('cardsContainer');
-    const displayColumns = [0, 6, 1, 2, 3, 5];
+    const displayColumns = [0, 6, 2, 3, 5];
     
     cardsContainer.innerHTML = paginatedData.map(row => {
         const headers = spreadsheetHeaders;
+        
+        const idRow = `
+            <div class="card-row">
+                <div class="card-label">ID</div>
+                <div class="card-value">${escapeHtml(row.dbId || row.rowNumber || row.originalRowNumber || row.id || '-')}</div>
+            </div>
+        `;
+        
         const cardRows = displayColumns.map(index => {
             let headerName = headers[index] || `Kolom ${String.fromCharCode(65 + index)}`;
             if (headerName === 'Pilih Permintaan') {
@@ -994,6 +1021,20 @@ function displayCards() {
             `;
         }).join('');
 
+        const petugasRow = `
+            <div class="card-row">
+                <div class="card-label">Petugas</div>
+                <div class="card-value">${highlightText(escapeHtml(row.petugas || '-'))}</div>
+            </div>
+        `;
+
+        const statusApproverRow = `
+            <div class="card-row">
+                <div class="card-label">Status Approver</div>
+                <div class="card-value">${formatStatusApprover(row.persetujuan)}</div>
+            </div>
+        `;
+
         const statusRow = `
             <div class="card-row">
                 <div class="card-label">Status</div>
@@ -1010,7 +1051,10 @@ function displayCards() {
 
         return `
             <div class="card" data-row-id="${row.id}">
+                ${idRow}
                 ${cardRows}
+                ${petugasRow}
+                ${statusApproverRow}
                 ${statusRow}
                 ${flagRow}
             </div>
@@ -1120,33 +1164,29 @@ function updateTableHeaders() {
     const thead = document.querySelector('#dataTable thead tr');
     if (!thead || spreadsheetHeaders.length === 0) return;
     
-    // Jangan update header jika sudah ada header di HTML (untuk layout baru)
-    // Hanya update jika header masih menggunakan format lama
+    // Jangan update header jika sudah ada header yang benar di HTML
+    // Cek apakah header sudah sesuai format baru (ID, TANGGAL MINTA, JENIS PERMINTAAN, dll)
     const existingHeaders = thead.querySelectorAll('th');
-    if (existingHeaders.length > 0 && existingHeaders[0].textContent.includes('ID PERMINTAAN')) {
-        // Header sudah di-set di HTML, skip update
-        return;
+    if (existingHeaders.length >= 10) {
+        const firstHeader = existingHeaders[0].textContent.trim().toUpperCase();
+        const hasPetugas = Array.from(existingHeaders).some(th => 
+            th.textContent.trim().toUpperCase().includes('PETUGAS')
+        );
+        const hasStatusApprover = Array.from(existingHeaders).some(th => 
+            th.textContent.trim().toUpperCase().includes('STATUS APPROVER')
+        );
+        
+        // Jika header sudah benar (ada ID, PETUGAS, STATUS APPROVER), jangan update
+        if (firstHeader === 'ID' && hasPetugas && hasStatusApprover) {
+            // Header sudah benar, skip update
+            return;
+        }
     }
     
-    const displayColumns = [0, 6, 1, 2, 3, 5];
-    
-    thead.innerHTML = displayColumns.map(index => {
-        let headerName = spreadsheetHeaders[index] || `Kolom ${String.fromCharCode(65 + index)}`;
-        if (headerName === 'Pilih Permintaan') {
-            headerName = 'Jenis Permintaan';
-        }
-        if (headerName && headerName.toLowerCase().includes('timestamp')) {
-            headerName = 'Tanggal Minta';
-        }
-        return `<th>${escapeHtml(headerName)}</th>`;
-    }).join('') + '<th>Status</th><th>Flag</th>';
-    
-    // Show action header if user is admin
-    const actionHeader = document.getElementById('actionHeader');
-    if (actionHeader) {
-        const userRole = getUserRole();
-        actionHeader.style.display = (userRole === 'admin' || userRole === 'super_admin') ? 'table-cell' : 'none';
-    }
+    // Jika header masih format lama, jangan update (biarkan HTML yang menentukan)
+    // Atau jika perlu, bisa update dengan format baru
+    // Untuk sekarang, biarkan HTML yang menentukan header
+    return;
 }
 
 function showDetail(rowId) {

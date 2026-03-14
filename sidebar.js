@@ -24,8 +24,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (userRoleEl) {
         const roleText = {
-            'super_admin': 'Super Administrator',
-            'admin': 'Administrator',
+            'super_admin': 'Admin',
+            'admin': 'Petugas',
             'approver': 'Approver',
             'petugas': 'Petugas',
             'user': 'User'
@@ -239,14 +239,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Header Logout button (in content-header)
-    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
-    if (headerLogoutBtn) {
-        headerLogoutBtn.addEventListener('click', function() {
+    // Sidebar Logout Button
+    const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+    if (sidebarLogoutBtn) {
+        sidebarLogoutBtn.addEventListener('click', function() {
             if (typeof logout === 'function') {
                 logout();
             } else {
                 // Fallback if logout function is not available
+                if (confirm('Apakah Anda yakin ingin logout?')) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userData');
+                    window.location.href = getAppFullUrl('/login.html');
+                }
+            }
+        });
+    }
+    
+    // Header Logout button (for backward compatibility, redirect to sidebar)
+    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
+    if (headerLogoutBtn && sidebarLogoutBtn) {
+        headerLogoutBtn.addEventListener('click', function() {
+            sidebarLogoutBtn.click();
+        });
+    } else if (headerLogoutBtn) {
+        // If sidebar logout button doesn't exist, keep header logout functionality
+        headerLogoutBtn.addEventListener('click', function() {
+            if (typeof logout === 'function') {
+                logout();
+            } else {
                 if (confirm('Apakah Anda yakin ingin logout?')) {
                     localStorage.removeItem('authToken');
                     localStorage.removeItem('userData');

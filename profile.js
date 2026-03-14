@@ -39,9 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupLogout() {
-    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
-    if (headerLogoutBtn) {
-        headerLogoutBtn.addEventListener('click', function() {
+    const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+    if (sidebarLogoutBtn) {
+        sidebarLogoutBtn.addEventListener('click', function() {
             if (typeof logout === 'function') {
                 logout();
             } else {
@@ -149,8 +149,8 @@ function displayProfile(user) {
     document.getElementById('profileName').textContent = user.name || '-';
     
     const roleText = {
-        'super_admin': 'Super Admin',
-        'admin': 'Admin',
+        'super_admin': 'Admin',
+        'admin': 'Petugas',
         'user': 'User'
     };
     document.getElementById('profileRole').textContent = roleText[user.role] || user.role || '-';

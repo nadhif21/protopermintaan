@@ -478,6 +478,7 @@ function bindEditUserModal() {
         if (!currentEditUserId) return;
         
         const name = document.getElementById('editName')?.value?.trim() || '';
+        const username = document.getElementById('editUsername')?.value?.trim() || '';
         const role = document.getElementById('editRole')?.value || '';
         const email = document.getElementById('editEmail')?.value?.trim() || '';
         const npk = document.getElementById('editNpk')?.value?.trim() || '';
@@ -503,6 +504,7 @@ function bindEditUserModal() {
                 role: role
             };
 
+            if (username) updateData.username = username;
             if (email) updateData.email = email;
             if (npk) updateData.npk = npk;
             if (nomorTelepon) updateData.nomor_telepon = nomorTelepon;
@@ -558,6 +560,7 @@ async function editUserFlow(tr, userId) {
 
         // Fill form with current user data
         const editNameEl = document.getElementById('editName');
+        const editUsernameEl = document.getElementById('editUsername');
         const editRoleEl = document.getElementById('editRole');
         const editEmailEl = document.getElementById('editEmail');
         const editNpkEl = document.getElementById('editNpk');
@@ -565,6 +568,7 @@ async function editUserFlow(tr, userId) {
         const editUnitKerjaEl = document.getElementById('editUnitKerja');
 
         if (editNameEl) editNameEl.value = user.name || '';
+        if (editUsernameEl) editUsernameEl.value = user.username || '';
         if (editRoleEl) editRoleEl.value = user.role || 'user';
         if (editEmailEl) editEmailEl.value = user.email || '';
         if (editNpkEl) editNpkEl.value = user.npk || '';

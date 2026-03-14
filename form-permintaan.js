@@ -1363,9 +1363,9 @@ function openWhatsApp() {
 }
 
 function setupLogout() {
-    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
-    if (headerLogoutBtn) {
-        headerLogoutBtn.addEventListener('click', function() {
+    const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+    if (sidebarLogoutBtn) {
+        sidebarLogoutBtn.addEventListener('click', function() {
             if (typeof logout === 'function') {
                 logout();
             } else {

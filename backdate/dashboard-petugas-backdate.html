@@ -82,7 +82,7 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-logo-text">Digital Office</div>
+            <div class="sidebar-logo-text">Permintaan DOF</div>
         </div>
         <nav class="sidebar-nav">
             <a href="https://infoadkor.com/permintaandof/index.html" class="sidebar-nav-item">
@@ -157,6 +157,14 @@
                     <div class="sidebar-user-role" id="sidebarUserRole">User</div>
                 </div>
             </div>
+            <button id="sidebarLogoutBtn" class="sidebar-logout-btn">
+                <svg viewBox="0 0 24 24">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Logout</span>
+            </button>
         </div>
     </aside>
 
@@ -171,14 +179,6 @@
                 <h1>Dashboard Petugas - Permintaan Backdate</h1>
                 <p>Kelola permintaan backdate yang ditugaskan kepada Anda</p>
             </div>
-            <button id="headerLogoutBtn" class="header-logout-btn">
-                <svg viewBox="0 0 24 24">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                    <polyline points="16 17 21 12 16 7"></polyline>
-                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                </svg>
-                <span>Logout</span>
-            </button>
         </div>
 
         <!-- Main Content -->
@@ -321,18 +321,21 @@
                 });
             } else {
                 // Setup logout
-                document.getElementById('headerLogoutBtn').addEventListener('click', async function() {
-                    if (typeof logout === 'function') {
-                        logout();
-                    } else {
-                        const confirmed = await showConfirm('Apakah Anda yakin ingin logout?', 'Konfirmasi Logout', 'Logout', 'Batal', 'warning');
-                        if (confirmed) {
-                            localStorage.removeItem('authToken');
-                            localStorage.removeItem('userData');
-                            window.location.href = 'https://infoadkor.com/permintaandof/index.html';
+                const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+                if (sidebarLogoutBtn) {
+                    sidebarLogoutBtn.addEventListener('click', async function() {
+                        if (typeof logout === 'function') {
+                            logout();
+                        } else {
+                            const confirmed = await showConfirm('Apakah Anda yakin ingin logout?', 'Konfirmasi Logout', 'Logout', 'Batal', 'warning');
+                            if (confirmed) {
+                                localStorage.removeItem('authToken');
+                                localStorage.removeItem('userData');
+                                window.location.href = 'https://infoadkor.com/permintaandof/index.html';
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
         }
         

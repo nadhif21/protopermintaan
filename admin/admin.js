@@ -69,9 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function bindLogout() {
-    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
-    if (!headerLogoutBtn) return;
-    headerLogoutBtn.addEventListener('click', () => {
+    const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+    if (!sidebarLogoutBtn) return;
+    sidebarLogoutBtn.addEventListener('click', () => {
         if (typeof logout === 'function') {
             logout();
         } else {
@@ -173,6 +173,7 @@ function bindEditUserModal() {
         if (!currentEditUserId) return;
         
         const name = document.getElementById('editName')?.value?.trim() || '';
+        const username = document.getElementById('editUsername')?.value?.trim() || '';
         const role = document.getElementById('editRole')?.value || '';
         const email = document.getElementById('editEmail')?.value?.trim() || '';
         const npk = document.getElementById('editNpk')?.value?.trim() || '';
@@ -198,6 +199,7 @@ function bindEditUserModal() {
                 role: role
             };
 
+            if (username) updateData.username = username;
             if (email) updateData.email = email;
             if (npk) updateData.npk = npk;
             if (nomorTelepon) updateData.nomor_telepon = nomorTelepon;
@@ -447,6 +449,7 @@ async function editUserFlow(tr, userId) {
 
         // Fill form with current user data
         document.getElementById('editName').value = user.name || '';
+        document.getElementById('editUsername').value = user.username || '';
         document.getElementById('editRole').value = user.role || 'user';
         document.getElementById('editEmail').value = user.email || '';
         document.getElementById('editNpk').value = user.npk || '';
@@ -1529,11 +1532,13 @@ function loadApproverData(id) {
         for (let row of rows) {
             if (parseInt(row.getAttribute('data-id')) === id) {
                 const name = row.querySelector('[data-field="name"]')?.textContent || '';
+                const username = row.querySelector('[data-field="username"]')?.textContent || '';
                 const email = row.querySelector('[data-field="email"]')?.textContent || '';
                 const nomorTelepon = row.querySelector('[data-field="nomor_telepon"]')?.textContent || '';
                 const unitKerja = row.querySelector('[data-field="unit_kerja"]')?.textContent || '';
                 
                 document.getElementById('approverName').value = name;
+                document.getElementById('approverUsername').value = username;
                 document.getElementById('approverEmail').value = email;
                 document.getElementById('approverNomorTelepon').value = nomorTelepon;
                 document.getElementById('approverUnitKerja').value = unitKerja;
@@ -1547,6 +1552,7 @@ async function saveApprover(e) {
     e.preventDefault();
     const errorBox = document.getElementById('approverError');
     const name = document.getElementById('approverName').value.trim();
+    const usernameInput = document.getElementById('approverUsername').value.trim();
     const email = document.getElementById('approverEmail').value.trim();
     const nomorTelepon = document.getElementById('approverNomorTelepon').value.trim();
     const unitKerja = document.getElementById('approverUnitKerja').value.trim();
@@ -1564,8 +1570,11 @@ async function saveApprover(e) {
         const url = new URL(`${fullUrl}?action=${currentApproverId ? 'updateApprover' : 'createApprover'}`);
         if (currentApproverId) url.searchParams.append('id', currentApproverId);
         url.searchParams.append('name', name);
-        // Generate username dari nama (lowercase, replace space dengan underscore)
-        const username = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+        
+        let username = usernameInput;
+        if (!username) {
+            username = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+        }
         url.searchParams.append('username', username);
         if (email) url.searchParams.append('email', email);
         if (nomorTelepon) url.searchParams.append('nomor_telepon', nomorTelepon);
@@ -1860,8 +1869,10 @@ async function loadPetugas() {
         const tbody = document.getElementById('petugasTbody');
         const petugasList = Array.isArray(result.data) ? result.data : [];
         
+        console.log('Petugas data loaded:', petugasList);
+        
         if (petugasList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="loading">Tidak ada petugas</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="loading">Tidak ada petugas</td></tr>';
             return;
         }
         
@@ -1869,12 +1880,22 @@ async function loadPetugas() {
             const status = petugas.is_active !== false ? 'Active' : 'Inactive';
             const statusClass = petugas.is_active !== false ? 'badge-active' : 'badge-inactive';
             
+            let statusApproverBadge = '-';
+            if (petugas.status_approver && petugas.status_approver.trim() !== '') {
+                const statusApprover = petugas.status_approver.trim();
+                if (statusApprover === 'Approved') {
+                    statusApproverBadge = '<span class="badge badge-active">Approved</span>';
+                } else if (statusApprover === 'Rejected') {
+                    statusApproverBadge = '<span class="badge badge-inactive">Rejected</span>';
+                } else {
+                    statusApproverBadge = statusApprover;
+                }
+            }
+            
             return `
                 <tr data-id="${petugas.id}">
                     <td data-field="nama">${escapeHtml(petugas.nama || '')}</td>
-                    <td data-field="npk">${escapeHtml(petugas.npk || '-')}</td>
-                    <td data-field="jabatan">${escapeHtml(petugas.jabatan || '-')}</td>
-                    <td data-field="no_wa">${escapeHtml(petugas.no_wa || '-')}</td>
+                    <td>${statusApproverBadge}</td>
                     <td><span class="badge ${statusClass}">${status}</span></td>
                     <td>
                         <div class="row-actions">
@@ -1896,6 +1917,18 @@ async function loadPetugas() {
                     const status = petugas.is_active !== false ? 'Active' : 'Inactive';
                     const statusClass = petugas.is_active !== false ? 'badge-active' : 'badge-inactive';
                     
+                    let statusApproverBadge = '-';
+                    if (petugas.status_approver && petugas.status_approver.trim() !== '') {
+                        const statusApprover = petugas.status_approver.trim();
+                        if (statusApprover === 'Approved') {
+                            statusApproverBadge = '<span class="badge badge-active">Approved</span>';
+                        } else if (statusApprover === 'Rejected') {
+                            statusApproverBadge = '<span class="badge badge-inactive">Rejected</span>';
+                        } else {
+                            statusApproverBadge = statusApprover;
+                        }
+                    }
+                    
                     return `
                         <div class="admin-card" data-id="${petugas.id}">
                             <div class="admin-card-row">
@@ -1903,16 +1936,8 @@ async function loadPetugas() {
                                 <div class="admin-card-value">${escapeHtml(petugas.nama || '')}</div>
                             </div>
                             <div class="admin-card-row">
-                                <div class="admin-card-label">NPK</div>
-                                <div class="admin-card-value">${escapeHtml(petugas.npk || '-')}</div>
-                            </div>
-                            <div class="admin-card-row">
-                                <div class="admin-card-label">Jabatan</div>
-                                <div class="admin-card-value">${escapeHtml(petugas.jabatan || '-')}</div>
-                            </div>
-                            <div class="admin-card-row">
-                                <div class="admin-card-label">Nomor WhatsApp</div>
-                                <div class="admin-card-value">${escapeHtml(petugas.no_wa || '-')}</div>
+                                <div class="admin-card-label">Status Approver</div>
+                                <div class="admin-card-value">${statusApproverBadge}</div>
                             </div>
                             <div class="admin-card-row">
                                 <div class="admin-card-label">Status</div>
@@ -1931,7 +1956,7 @@ async function loadPetugas() {
         console.error('Error loading petugas:', error);
         const tbody = document.getElementById('petugasTbody');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="6" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
         }
         const cardsContainer = document.getElementById('petugasCards');
         if (cardsContainer) {

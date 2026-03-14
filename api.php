@@ -777,6 +777,7 @@ function handleUpdateUser($conn) {
 
     $id = intval(getRequestParam('id', 0));
     $name = trim(getRequestParam('name', ''));
+    $username = trim(getRequestParam('username', ''));
     $role = trim(getRequestParam('role', ''));
     $isActive = getRequestParam('isActive', null);
     $email = trim(getRequestParam('email', ''));
@@ -788,6 +789,26 @@ function handleUpdateUser($conn) {
         throw new Exception("ID user tidak valid.");
     }
 
+    if ($username !== '') {
+        if (strlen($username) < 3 || strlen($username) > 50) {
+            throw new Exception("Username harus 3-50 karakter.");
+        }
+        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $username)) {
+            throw new Exception("Username hanya boleh mengandung huruf, angka, titik, underscore, dan dash.");
+        }
+        $checkUser = $conn->prepare("SELECT `id` FROM `users` WHERE `username` = ? AND `id` != ? AND `is_active` = 1 LIMIT 1");
+        if ($checkUser) {
+            $checkUser->bind_param('si', $username, $id);
+            $checkUser->execute();
+            $result = $checkUser->get_result();
+            if ($result && $result->num_rows > 0) {
+                $checkUser->close();
+                throw new Exception("Username sudah digunakan oleh user lain.");
+            }
+            $checkUser->close();
+        }
+    }
+
     $updates = [];
     $params = [];
     $types = '';
@@ -795,6 +816,12 @@ function handleUpdateUser($conn) {
     if ($name !== '') {
         $updates[] = "`name` = ?";
         $params[] = $name;
+        $types .= 's';
+    }
+
+    if ($username !== '') {
+        $updates[] = "`username` = ?";
+        $params[] = $username;
         $types .= 's';
     }
 
@@ -2572,6 +2599,7 @@ function handleUpdateApprover($conn) {
     
     $id = intval(getRequestParam('id', 0));
     $name = trim(getRequestParam('name', ''));
+    $username = trim(getRequestParam('username', ''));
     $nomorTelepon = trim(getRequestParam('nomor_telepon', ''));
     $email = trim(getRequestParam('email', ''));
     $unitKerja = trim(getRequestParam('unit_kerja', ''));
@@ -2579,6 +2607,20 @@ function handleUpdateApprover($conn) {
     
     if ($id <= 0) {
         throw new Exception("ID approver tidak valid.");
+    }
+    
+    if ($username !== '') {
+        $checkUser = $conn->prepare("SELECT `id` FROM `users` WHERE `username` = ? AND `id` != ? AND `is_active` = 1 LIMIT 1");
+        if ($checkUser) {
+            $checkUser->bind_param('si', $username, $id);
+            $checkUser->execute();
+            $result = $checkUser->get_result();
+            if ($result && $result->num_rows > 0) {
+                $checkUser->close();
+                throw new Exception("Username sudah digunakan oleh user lain.");
+            }
+            $checkUser->close();
+        }
     }
     
     $updates = [];
@@ -2591,6 +2633,12 @@ function handleUpdateApprover($conn) {
         $types .= 's';
     }
     
+    if ($username !== '') {
+        $updates[] = "`username` = ?";
+        $params[] = $username;
+        $types .= 's';
+    }
+    
     if ($isActive !== null) {
         $isActiveVal = ($isActive === '1' || $isActive === 1 || $isActive === true || $isActive === 'true') ? 1 : 0;
         $updates[] = "`is_active` = ?";
@@ -2598,7 +2646,6 @@ function handleUpdateApprover($conn) {
         $types .= 'i';
     }
     
-    // Check if columns exist
     $checkEmail = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
     $checkTel = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
     $checkUnit = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
@@ -2814,20 +2861,31 @@ function handleGetPetugas($conn) {
     $forApproval = trim(getRequestParam('for_approval', '')) === 'true';
     
     if ($forApproval) {
-        // Untuk approval, tidak perlu autentikasi, hanya ambil petugas aktif
         $sql = "SELECT `id`, `nama`, `npk`, `jabatan`, `no_wa`, `is_active` FROM `petugas` WHERE `is_active` = 1 ORDER BY `nama` ASC";
     } else {
-        // Untuk akses normal, perlu autentikasi
         $session = requireAuth($conn);
         $includeInactive = ($session && isset($session['role']) && ($session['role'] === 'super_admin' || $session['role'] === 'admin'));
         
-        $sql = "SELECT `id`, `nama`, `npk`, `jabatan`, `no_wa`, `is_active` FROM `petugas`";
+        $checkBackdateTable = $conn->query("SHOW TABLES LIKE 'permintaan_backdate'");
+        $hasBackdateTable = $checkBackdateTable && $checkBackdateTable->num_rows > 0;
         
-        if (!$includeInactive) {
-            $sql .= " WHERE `is_active` = 1";
+        if ($hasBackdateTable) {
+            $sql = "SELECT p.`id`, p.`nama`, p.`npk`, p.`jabatan`, p.`no_wa`, p.`is_active`,
+                    (SELECT pb.`status` FROM `permintaan_backdate` pb 
+                     WHERE pb.`petugas_id` = p.`id` 
+                     ORDER BY pb.`updated_at` DESC LIMIT 1) as `status_approver`
+                    FROM `petugas` p";
+            if (!$includeInactive) {
+                $sql .= " WHERE p.`is_active` = 1";
+            }
+            $sql .= " ORDER BY p.`nama` ASC";
+        } else {
+            $sql = "SELECT `id`, `nama`, `npk`, `jabatan`, `no_wa`, `is_active` FROM `petugas`";
+            if (!$includeInactive) {
+                $sql .= " WHERE `is_active` = 1";
+            }
+            $sql .= " ORDER BY `nama` ASC";
         }
-        
-        $sql .= " ORDER BY `nama` ASC";
     }
     
     $result = $conn->query($sql);
@@ -2838,13 +2896,24 @@ function handleGetPetugas($conn) {
     
     $data = [];
     while ($row = $result->fetch_assoc()) {
+        $statusApprover = '';
+        if (isset($row['status_approver'])) {
+            $status = strtoupper(trim($row['status_approver']));
+            if ($status === 'IN PROGRESS' || $status === 'APPROVED' || $status === 'CLOSED') {
+                $statusApprover = 'Approved';
+            } else if ($status === 'REJECTED' || $status === 'CANCELLED') {
+                $statusApprover = 'Rejected';
+            }
+        }
+        
         $data[] = [
             'id' => intval($row['id']),
             'nama' => $row['nama'],
             'npk' => $row['npk'] ?? '',
             'jabatan' => $row['jabatan'] ?? '',
             'no_wa' => $row['no_wa'] ?? '',
-            'is_active' => $row['is_active'] ?? 1
+            'is_active' => $row['is_active'] ?? 1,
+            'status_approver' => $statusApprover
         ];
     }
     
