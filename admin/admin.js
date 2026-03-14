@@ -230,6 +230,9 @@ function clearEditUserError() {
     el.classList.remove('show');
 }
 
+// Simpan data users untuk realtime update
+let usersData = [];
+
 async function loadUsers() {
     const tbody = document.getElementById('usersTbody');
     if (!tbody) return;
@@ -237,8 +240,12 @@ async function loadUsers() {
 
     try {
         const users = await apiGet('listUsers');
+        usersData = users; // Simpan data users untuk realtime update
         tbody.innerHTML = users.map(u => userRowHtml(u)).join('');
         bindUserRowActions();
+        
+        // Mulai realtime update untuk last login
+        startRealtimeLastLoginUpdate();
 
         // Update cards for mobile
         const cardsContainer = document.getElementById('usersCards');
@@ -253,7 +260,8 @@ async function loadUsers() {
                     const roleBadge = `<span class="badge badge-role">${escapeHtml(u.role.toUpperCase())}</span>`;
                     const initials = getInitials(u.name || u.username);
                     const email = u.email || `${u.username}@company.com`;
-                    const lastLogin = formatLastLogin(u.updatedAt);
+                    const lastLogin = formatLastLogin(u.lastLogin || u.updatedAt);
+                    const lastLoginTime = u.lastLogin || u.updatedAt || '';
 
                     return `
                         <div class="admin-card" data-user-id="${u.id}">
@@ -279,7 +287,7 @@ async function loadUsers() {
                             </div>
                             <div class="admin-card-row">
                                 <div class="admin-card-label">Last Login</div>
-                                <div class="admin-card-value">${lastLogin}</div>
+                                <div class="admin-card-value last-login-card-value" data-last-login="${lastLoginTime}">${lastLogin}</div>
                             </div>
                             <div class="admin-card-actions">
                                 <button class="btn-icon-action" data-action="edit" data-user-id="${u.id}" title="Edit">
@@ -337,6 +345,49 @@ async function loadUsers() {
     }
 }
 
+// Realtime update untuk last login (update setiap 30 detik)
+let lastLoginUpdateInterval = null;
+
+function startRealtimeLastLoginUpdate() {
+    // Hapus interval sebelumnya jika ada
+    if (lastLoginUpdateInterval) {
+        clearInterval(lastLoginUpdateInterval);
+    }
+    
+    // Update setiap 30 detik
+    lastLoginUpdateInterval = setInterval(() => {
+        updateLastLoginDisplay();
+    }, 30000);
+    
+    // Update sekali saat pertama kali load
+    setTimeout(() => {
+        updateLastLoginDisplay();
+    }, 1000);
+}
+
+function updateLastLoginDisplay() {
+    // Update last login di tabel
+    const tableRows = document.querySelectorAll('#usersTbody tr[data-user-id]');
+    tableRows.forEach(row => {
+        const lastLoginTime = row.getAttribute('data-last-login');
+        if (lastLoginTime) {
+            const lastLoginCell = row.querySelector('.last-login-cell');
+            if (lastLoginCell) {
+                lastLoginCell.textContent = formatLastLogin(lastLoginTime);
+            }
+        }
+    });
+    
+    // Update last login di cards (mobile view)
+    const cardLastLoginCells = document.querySelectorAll('#usersCards .last-login-card-value');
+    cardLastLoginCells.forEach(cell => {
+        const lastLoginTime = cell.getAttribute('data-last-login');
+        if (lastLoginTime) {
+            cell.textContent = formatLastLogin(lastLoginTime);
+        }
+    });
+}
+
 function getInitials(name) {
     if (!name) return 'U';
     const parts = name.trim().split(' ');
@@ -346,21 +397,48 @@ function getInitials(name) {
     return name.substring(0, 2).toUpperCase();
 }
 
-function formatLastLogin(updatedAt) {
-    if (!updatedAt) return '-';
-    const date = new Date(updatedAt);
+function formatLastLogin(lastLoginTime) {
+    if (!lastLoginTime) return '-';
+    
+    // Parse waktu dari database (asumsikan UTC jika format ISO 8601 dengan Z)
+    let date;
+    if (typeof lastLoginTime === 'string' && lastLoginTime.includes('Z')) {
+        // Format ISO 8601 dengan Z (UTC)
+        date = new Date(lastLoginTime);
+    } else if (typeof lastLoginTime === 'string' && !lastLoginTime.includes('T')) {
+        // Format MySQL DATETIME (YYYY-MM-DD HH:mm:ss) - tambahkan Z untuk UTC
+        date = new Date(lastLoginTime.replace(' ', 'T') + 'Z');
+    } else {
+        date = new Date(lastLoginTime);
+    }
+    
+    if (isNaN(date.getTime())) return '-';
+    
     const now = new Date();
     const diffMs = now - date;
+    const diffSecs = Math.floor(diffMs / 1000);
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
     
-    if (diffMins < 60) {
-        return `${diffMins} ${diffMins === 1 ? 'min' : 'mins'} ago`;
+    // Format lebih akurat dan realtime
+    if (diffSecs < 60) {
+        return `${diffSecs} ${diffSecs === 1 ? 'detik' : 'detik'} yang lalu`;
+    } else if (diffMins < 60) {
+        return `${diffMins} ${diffMins === 1 ? 'menit' : 'menit'} yang lalu`;
     } else if (diffHours < 24) {
-        return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+        return `${diffHours} ${diffHours === 1 ? 'jam' : 'jam'} yang lalu`;
+    } else if (diffDays < 7) {
+        return `${diffDays} ${diffDays === 1 ? 'hari' : 'hari'} yang lalu`;
+    } else if (diffWeeks < 4) {
+        return `${diffWeeks} ${diffWeeks === 1 ? 'minggu' : 'minggu'} yang lalu`;
+    } else if (diffMonths < 12) {
+        return `${diffMonths} ${diffMonths === 1 ? 'bulan' : 'bulan'} yang lalu`;
     } else {
-        return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+        return `${diffYears} ${diffYears === 1 ? 'tahun' : 'tahun'} yang lalu`;
     }
 }
 
@@ -371,7 +449,7 @@ function userRowHtml(u) {
     const roleBadge = `<span class="badge badge-role">${escapeHtml(u.role.toUpperCase())}</span>`;
     const initials = getInitials(u.name || u.username);
     const email = u.email || `${u.username}@company.com`;
-    const lastLogin = formatLastLogin(u.updatedAt);
+    const lastLogin = formatLastLogin(u.lastLogin || u.updatedAt);
 
     return `
         <tr data-user-id="${u.id}">
@@ -386,7 +464,7 @@ function userRowHtml(u) {
             </td>
             <td>${roleBadge}</td>
             <td>${statusBadge}</td>
-            <td>${lastLogin}</td>
+            <td class="last-login-cell" data-last-login="${u.lastLogin || u.updatedAt || ''}">${lastLogin}</td>
             <td>
                 <div class="row-actions">
                     <button class="btn-icon-action" data-action="edit" title="Edit">

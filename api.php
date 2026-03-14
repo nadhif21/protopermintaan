@@ -27,8 +27,22 @@ function convertToMySQLDateTime($dateString) {
         return "$year-$month-$day $hour:$minute:00";
     }
     
-    // Handle format ISO 8601: 2026-03-06T08:03:48.328Z atau 2026-03-06T08:03:48Z
-    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z?$/', $dateString, $matches)) {
+    // Handle format ISO 8601 dengan timezone Z (UTC): 2026-03-06T08:03:48.328Z atau 2026-03-06T08:03:48Z
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/', $dateString, $matches)) {
+        // Format dengan Z (UTC) - simpan sebagai UTC di database (tidak dikonversi ke timezone server)
+        // Konversi ke timezone lokal akan dilakukan di sisi client (JavaScript)
+        $year = $matches[1];
+        $month = $matches[2];
+        $day = $matches[3];
+        $hour = $matches[4];
+        $minute = $matches[5];
+        $second = $matches[6];
+        // Simpan sebagai UTC (tidak dikonversi)
+        return "$year-$month-$day $hour:$minute:$second";
+    }
+    
+    // Handle format ISO 8601 tanpa timezone: 2026-03-06T08:03:48
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/', $dateString, $matches)) {
         $year = $matches[1];
         $month = $matches[2];
         $day = $matches[3];
@@ -38,7 +52,7 @@ function convertToMySQLDateTime($dateString) {
         return "$year-$month-$day $hour:$minute:$second";
     }
     
-    // Coba parse dengan strtotime untuk format lain
+    // Coba parse dengan strtotime untuk format lain (akan menginterpretasikan sebagai timezone server)
     $timestamp = strtotime($dateString);
     if ($timestamp !== false) {
         return date('Y-m-d H:i:s', $timestamp);
@@ -500,6 +514,30 @@ function handleLogin($conn) {
     }
     $stmt2->close();
 
+    // Update last_login time untuk user
+    $checkLastLoginColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'last_login'");
+    $hasLastLoginColumn = $checkLastLoginColumn && $checkLastLoginColumn->num_rows > 0;
+    
+    if ($hasLastLoginColumn) {
+        // Update last_login jika kolom ada
+        $updateLastLoginSql = "UPDATE `users` SET `last_login` = NOW() WHERE `id` = ?";
+        $updateLastLoginStmt = $conn->prepare($updateLastLoginSql);
+        if ($updateLastLoginStmt) {
+            $updateLastLoginStmt->bind_param('i', $userId);
+            $updateLastLoginStmt->execute();
+            $updateLastLoginStmt->close();
+        }
+    } else {
+        // Jika kolom tidak ada, update updated_at sebagai fallback
+        $updateUpdatedAtSql = "UPDATE `users` SET `updated_at` = NOW() WHERE `id` = ?";
+        $updateUpdatedAtStmt = $conn->prepare($updateUpdatedAtSql);
+        if ($updateUpdatedAtStmt) {
+            $updateUpdatedAtStmt->bind_param('i', $userId);
+            $updateUpdatedAtStmt->execute();
+            $updateUpdatedAtStmt->close();
+        }
+    }
+
     auditLog($conn, $userId, 'login_success', 'user', ['username' => $user['username']]);
 
     sendJSONResponse(true, [
@@ -679,6 +717,7 @@ function handleListUsers($conn) {
     $checkEmail = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
     $checkTel = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
     $checkUnit = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
+    $checkLastLogin = $conn->query("SHOW COLUMNS FROM `users` LIKE 'last_login'");
     
     if ($checkNpk && $checkNpk->num_rows > 0) {
         $selectColumns .= ",`npk`";
@@ -691,6 +730,9 @@ function handleListUsers($conn) {
     }
     if ($checkUnit && $checkUnit->num_rows > 0) {
         $selectColumns .= ",`unit_kerja`";
+    }
+    if ($checkLastLogin && $checkLastLogin->num_rows > 0) {
+        $selectColumns .= ",`last_login`";
     }
     
     $result = $conn->query("SELECT " . $selectColumns . " FROM `users` ORDER BY `role` ASC, `username` ASC");
@@ -708,6 +750,13 @@ function handleListUsers($conn) {
             'createdAt' => $row['created_at'],
             'updatedAt' => $row['updated_at']
         ];
+        
+        // Prioritaskan last_login jika ada, jika tidak gunakan updated_at
+        if (isset($row['last_login']) && $row['last_login']) {
+            $userData['lastLogin'] = $row['last_login'];
+        } else {
+            $userData['lastLogin'] = $row['updated_at'];
+        }
         
         // Add optional fields if they exist
         if (isset($row['npk'])) {
@@ -1559,7 +1608,14 @@ function handleGetData($conn) {
             }
             
             // Mapping menggunakan kolom yang jelas (dengan fallback ke col_a-col_j untuk backward compatibility)
-            $rowData['Timestamp'] = $row['timestamp_data'] ?? $row['timestamp'] ?? $row['col_a'] ?? '';
+            // Format timestamp sebagai ISO 8601 dengan timezone UTC
+            $timestampValue = $row['timestamp_data'] ?? $row['timestamp'] ?? $row['col_a'] ?? '';
+            if ($timestampValue && $timestampValue !== '') {
+                if (!preg_match('/Z$|[+-]\d{2}:\d{2}$/', $timestampValue)) {
+                    $timestampValue = str_replace(' ', 'T', $timestampValue) . 'Z';
+                }
+            }
+            $rowData['Timestamp'] = $timestampValue;
             $rowData['Nama Admin'] = $row['nama_admin'] ?? $row['col_b'] ?? '';
             $rowData['NPK'] = $row['npk'] ?? $row['col_c'] ?? '';
             $rowData['Jabatan'] = $row['jabatan'] ?? $row['col_d'] ?? '';
@@ -1571,7 +1627,14 @@ function handleGetData($conn) {
             $rowData['Email Address'] = $row['email_address'] ?? $row['col_j'] ?? '';
             $rowData['Status'] = $row['status'] ?? '';
             $rowData['Flag'] = $row['flag'] ?? '';
-            $rowData['Waktu Selesai'] = $row['timestamp_selesai'] ?? '';
+            // Format Waktu Selesai sebagai ISO 8601 dengan timezone UTC
+            $waktuSelesaiValue = $row['timestamp_selesai'] ?? '';
+            if ($waktuSelesaiValue && $waktuSelesaiValue !== '') {
+                if (!preg_match('/Z$|[+-]\d{2}:\d{2}$/', $waktuSelesaiValue)) {
+                    $waktuSelesaiValue = str_replace(' ', 'T', $waktuSelesaiValue) . 'Z';
+                }
+            }
+            $rowData['Waktu Selesai'] = $waktuSelesaiValue;
         } else {
             // Headers untuk permintaan (sesuai struktur spreadsheet sebenarnya)
             if (empty($headers)) {
@@ -1586,7 +1649,14 @@ function handleGetData($conn) {
             }
             
             // Mapping menggunakan kolom yang jelas (dengan fallback ke col_a-col_j untuk backward compatibility)
-            $rowData['Timestamp'] = $row['timestamp_data'] ?? $row['timestamp'] ?? $row['col_a'] ?? '';
+            // Format timestamp sebagai ISO 8601 dengan timezone UTC
+            $timestampValue = $row['timestamp_data'] ?? $row['timestamp'] ?? $row['col_a'] ?? '';
+            if ($timestampValue && $timestampValue !== '') {
+                if (!preg_match('/Z$|[+-]\d{2}:\d{2}$/', $timestampValue)) {
+                    $timestampValue = str_replace(' ', 'T', $timestampValue) . 'Z';
+                }
+            }
+            $rowData['Timestamp'] = $timestampValue;
             $rowData['NPK'] = $row['npk'] ?? $row['col_b'] ?? '';
             $rowData['Nama Lengkap'] = $row['nama_lengkap'] ?? $row['col_c'] ?? '';
             $rowData['Unit Kerja :'] = $row['unit_kerja'] ?? $row['col_d'] ?? '';
@@ -1601,7 +1671,14 @@ function handleGetData($conn) {
             $rowData['Status'] = $row['status'] ?? '';
             $rowData['Flag'] = $row['flag'] ?? '';
             $rowData['Petugas'] = $row['petugas'] ?? '';
-            $rowData['Waktu Selesai'] = $row['waktu_selesai'] ?? '';
+            // Format Waktu Selesai sebagai ISO 8601 dengan timezone UTC
+            $waktuSelesaiValue = $row['waktu_selesai'] ?? $row['timestamp_selesai'] ?? '';
+            if ($waktuSelesaiValue && $waktuSelesaiValue !== '') {
+                if (!preg_match('/Z$|[+-]\d{2}:\d{2}$/', $waktuSelesaiValue)) {
+                    $waktuSelesaiValue = str_replace(' ', 'T', $waktuSelesaiValue) . 'Z';
+                }
+            }
+            $rowData['Waktu Selesai'] = $waktuSelesaiValue;
             $rowData['Keterangan'] = $row['keterangan'] ?? '';
             $rowData['Persetujuan'] = $row['persetujuan'] ?? '';
             // Tambahkan petugas_id dan petugas_no_wa untuk kebutuhan chat
@@ -2077,8 +2154,8 @@ function handleInsertBackdate($conn) {
         $maxRow = ($row['max_row'] ?? 0) + 1;
     }
     
-    // Timestamp sekarang
-    $timestamp = date('Y-m-d H:i:s');
+    // Timestamp sekarang - gunakan UTC
+    $timestamp = gmdate('Y-m-d H:i:s');
     
     // Convert tanggal backdate ke format yang benar jika perlu
     if ($tanggalBackdate) {
@@ -3429,8 +3506,19 @@ function handleSubmitPermintaan($conn) {
     $maxRow = $maxResult->fetch_assoc();
     $rowNumber = ($maxRow['max_row'] ?? 0) + 1;
     
-    // Get timestamp
-    $timestamp = date('Y-m-d H:i:s');
+    // Get timestamp - gunakan waktu dari client jika ada, atau gunakan waktu server dalam UTC
+    $clientTimestamp = trim(getRequestParam('timestamp', ''));
+    if ($clientTimestamp !== '') {
+        // Konversi dari format ISO 8601 (UTC) yang dikirim dari client
+        $timestamp = convertToMySQLDateTime($clientTimestamp);
+        if (!$timestamp) {
+            // Fallback ke waktu server jika konversi gagal
+            $timestamp = gmdate('Y-m-d H:i:s'); // Gunakan UTC
+        }
+    } else {
+        // Gunakan waktu server dalam UTC (bukan timezone server)
+        $timestamp = gmdate('Y-m-d H:i:s');
+    }
     
     // Get petugas name
     $petugasResult = $conn->query("SELECT `nama`, `no_wa` FROM `petugas` WHERE `id` = $petugasId LIMIT 1");

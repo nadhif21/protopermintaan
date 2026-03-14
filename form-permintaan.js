@@ -1253,6 +1253,10 @@ async function handleSubmit(e) {
         no_wa: selectedPetugasOption.getAttribute('data-wa')
     };
     
+    // Buat timestamp dalam format UTC (ISO 8601) dari waktu lokal user
+    const localNow = new Date();
+    const timestampUTC = localNow.toISOString();
+    
     const data = {
         npk: npkValue,
         nama_lengkap: namaValue,
@@ -1265,7 +1269,8 @@ async function handleSubmit(e) {
         alasan_permintaan: (selectedOption && selectedOption.bagian_target === 'bagian_2') || shouldSkipBagian3 ? formData.get('alasan_permintaan') : '',
         keterangan_permintaan: formData.get('keterangan_permintaan') || '',
         isi_penjelasan: formData.get('isi_penjelasan'),
-        petugas_id: petugasId
+        petugas_id: petugasId,
+        timestamp: timestampUTC // Kirim timestamp dalam format UTC
     };
     
     // selectedPetugas sudah di-set di atas (line 1037-1041), tidak perlu di-set lagi

@@ -836,9 +836,10 @@ function formatTanggalMinta(timestamp) {
     if (!timestamp) return '';
     
     try {
-        const date = new Date(timestamp);
-        if (isNaN(date.getTime())) {
-            // Coba parse format lain
+        // Konversi ke waktu lokal user
+        const localDate = convertToLocalTime(timestamp);
+        if (!localDate) {
+            // Coba parse format lain jika konversi gagal
             const parts = timestamp.toString().split(/[\s-:]/);
             if (parts.length >= 3) {
                 // Format: DD-MM-YYYY HH:mm:ss
@@ -855,12 +856,13 @@ function formatTanggalMinta(timestamp) {
             return escapeHtml(timestamp);
         }
         
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
+        // Format menggunakan waktu lokal
+        const day = String(localDate.getDate()).padStart(2, '0');
+        const month = String(localDate.getMonth() + 1).padStart(2, '0');
+        const year = localDate.getFullYear();
+        const hours = String(localDate.getHours()).padStart(2, '0');
+        const minutes = String(localDate.getMinutes()).padStart(2, '0');
+        const seconds = String(localDate.getSeconds()).padStart(2, '0');
         
         return `<div>${day}-${month}-${year}</div><div>${hours}:${minutes}:${seconds}</div>`;
     } catch (e) {
@@ -927,8 +929,8 @@ function displayTable() {
     if (!tbody) return;
     
     tbody.innerHTML = paginatedData.map((row) => {
-        // 1. ID (rowNumber atau dbId)
-        const rowId = row.dbId || row.rowNumber || row.originalRowNumber || row.id || '-';
+        // 1. ID (rowNumber - sama dengan yang dikirim di WhatsApp)
+        const rowId = row.rowNumber || row.originalRowNumber || row.dbId || row.id || '-';
         
         // 2. Tanggal Minta - format dengan tanggal dan waktu di 2 baris
         const timestamp = row.timestamp || row.A || '';
@@ -998,7 +1000,7 @@ function displayCards() {
         const idRow = `
             <div class="card-row">
                 <div class="card-label">ID</div>
-                <div class="card-value">${escapeHtml(row.dbId || row.rowNumber || row.originalRowNumber || row.id || '-')}</div>
+                <div class="card-value">${escapeHtml(row.rowNumber || row.originalRowNumber || row.dbId || row.id || '-')}</div>
             </div>
         `;
         
@@ -1114,19 +1116,71 @@ function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Fungsi untuk konversi waktu ke timezone lokal user
+function convertToLocalTime(utcTimestamp) {
+    if (!utcTimestamp) return null;
+    
+    try {
+        // Jika timestamp sudah dalam format ISO 8601 dengan timezone (Z atau +HH:mm), gunakan langsung
+        if (utcTimestamp.includes('Z') || utcTimestamp.includes('+') || utcTimestamp.includes('-') && utcTimestamp.match(/[+-]\d{2}:\d{2}$/)) {
+            const date = new Date(utcTimestamp);
+            if (isNaN(date.getTime())) return null;
+            return date; // JavaScript akan otomatis konversi ke timezone lokal browser
+        }
+        
+        // Jika format MySQL DATETIME (YYYY-MM-DD HH:mm:ss) tanpa timezone info,
+        // tambahkan 'Z' untuk menandakan UTC, atau tambahkan timezone offset
+        // Asumsikan waktu dari database adalah UTC
+        let timestampStr = utcTimestamp.toString().trim();
+        
+        // Jika format: YYYY-MM-DD HH:mm:ss atau YYYY-MM-DDTHH:mm:ss
+        if (timestampStr.match(/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}$/)) {
+            // Ganti spasi dengan T dan tambahkan Z untuk UTC
+            timestampStr = timestampStr.replace(' ', 'T') + 'Z';
+        }
+        
+        const date = new Date(timestampStr);
+        if (isNaN(date.getTime())) return null;
+        
+        // JavaScript Date object otomatis menggunakan timezone lokal browser
+        // Jadi kita hanya perlu memformatnya
+        return date;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Fungsi untuk konversi waktu lokal ke UTC untuk disimpan ke database
+function convertToUTC(localDateTimeString) {
+    if (!localDateTimeString) return null;
+    
+    try {
+        // Parse datetime-local string (format: YYYY-MM-DDTHH:mm)
+        // JavaScript akan menginterpretasikannya sebagai waktu lokal
+        const localDate = new Date(localDateTimeString);
+        if (isNaN(localDate.getTime())) return null;
+        
+        // Konversi ke UTC ISO string
+        return localDate.toISOString();
+    } catch (e) {
+        return null;
+    }
+}
+
 function formatTimestamp(timestamp) {
     if (!timestamp) return '';
     
     try {
-        const date = new Date(timestamp);
-        if (isNaN(date.getTime())) return timestamp;
+        // Konversi ke waktu lokal user
+        const localDate = convertToLocalTime(timestamp);
+        if (!localDate) return timestamp;
         
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
+        const day = String(localDate.getDate()).padStart(2, '0');
+        const month = String(localDate.getMonth() + 1).padStart(2, '0');
+        const year = localDate.getFullYear();
+        const hours = String(localDate.getHours()).padStart(2, '0');
+        const minutes = String(localDate.getMinutes()).padStart(2, '0');
+        const seconds = String(localDate.getSeconds()).padStart(2, '0');
         
         return `${day}-${month}-${year}<br>${hours}:${minutes}:${seconds}`;
     } catch (e) {
@@ -1189,7 +1243,7 @@ function updateTableHeaders() {
     return;
 }
 
-function showDetail(rowId) {
+async function showDetail(rowId) {
     console.log('showDetail called with rowId:', rowId);
     const row = allData.find(r => r.id === rowId);
     if (!row) {
@@ -1344,10 +1398,19 @@ function showDetail(rowId) {
             <label>${escapeHtml(flagHeader)}</label>
             <div class="value">${formatFlag(currentFlag)}</div>
         </div>
-        <div class="detail-item">
-            <label>${escapeHtml(petugasHeader)}</label>
-            <div class="value">${escapeHtml(currentPetugas || '-')}</div>
-        </div>
+        ${(() => {
+            // Untuk flag kuning/merah, jangan tampilkan petugas
+            const isKuningMerah = currentFlag && (currentFlag.toLowerCase() === 'kuning' || currentFlag.toLowerCase() === 'merah');
+            if (isKuningMerah) {
+                return ''; // Jangan tampilkan petugas untuk kuning/merah
+            }
+            return `
+                <div class="detail-item">
+                    <label>${escapeHtml(petugasHeader)}</label>
+                    <div class="value">${escapeHtml(currentPetugas || '-')}</div>
+                </div>
+            `;
+        })()}
         <div class="detail-item">
             <label>${escapeHtml(keteranganHeader)}</label>
             <div class="value">${escapeHtml(currentKeterangan || '-')}</div>
@@ -1408,6 +1471,8 @@ function showDetail(rowId) {
     const editModeBtn = document.getElementById('editModeBtn');
     const chatUlangBtn = document.getElementById('chatUlangBtn');
     const chatUlangSection = document.getElementById('chatUlangSection');
+    const hubungiUserBtn = document.getElementById('hubungiUserBtn');
+    const hubungiUserSection = document.getElementById('hubungiUserSection');
     
     // Check user role - user hanya bisa melihat, tidak bisa aksi apapun
     const userRole = getUserRole();
@@ -1438,6 +1503,14 @@ function showDetail(rowId) {
         if (chatUlangSection) chatUlangSection.style.display = 'none';
     }
     
+    // Setup button hubungi user untuk admin/petugas ketika status sudah selesai
+    const isStatusCompleted = currentStatus === 'Closed' || currentStatus === 'Cancelled';
+    if (!isUser && isStatusCompleted && hubungiUserBtn && hubungiUserSection) {
+        setupHubungiUserButton(row, originalRow, currentStatus, currentFlag, currentPetugas, currentKeterangan, currentWaktuSelesai, dataName);
+    } else {
+        if (hubungiUserSection) hubungiUserSection.style.display = 'none';
+    }
+    
     // Check if elements exist
     if (!saveBtn || !saveFlagBtn || !whatsappBtn || !whatsappSection || !statusSection || !flagSection || !petugasSection || !keteranganSection) {
         console.error('Missing required elements:', {
@@ -1464,8 +1537,16 @@ function showDetail(rowId) {
         flagSelect.value = '';
     }
     
-    // Pastikan flagSelect tidak disabled agar bisa diubah
-    flagSelect.disabled = false;
+    // Jika sudah disetujui atau ditolak, flag tidak bisa diubah (read-only)
+    if (isApproved || isRejected) {
+        flagSelect.disabled = true;
+        flagSelect.style.cursor = 'not-allowed';
+        flagSelect.style.opacity = '0.7';
+    } else {
+        flagSelect.disabled = false;
+        flagSelect.style.cursor = 'pointer';
+        flagSelect.style.opacity = '1';
+    }
     
     // Set nilai status setelah flag
     if (currentStatus) {
@@ -1495,8 +1576,23 @@ function showDetail(rowId) {
         });
     }
     
+    // Load petugas dari database
+    await loadPetugasForSelect(petugasSelect);
+    
+    // Set nilai petugas setelah dropdown diisi
     if (currentPetugas) {
-        petugasSelect.value = currentPetugas;
+        // Cari option yang sesuai dengan nama petugas
+        for (let i = 0; i < petugasSelect.options.length; i++) {
+            const option = petugasSelect.options[i];
+            if (option.getAttribute('data-nama') === currentPetugas || option.textContent === currentPetugas) {
+                petugasSelect.value = option.value;
+                break;
+            }
+        }
+        // Jika tidak ditemukan, set berdasarkan value langsung (backward compatibility)
+        if (!petugasSelect.value || petugasSelect.value === '') {
+            petugasSelect.value = currentPetugas;
+        }
     } else {
         petugasSelect.value = '';
     }
@@ -1577,9 +1673,11 @@ function showDetail(rowId) {
             else if (isApproved || isRejected) {
                 saveFlagBtn.style.display = 'none';
                 statusSection.style.display = 'flex';
-                // Jika status sudah Closed/Cancelled, tampilkan petugas dan keterangan
+                // Untuk flag kuning/merah, jangan tampilkan petugas section
+                const isKuningMerah = selectedFlag && (selectedFlag.toLowerCase() === 'kuning' || selectedFlag.toLowerCase() === 'merah');
+                // Jika status sudah Closed/Cancelled, tampilkan keterangan (tapi tidak petugas untuk kuning/merah)
                 if (isClosedOrCancelled) {
-                    petugasSection.style.display = 'flex';
+                    petugasSection.style.display = 'none'; // Selalu sembunyikan untuk kuning/merah
                     keteranganSection.style.display = 'flex';
                     whatsappSection.style.display = 'none';
                     saveBtn.style.display = 'block';
@@ -1603,8 +1701,11 @@ function showDetail(rowId) {
             else {
                 saveFlagBtn.style.display = 'none';
                 statusSection.style.display = 'flex';
+                // Untuk flag kuning/merah, jangan tampilkan petugas section
+                const isKuningMerahDefault = selectedFlag && (selectedFlag.toLowerCase() === 'kuning' || selectedFlag.toLowerCase() === 'merah');
                 if (isClosedOrCancelled) {
-                    petugasSection.style.display = 'flex';
+                    // Untuk flag kuning/merah, jangan tampilkan petugas
+                    petugasSection.style.display = isKuningMerahDefault ? 'none' : 'flex';
                     keteranganSection.style.display = 'flex';
                     whatsappSection.style.display = 'none';
                     saveBtn.style.display = 'block';
@@ -1640,7 +1741,10 @@ function showDetail(rowId) {
         
         const statusChanged = selectedStatus !== currentStatus;
         const flagChanged = selectedFlag !== currentFlag;
-        const petugasChanged = selectedPetugas !== currentPetugas;
+        
+        // Untuk flag kuning/merah, abaikan perubahan petugas
+        const isKuningMerah = selectedFlag && (selectedFlag.toLowerCase() === 'kuning' || selectedFlag.toLowerCase() === 'merah');
+        const petugasChanged = !isKuningMerah && selectedPetugas !== currentPetugas;
         const keteranganChanged = selectedKeterangan !== currentKeterangan;
         
         const isClosedOrCancelled = selectedStatus === 'Closed' || selectedStatus === 'Cancelled';
@@ -1703,7 +1807,8 @@ function showDetail(rowId) {
                 hasChanges = true;
             }
             
-            if (!selectedPetugas || selectedPetugas.trim() === '') {
+            // Untuk flag kuning/merah, tidak perlu validasi petugas
+            if (!isKuningMerah && (!selectedPetugas || selectedPetugas.trim() === '')) {
                 saveBtn.disabled = true;
                 saveBtn.classList.add('disabled');
                 return;
@@ -1720,6 +1825,13 @@ function showDetail(rowId) {
     }
     
     flagSelect.onchange = () => {
+        // Jika sudah disetujui atau ditolak, jangan izinkan perubahan flag
+        if (isApproved || isRejected) {
+            flagSelect.value = currentFlag; // Reset ke nilai semula
+            showNotification('Flag tidak dapat diubah setelah persetujuan sudah dilakukan', 'error');
+            return;
+        }
+        
         const selectedFlag = flagSelect.value;
         
         // Jika flag berubah dari yang sudah disimpan, reset status ke Open (kecuali sudah completed)
@@ -1742,6 +1854,12 @@ function showDetail(rowId) {
     // Setup button simpan flag
     saveFlagBtn.onclick = async () => {
         if (saveFlagBtn.disabled) return;
+        
+        // Jika sudah disetujui atau ditolak, jangan izinkan simpan flag
+        if (isApproved || isRejected) {
+            showNotification('Flag tidak dapat diubah setelah persetujuan sudah dilakukan', 'error');
+            return;
+        }
         
         const selectedFlag = flagSelect.value;
         
@@ -1828,13 +1946,49 @@ function showDetail(rowId) {
     keteranganInput.oninput = checkChanges;
     
     // Setup WhatsApp button
-    whatsappBtn.onclick = () => {
+    whatsappBtn.onclick = async () => {
         const selectedFlag = flagSelect.value;
         if (!selectedFlag || (selectedFlag.toLowerCase() !== 'kuning' && selectedFlag.toLowerCase() !== 'merah')) {
             return;
         }
         
-        // Generate approval link using rowNumber instead of id (hanya 1 link)
+        try {
+            // Get approver phone number from API
+            const token = getAuthToken();
+            const apiUrl = getApiUrl();
+            const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+            const fullUrl = window.location.origin + path;
+            const response = await fetch(`${fullUrl}?action=getApprovers`, {
+                headers: { 'X-Auth-Token': token || '' }
+            });
+            
+            const result = await response.json();
+            console.log('getApprovers response:', result);
+            
+            if (!result.success || !result.data || result.data.length === 0) {
+                alert('Tidak ada approver yang tersedia. Silakan hubungi admin.');
+                return;
+            }
+            
+            // Filter hanya approver yang aktif
+            const activeApprovers = result.data.filter(a => a.is_active !== false && a.is_active !== 0);
+            if (activeApprovers.length === 0) {
+                alert('Tidak ada approver aktif yang tersedia. Silakan hubungi admin.');
+                return;
+            }
+            
+            const approver = activeApprovers[0];
+            console.log('Selected approver:', approver);
+            
+            const approverNoWa = approver.nomor_telepon || approver.no_wa || approver.phone;
+            console.log('Approver phone number:', approverNoWa);
+            
+            if (!approverNoWa || approverNoWa.trim() === '') {
+                alert(`Nomor WhatsApp approver tidak tersedia.\n\nApprover: ${approver.name || approver.username || 'Tidak diketahui'}\n\nSilakan hubungi admin untuk mengatur nomor telepon approver.`);
+                return;
+            }
+            
+            // Generate approval link using rowNumber instead of id (hanya 1 link)
         // Deteksi domain untuk link approval
         let baseUrl;
         if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('protopermintaan.vercel.app')) {
@@ -1963,13 +2117,24 @@ function showDetail(rowId) {
         message += `${approvalUrl}\n\n`;
         message += `Klik link di atas untuk menyetujui atau menolak permintaan ini.`;
         
-        // Encode message for WhatsApp
-        const encodedMessage = encodeURIComponent(message);
-        const whatsappNumber = '6282154549026';
-        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
-        
-        // Open WhatsApp
-        window.open(whatsappUrl, '_blank');
+            // Format nomor WhatsApp (remove non-digit, add 62 if starts with 0)
+            let cleanPhone = approverNoWa.replace(/\D/g, '');
+            if (cleanPhone.startsWith('0')) {
+                cleanPhone = '62' + cleanPhone.substring(1);
+            } else if (!cleanPhone.startsWith('62')) {
+                cleanPhone = '62' + cleanPhone;
+            }
+            
+            // Encode message for WhatsApp
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+            
+            // Open WhatsApp
+            window.open(whatsappUrl, '_blank');
+        } catch (error) {
+            console.error('Error getting approver:', error);
+            alert('Error: ' + error.message);
+        }
     };
     
     // Setup button hubungi petugas untuk user (hanya jika status belum selesai)
@@ -2017,7 +2182,13 @@ function showDetail(rowId) {
         
         const newStatus = statusSelect.value;
         const newFlag = flagSelect.value;
-        const newPetugas = petugasSelect.value;
+        // Ambil nama petugas dari option yang dipilih (value sudah nama petugas)
+        let newPetugas = petugasSelect.value;
+        // Jika value adalah ID, ambil dari data-nama attribute
+        const selectedOption = petugasSelect.options[petugasSelect.selectedIndex];
+        if (selectedOption && selectedOption.getAttribute('data-nama')) {
+            newPetugas = selectedOption.getAttribute('data-nama');
+        }
         const newKeterangan = keteranganInput.value.trim();
         
         try {
@@ -2037,7 +2208,9 @@ function showDetail(rowId) {
                     updateData.flag = newFlag;
                 }
                 
-                if (newPetugas !== currentPetugas) {
+                // Untuk flag kuning/merah, jangan simpan petugas
+                const isKuningMerahRejected = newFlag && (newFlag.toLowerCase() === 'kuning' || newFlag.toLowerCase() === 'merah');
+                if (!isKuningMerahRejected && newPetugas !== currentPetugas) {
                     updateData.petugas = newPetugas;
                 }
                 
@@ -2056,7 +2229,7 @@ function showDetail(rowId) {
                         updateData.waktuSelesai = '';
                     }
                 } else if (!currentWaktuSelesai) {
-                    // Auto set waktu selesai jika belum ada
+                    // Auto set waktu selesai jika belum ada (dalam UTC)
                     updateData.waktuSelesai = new Date().toISOString();
                 }
             } else {
@@ -2070,7 +2243,9 @@ function showDetail(rowId) {
                         updateData.flag = newFlag;
                     }
                     
-                    if (newPetugas !== currentPetugas) {
+                    // Untuk flag kuning/merah, jangan simpan petugas
+                    const isKuningMerah = newFlag && (newFlag.toLowerCase() === 'kuning' || newFlag.toLowerCase() === 'merah');
+                    if (!isKuningMerah && newPetugas !== currentPetugas) {
                         updateData.petugas = newPetugas;
                     }
                     
@@ -2079,6 +2254,7 @@ function showDetail(rowId) {
                     }
                     
                     if (!currentWaktuSelesai) {
+                        // Auto set waktu selesai jika belum ada (dalam UTC)
                         updateData.waktuSelesai = new Date().toISOString();
                     }
                 }
@@ -2249,20 +2425,31 @@ function showDetail(rowId) {
                     input.appendChild(option);
                 });
             } else if (fieldName === 'Petugas') {
-                // Create select for Petugas (with predefined options)
+                // Create select for Petugas (load from database)
                 input = document.createElement('select');
                 input.className = 'edit-input';
                 input.setAttribute('data-field', fieldName);
                 
-                const options = ['', 'Jalal', 'Bayu', 'Ilma'];
-                options.forEach(opt => {
-                    const option = document.createElement('option');
-                    option.value = opt;
-                    option.textContent = opt || '-';
-                    if (opt === currentValue || currentValue.includes(opt)) {
-                        option.selected = true;
+                // Add placeholder option
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = '';
+                placeholderOption.textContent = 'Pilih Petugas';
+                input.appendChild(placeholderOption);
+                
+                // Load petugas from database asynchronously
+                loadPetugasForSelect(input).then(() => {
+                    // Set selected value after options are loaded
+                    if (currentValue) {
+                        for (let i = 0; i < input.options.length; i++) {
+                            const option = input.options[i];
+                            if (option.getAttribute('data-nama') === currentValue || option.textContent === currentValue || option.value === currentValue) {
+                                option.selected = true;
+                                break;
+                            }
+                        }
                     }
-                    input.appendChild(option);
+                }).catch(error => {
+                    console.error('Error loading petugas for edit mode:', error);
                 });
             } else if (fieldName === 'Persetujuan') {
                 // Create select for Persetujuan
@@ -2343,11 +2530,13 @@ function showDetail(rowId) {
                 input.className = 'edit-input';
                 input.setAttribute('data-field', fieldName);
                 
-                // Convert current value to datetime-local format
+                // Convert current value (UTC dari database) to datetime-local format (waktu lokal user)
                 if (currentValue) {
                     try {
+                        // Parse waktu dari database (asumsikan UTC atau timezone server)
                         const date = new Date(currentValue);
                         if (!isNaN(date.getTime())) {
+                            // JavaScript Date otomatis mengkonversi ke waktu lokal saat diakses
                             const year = date.getFullYear();
                             const month = String(date.getMonth() + 1).padStart(2, '0');
                             const day = String(date.getDate()).padStart(2, '0');
@@ -2637,9 +2826,16 @@ function showDetail(rowId) {
                 // Convert datetime-local to MySQL format if needed
                 if (fieldName === 'Waktu Selesai') {
                     if (fieldValue && fieldValue.trim() !== '') {
-                        // datetime-local format: YYYY-MM-DDTHH:mm
-                        // Send as-is, PHP will convert it using convertToMySQLDateTime
-                        updateParams[colName] = fieldValue;
+                        // datetime-local format: YYYY-MM-DDTHH:mm (waktu lokal user)
+                        // Konversi ke UTC ISO string untuk disimpan ke database
+                        const utcValue = convertToUTC(fieldValue);
+                        if (utcValue) {
+                            // Kirim dalam format ISO 8601 (UTC) ke server
+                            updateParams[colName] = utcValue;
+                        } else {
+                            // Fallback: kirim as-is jika konversi gagal
+                            updateParams[colName] = fieldValue;
+                        }
                     } else {
                         // Send special marker to indicate we want to clear it (set to NULL)
                         updateParams[colName] = '__NULL__';
@@ -2692,10 +2888,174 @@ function showDetail(rowId) {
         return result;
     }
     
+    // Tampilkan modal detail
+    const detailPopup = document.getElementById('detailPopup');
+    if (detailPopup) {
+        detailPopup.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Fungsi untuk setup button hubungi user
+function setupHubungiUserButton(row, originalRow, currentStatus, currentFlag, currentPetugas, currentKeterangan, currentWaktuSelesai, dataName) {
+    const hubungiUserBtn = document.getElementById('hubungiUserBtn');
+    const hubungiUserSection = document.getElementById('hubungiUserSection');
     
-    const popup = document.getElementById('detailPopup');
-    popup.classList.add('show');
-    document.body.style.overflow = 'hidden';
+    if (!hubungiUserBtn || !hubungiUserSection) return;
+    
+    // Tampilkan section
+    hubungiUserSection.style.display = 'flex';
+    
+    // Setup onclick handler
+    hubungiUserBtn.onclick = () => {
+        // Ambil nomor telepon user dari originalRow
+        const noTelepon = originalRow['No Telepon (HP)'] || originalRow['No Telepon'] || originalRow['no_telepon'] || '';
+        
+        if (!noTelepon || noTelepon.trim() === '') {
+            alert('Nomor telepon user tidak tersedia. Tidak dapat mengirim pesan.');
+            return;
+        }
+        
+        // Ambil informasi tambahan
+        const jenisPermintaan = originalRow['Pilih Permintaan'] || originalRow['pilih_permintaan'] || '';
+        const noSurat = originalRow['No Surat'] || originalRow['no_surat'] || '';
+        const unitKerja = originalRow['Unit Kerja :'] || originalRow['unit_kerja'] || '';
+        
+        // Ambil ID permintaan
+        const requestId = row.rowNumber || row.originalRowNumber || row.dbId || row.id || '';
+        
+        // Buat pesan untuk user
+        let message = `*Notifikasi Status Permintaan*\n\n`;
+        message += `Halo ${dataName || 'Bapak/Ibu'},\n\n`;
+        message += `Permintaan Anda telah *${currentStatus === 'Closed' ? 'Selesai' : 'Dibatalkan'}*.\n\n`;
+        
+        if (requestId) {
+            message += `ID Permintaan: ${requestId}\n`;
+        }
+        if (jenisPermintaan) {
+            message += `Jenis Permintaan: ${jenisPermintaan}\n`;
+        }
+        if (noSurat) {
+            message += `No. Surat: ${noSurat}\n`;
+        }
+        if (unitKerja) {
+            message += `Unit Kerja: ${unitKerja}\n`;
+        }
+        message += `Status: ${currentStatus === 'Closed' ? 'Selesai' : 'Dibatalkan'}\n`;
+        
+        if (currentFlag) {
+            message += `Flag: ${currentFlag}\n`;
+        }
+        if (currentPetugas) {
+            message += `Petugas: ${currentPetugas}\n`;
+        }
+        if (currentWaktuSelesai) {
+            // Format waktu selesai untuk WhatsApp (ganti <br> dengan newline)
+            let waktuSelesaiFormatted = formatTimestamp(currentWaktuSelesai) || currentWaktuSelesai;
+            // Hapus tag HTML dan ganti dengan format yang benar
+            waktuSelesaiFormatted = waktuSelesaiFormatted.replace(/<br\s*\/?>/gi, '\n');
+            // Jika masih ada HTML tags, hapus semuanya
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = waktuSelesaiFormatted;
+            waktuSelesaiFormatted = tempDiv.textContent || tempDiv.innerText || waktuSelesaiFormatted;
+            // Jika format timestamp tidak berhasil, format manual
+            if (waktuSelesaiFormatted === currentWaktuSelesai) {
+                try {
+                    const date = new Date(currentWaktuSelesai);
+                    if (!isNaN(date.getTime())) {
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const year = date.getFullYear();
+                        const hours = String(date.getHours()).padStart(2, '0');
+                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                        const seconds = String(date.getSeconds()).padStart(2, '0');
+                        waktuSelesaiFormatted = `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+                    }
+                } catch (e) {
+                    // Jika error, gunakan value asli
+                }
+            }
+            message += `Waktu Selesai: ${waktuSelesaiFormatted}\n`;
+        }
+        if (currentKeterangan) {
+            message += `Keterangan: ${currentKeterangan}\n`;
+        }
+        
+        message += `\nTerima kasih.`;
+        
+        // Format nomor telepon (remove non-digit, add 62 if starts with 0)
+        let cleanPhone = noTelepon.replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        } else if (!cleanPhone.startsWith('62')) {
+            cleanPhone = '62' + cleanPhone;
+        }
+        
+        // Encode message for WhatsApp
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+        
+        // Open WhatsApp
+        window.open(whatsappUrl, '_blank');
+    };
+}
+
+// Load petugas dari database untuk dropdown
+async function loadPetugasForSelect(selectElement) {
+    if (!selectElement) return;
+    
+    try {
+        const token = getAuthToken();
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const url = new URL(fullUrl);
+        url.searchParams.append('action', 'getPetugas');
+        
+        const fetchHeaders = {};
+        if (token) {
+            fetchHeaders['X-Auth-Token'] = token;
+        }
+        
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: fetchHeaders,
+            mode: 'cors',
+            cache: 'no-cache'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Gagal memuat daftar petugas');
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success || !result.data || !Array.isArray(result.data)) {
+            throw new Error('Data petugas tidak valid');
+        }
+        
+        // Clear existing options except first one
+        while (selectElement.options.length > 1) {
+            selectElement.remove(1);
+        }
+        
+        // Add petugas options from database
+        result.data.forEach(petugas => {
+            const option = document.createElement('option');
+            option.value = petugas.nama || 'Petugas ' + petugas.id;
+            option.textContent = petugas.nama || 'Petugas ' + petugas.id;
+            option.setAttribute('data-nama', petugas.nama || '');
+            option.setAttribute('data-id', petugas.id || '');
+            option.setAttribute('data-no-wa', petugas.no_wa || '');
+            selectElement.appendChild(option);
+        });
+        
+        return result.data;
+    } catch (error) {
+        console.error('Error loading petugas:', error);
+        // Fallback: keep existing options if API fails
+        return [];
+    }
 }
 
 let currentDetailRow = null;

@@ -133,16 +133,47 @@ document.addEventListener('DOMContentLoaded', function() {
     menuItems.forEach(item => {
         const href = item.getAttribute('href');
         if (href) {
-            // Normalize paths for comparison
-            let normalizedHref = href.replace(/^\.\//, '').replace(/\.html$/, '');
-            let normalizedPath = currentPath.replace(/^\//, '').replace(/\.html$/, '');
+            let isActive = false;
             
-            // Remove leading/trailing slashes
-            normalizedHref = normalizedHref.replace(/^\/+|\/+$/g, '');
-            normalizedPath = normalizedPath.replace(/^\/+|\/+$/g, '');
+            // Extract path dari href (hilangkan domain jika ada)
+            let hrefPath = href;
+            try {
+                const hrefUrl = new URL(href);
+                hrefPath = hrefUrl.pathname;
+            } catch (e) {
+                // Jika bukan full URL, gunakan href langsung
+                hrefPath = href;
+            }
             
-            // Exact match to avoid conflicts (e.g., form-permintaan.html should not match backdate/form-permintaan.html)
-            if (normalizedPath === normalizedHref || normalizedPath.endsWith('/' + normalizedHref)) {
+            // Normalize paths untuk comparison
+            let normalizedHref = hrefPath.replace(/^\/+|\/+$/g, '').replace(/\.html$/, '');
+            let normalizedPath = currentPath.replace(/^\/+|\/+$/g, '').replace(/\.html$/, '');
+            
+            // Exact match - pastikan path lengkap cocok
+            // Jangan match jika hanya filename yang sama (untuk menghindari konflik form-permintaan.html dengan backdate/form-permintaan.html)
+            if (normalizedPath === normalizedHref) {
+                isActive = true;
+            } else {
+                // Check jika current path berisi full href path (untuk subfolder)
+                const hrefParts = normalizedHref.split('/');
+                const pathParts = normalizedPath.split('/');
+                
+                // Match jika semua bagian path cocok
+                if (pathParts.length >= hrefParts.length) {
+                    let allMatch = true;
+                    for (let i = 0; i < hrefParts.length; i++) {
+                        if (pathParts[pathParts.length - hrefParts.length + i] !== hrefParts[i]) {
+                            allMatch = false;
+                            break;
+                        }
+                    }
+                    if (allMatch && pathParts.length === hrefParts.length) {
+                        isActive = true;
+                    }
+                }
+            }
+            
+            if (isActive) {
                 item.classList.add('active');
             }
         }
@@ -203,26 +234,42 @@ document.addEventListener('DOMContentLoaded', function() {
         if (href) {
             let isActive = false;
             
-            // Extract filename from href
-            const hrefFileName = href.split('/').pop();
-            const currentFileName = currentPathname.split('/').pop();
+            // Extract path dari href (hilangkan domain jika ada)
+            let hrefPath = href;
+            try {
+                const hrefUrl = new URL(href);
+                hrefPath = hrefUrl.pathname;
+            } catch (e) {
+                // Jika bukan full URL, gunakan href langsung
+                hrefPath = href;
+            }
             
-            // Method 1: Exact filename match (most reliable)
-            if (hrefFileName === currentFileName) {
+            // Normalize paths untuk comparison
+            let normalizedHref = hrefPath.replace(/^\/+|\/+$/g, '').replace(/\.html$/, '');
+            let normalizedPath = currentPathname.replace(/^\/+|\/+$/g, '').replace(/\.html$/, '');
+            
+            // Exact match - pastikan path lengkap cocok termasuk folder
+            // Ini penting untuk membedakan form-permintaan.html dengan backdate/form-permintaan.html
+            if (normalizedPath === normalizedHref) {
                 isActive = true;
-            }
-            // Method 2: Check if current URL includes the full href path
-            else if (currentUrl.includes(href) || currentPathname.includes(href)) {
-                isActive = true;
-            }
-            // Method 3: Check if current pathname ends with the href filename
-            else if (currentPathname.endsWith(hrefFileName)) {
-                isActive = true;
-            }
-            // Method 4: For backdate pages, check if both are in backdate folder
-            else if (hrefFileName.includes('backdate') && currentPathname.includes('backdate')) {
-                if (hrefFileName === currentFileName) {
-                    isActive = true;
+            } else {
+                // Check jika current path berisi full href path
+                // Pastikan semua bagian path cocok (termasuk folder backdate)
+                const hrefParts = normalizedHref.split('/');
+                const pathParts = normalizedPath.split('/');
+                
+                // Match jika semua bagian path cocok dan panjangnya sama
+                if (pathParts.length === hrefParts.length) {
+                    let allMatch = true;
+                    for (let i = 0; i < hrefParts.length; i++) {
+                        if (pathParts[i] !== hrefParts[i]) {
+                            allMatch = false;
+                            break;
+                        }
+                    }
+                    if (allMatch) {
+                        isActive = true;
+                    }
                 }
             }
             
