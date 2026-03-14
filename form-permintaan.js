@@ -1349,7 +1349,7 @@ function openWhatsApp() {
     }
     
     const baseUrl = window.location.origin;
-    const detailUrl = `${baseUrl}/permintaan/permintaan.html?detail=${submittedRequestId}`;
+    const detailUrl = `${baseUrl}/permintaandof/permintaan/permintaan.html?detail=${submittedRequestId}`;
     
     const message = encodeURIComponent(
         `Halo ${selectedPetugas.nama},\n\n` +
