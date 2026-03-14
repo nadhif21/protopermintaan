@@ -473,30 +473,10 @@ function handleLogin($conn) {
     $password = trim($password);
     $storedPassword = trim($storedPassword);
     
-    // Debug: Check if password matches
+    // Check password (plain text comparison only - no hashing)
     if ($password !== $storedPassword) {
-        // Also check if stored password might be hashed (old data)
-        // If stored password looks like a hash (starts with $2y$ or $2a$), skip this check
-        if (strpos($storedPassword, '$2y$') === 0 || strpos($storedPassword, '$2a$') === 0) {
-            // Old hashed password, try to verify
-            if (password_verify($password, $storedPassword)) {
-                // Password matches with hash, update to plain text for future
-                $updateSql = "UPDATE `users` SET `password_hash` = ? WHERE `id` = ?";
-                $updateStmt = $conn->prepare($updateSql);
-                if ($updateStmt) {
-                    $userId = intval($user['id']);
-                    $updateStmt->bind_param('si', $password, $userId);
-                    $updateStmt->execute();
-                    $updateStmt->close();
-                }
-            } else {
         auditLog($conn, intval($user['id']), 'login_failed', 'user', ['reason' => 'bad_password']);
-                throw new Exception("Username/email atau password salah.");
-            }
-        } else {
-            auditLog($conn, intval($user['id']), 'login_failed', 'user', ['reason' => 'bad_password']);
-            throw new Exception("Username/email atau password salah.");
-        }
+        throw new Exception("Username/email atau password salah.");
     }
 
     $token = generateToken();
@@ -663,19 +643,8 @@ function handleChangePassword($conn) {
     // Verify old password
     $passwordValid = false;
     
-    // Try plain text comparison first
-    if ($storedPassword === $oldPassword) {
-        $passwordValid = true;
-    } else {
-        // If stored password looks like a hash, try to verify
-        if (strpos($storedPassword, '$2y$') === 0 || strpos($storedPassword, '$2a$') === 0) {
-            if (password_verify($oldPassword, $storedPassword)) {
-                $passwordValid = true;
-            }
-        }
-    }
-    
-    if (!$passwordValid) {
+    // Check old password (plain text comparison only - no hashing)
+    if ($storedPassword !== trim($oldPassword)) {
         auditLog($conn, $userId, 'change_password_failed', 'user', ['reason' => 'wrong_old_password']);
         throw new Exception("Password lama salah.");
     }
@@ -2620,12 +2589,11 @@ function handleCreateApprover($conn) {
     }
     
     // Create user with role 'approver'
-    $password = 'Approver@25'; // Default password
-    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+    $password = 'Approver@25'; // Default password (plain text, no hashing)
     
     $sql = "INSERT INTO `users` (`username`, `name`, `role`, `password_hash`, `is_active`";
     $values = "VALUES (?, ?, 'approver', ?, 1";
-    $params = [$username, $name, $passwordHash];
+    $params = [$username, $name, $password];
     $types = 'sss';
     
     // Add optional fields
