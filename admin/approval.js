@@ -161,7 +161,7 @@ function escapeHtml(text) {
 async function loadRegistrations(status = '') {
     const tbody = document.getElementById('registrationsTbody');
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="9" class="loading">Memuat...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="loading">Memuat...</td></tr>`;
 
     try {
         const params = status ? { status } : {};
@@ -169,7 +169,7 @@ async function loadRegistrations(status = '') {
         tbody.innerHTML = registrations.map(r => registrationRowHtml(r)).join('');
         bindRegistrationRowActions();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="9" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
     }
 }
 
@@ -192,8 +192,30 @@ function registrationRowHtml(r) {
             </div>
         `;
     } else {
-        actions = `<span style="color:#666; font-size:0.85rem;">${r.approvedByName ? `Oleh: ${escapeHtml(r.approvedByName)}` : '-'}</span>`;
+        // Show status badge first, then "Oleh: [nama]"
+        let statusText = '';
+        if (r.status === 'approved') {
+            statusText = '<span class="badge badge-active">Approved</span>';
+        } else if (r.status === 'rejected') {
+            statusText = '<span class="badge badge-inactive">Rejected</span>';
+        }
+        
+        const olehText = r.approvedByName ? `Oleh: ${escapeHtml(r.approvedByName)}` : '';
+        
+        actions = `
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                ${statusText}
+                ${olehText ? `<span style="color:#666; font-size:0.85rem;">${olehText}</span>` : ''}
+            </div>
+        `;
     }
+
+    // Generate WhatsApp button only for approved registrations
+    const whatsappButton = r.status === 'approved' ? `
+        <button class="btn-small btn-whatsapp" data-action="whatsapp" data-registration-id="${r.id}" title="Kirim notifikasi WhatsApp">
+            📱 WhatsApp
+        </button>
+    ` : '';
 
     return `
         <tr data-registration-id="${r.id}">
@@ -206,6 +228,7 @@ function registrationRowHtml(r) {
             <td>${statusBadge}</td>
             <td>${escapeHtml(formatDateTime(r.createdAt))}</td>
             <td>${actions}</td>
+            <td>${whatsappButton}</td>
         </tr>
     `;
 }
@@ -223,12 +246,62 @@ function bindRegistrationRowActions() {
                 await approveRegistration(registrationId);
             } else if (action === 'reject') {
                 openRejectModal(registrationId);
+            } else if (action === 'whatsapp') {
+                await sendWhatsAppNotification(registrationId);
             }
         });
     });
 }
 
 let currentApprovedData = null;
+
+async function sendWhatsAppNotification(registrationId) {
+    try {
+        // Get registration data
+        const registrations = await apiGet('listRegistrations', {});
+        const registration = registrations.find(r => r.id === registrationId);
+        
+        if (!registration) {
+            alert('Data registrasi tidak ditemukan.');
+            return;
+        }
+
+        // Only allow WhatsApp notification for approved registrations
+        if (registration.status !== 'approved') {
+            alert('Notifikasi WhatsApp hanya dapat dikirim untuk registrasi yang sudah disetujui.');
+            return;
+        }
+
+        if (!registration.nomorTelepon) {
+            alert('Nomor telepon tidak tersedia untuk registrasi ini.');
+            return;
+        }
+
+        // Generate username from NPK (lowercase)
+        const username = registration.npk ? registration.npk.toLowerCase() : '';
+
+        // Generate message according to format
+        let message = "Pendaftaran akun Anda telah DISETUJUI.\n\n";
+        message += "Detail Akun:\n";
+        message += "• Nama: " + registration.nama + "\n";
+        message += "• Username: " + username + "\n";
+        message += "• NPK: " + registration.npk + "\n";
+        message += "• Unit Kerja: " + registration.unitKerja + "\n\n";
+        message += "Silakan login menggunakan username di atas.\n\n";
+        message += "Terima kasih.";
+
+        // Generate WhatsApp URL
+        // Remove leading 0 and add country code 62
+        const cleanPhone = registration.nomorTelepon.replace(/^0/, '62');
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+
+        // Open WhatsApp
+        window.open(whatsappUrl, '_blank');
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
 
 async function approveRegistration(id) {
     if (!confirm('Setujui pendaftaran ini? Akun user akan dibuat dan notifikasi WhatsApp akan dikirim.')) {
@@ -242,11 +315,14 @@ async function approveRegistration(id) {
         const registration = registrations.find(r => r.id === id);
         
         if (result && registration) {
+            // Use password from registration if available, otherwise use default
+            const password = registration.password || 'User@25';
+            
             currentApprovedData = {
                 whatsappUrl: result.whatsappUrl,
                 nama: registration.nama,
                 username: registration.npk.toLowerCase(),
-                password: 'User@25',
+                password: password,
                 npk: registration.npk,
                 unitKerja: registration.unitKerja,
                 nomorTelepon: registration.nomorTelepon

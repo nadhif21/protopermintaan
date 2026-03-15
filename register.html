@@ -55,6 +55,27 @@
                         </select>
                     </div>
 
+                    <div class="input-group">
+                        <label for="password">Password <span class="required">*</span></label>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" placeholder="Masukkan password" required autocomplete="new-password">
+                            <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">
+                                <span class="eye-icon">👁️</span>
+                            </button>
+                        </div>
+                        <div class="form-hint">Minimal 6 karakter</div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="password_confirm">Konfirmasi Password <span class="required">*</span></label>
+                        <div class="password-wrapper">
+                            <input type="password" id="password_confirm" placeholder="Masukkan ulang password" required autocomplete="new-password">
+                            <button type="button" class="toggle-password" id="togglePasswordConfirm" aria-label="Toggle password visibility">
+                                <span class="eye-icon">👁️</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div id="errorMessage" class="error-message"></div>
                     <div id="successMessage" class="success-message"></div>
                     

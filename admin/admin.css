@@ -741,6 +741,23 @@
     font-size: 1.3rem;
 }
 
+.btn-small.btn-whatsapp {
+    padding: 7px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    gap: 6px;
+    box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+}
+
+.btn-small.btn-whatsapp:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(37, 211, 102, 0.35);
+}
+
+.btn-small.btn-whatsapp:active {
+    transform: translateY(0);
+}
+
 .modal-body {
     padding: 12px 4px;
 }

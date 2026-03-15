@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     loadUnitKerja();
+    setupPasswordToggle();
 
     const registerForm = document.getElementById('registerForm');
     const errorMessage = document.getElementById('errorMessage');
@@ -52,6 +53,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const unitKerjaSelect = document.getElementById('unit_kerja');
         const unitKerjaId = unitKerjaSelect.value;
         const unitKerjaText = unitKerjaSelect.options[unitKerjaSelect.selectedIndex]?.text || '';
+        const password = document.getElementById('password').value;
+        const passwordConfirm = document.getElementById('password_confirm').value;
 
         if (!nama) {
             showError('Nama lengkap wajib diisi.');
@@ -97,6 +100,24 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        if (!password) {
+            showError('Password wajib diisi.');
+            document.getElementById('password').focus();
+            return;
+        }
+
+        if (password.length < 6) {
+            showError('Password minimal 6 karakter.');
+            document.getElementById('password').focus();
+            return;
+        }
+
+        if (password !== passwordConfirm) {
+            showError('Konfirmasi password tidak sesuai.');
+            document.getElementById('password_confirm').focus();
+            return;
+        }
+
         try {
             submitBtn.disabled = true;
             submitBtn.style.opacity = '0.8';
@@ -108,7 +129,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 npk: npk,
                 nomor_telepon: nomor_telepon,
                 email: email,
-                unit_kerja: unitKerjaText
+                unit_kerja: unitKerjaText,
+                password: password
             });
 
             const apiUrl = getApiUrl();
@@ -149,6 +171,45 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+function setupPasswordToggle() {
+    const togglePassword = document.getElementById('togglePassword');
+    const togglePasswordConfirm = document.getElementById('togglePasswordConfirm');
+    const passwordInput = document.getElementById('password');
+    const passwordConfirmInput = document.getElementById('password_confirm');
+
+    if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            togglePassword.classList.toggle('active');
+            
+            // Update icon
+            const eyeIcon = togglePassword.querySelector('.eye-icon');
+            if (type === 'text') {
+                eyeIcon.textContent = '🙈';
+            } else {
+                eyeIcon.textContent = '👁️';
+            }
+        });
+    }
+
+    if (togglePasswordConfirm && passwordConfirmInput) {
+        togglePasswordConfirm.addEventListener('click', function() {
+            const type = passwordConfirmInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordConfirmInput.setAttribute('type', type);
+            togglePasswordConfirm.classList.toggle('active');
+            
+            // Update icon
+            const eyeIcon = togglePasswordConfirm.querySelector('.eye-icon');
+            if (type === 'text') {
+                eyeIcon.textContent = '🙈';
+            } else {
+                eyeIcon.textContent = '👁️';
+            }
+        });
+    }
+}
 
 function showError(message) {
     const errorMessage = document.getElementById('errorMessage');

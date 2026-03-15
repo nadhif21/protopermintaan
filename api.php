@@ -1106,10 +1106,16 @@ function handleRegister($conn) {
     $nomor_telepon = trim(getRequestParam('nomor_telepon', ''));
     $email = trim(getRequestParam('email', ''));
     $unit_kerja = trim(getRequestParam('unit_kerja', ''));
+    $password = getRequestParam('password', '');
 
-    // Validation (password tidak diperlukan, akan di-generate saat approval)
-    if ($nama === '' || $npk === '' || $nomor_telepon === '' || $email === '' || $unit_kerja === '') {
+    // Validation
+    if ($nama === '' || $npk === '' || $nomor_telepon === '' || $email === '' || $unit_kerja === '' || $password === '') {
         throw new Exception("Semua field wajib diisi.");
+    }
+
+    // Validate password
+    if (strlen($password) < 6) {
+        throw new Exception("Password minimal 6 karakter.");
     }
 
     // Validate email format
@@ -1196,13 +1202,23 @@ function handleRegister($conn) {
         $deleteOldReg->close();
     }
 
-    // Insert registration (password tidak diperlukan, akan di-generate saat approval)
-    $sql = "INSERT INTO `user_registrations` (`nama`, `npk`, `nomor_telepon`, `email`, `unit_kerja`, `status`) VALUES (?, ?, ?, ?, ?, 'pending')";
+    // Check if password column exists in user_registrations table, if not add it
+    $checkPasswordColumn = $conn->query("SHOW COLUMNS FROM `user_registrations` LIKE 'password'");
+    if (!$checkPasswordColumn || $checkPasswordColumn->num_rows === 0) {
+        // Add password column if it doesn't exist
+        $alterResult = $conn->query("ALTER TABLE `user_registrations` ADD COLUMN `password` VARCHAR(255) NULL AFTER `unit_kerja`");
+        if (!$alterResult) {
+            error_log("Warning: Could not add password column to user_registrations: " . $conn->error);
+        }
+    }
+
+    // Insert registration with password
+    $sql = "INSERT INTO `user_registrations` (`nama`, `npk`, `nomor_telepon`, `email`, `unit_kerja`, `password`, `status`) VALUES (?, ?, ?, ?, ?, ?, 'pending')";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         throw new Exception("Prepare error: " . $conn->error);
     }
-    $stmt->bind_param('sssss', $nama, $npk, $nomor_telepon, $email, $unit_kerja);
+    $stmt->bind_param('ssssss', $nama, $npk, $nomor_telepon, $email, $unit_kerja, $password);
     
     if (!$stmt->execute()) {
         $err = $stmt->error;
@@ -1234,9 +1250,18 @@ function handleListRegistrations($conn) {
         $types = 's';
     }
 
-    $sql = "SELECT r.`id`, r.`nama`, r.`npk`, r.`nomor_telepon`, r.`email`, r.`unit_kerja`, r.`status`, 
+    // Check if password column exists
+    $checkPasswordColumn = $conn->query("SHOW COLUMNS FROM `user_registrations` LIKE 'password'");
+    $hasPasswordColumn = $checkPasswordColumn && $checkPasswordColumn->num_rows > 0;
+    
+    $selectColumns = "r.`id`, r.`nama`, r.`npk`, r.`nomor_telepon`, r.`email`, r.`unit_kerja`, r.`status`, 
                    r.`approved_by`, r.`approved_at`, r.`rejection_reason`, r.`created_at`, r.`updated_at`,
-                   u.`name` as `approved_by_name`
+                   u.`name` as `approved_by_name`";
+    if ($hasPasswordColumn) {
+        $selectColumns .= ", r.`password`";
+    }
+    
+    $sql = "SELECT " . $selectColumns . "
             FROM `user_registrations` r
             LEFT JOIN `users` u ON u.`id` = r.`approved_by`
             " . $whereClause . "
@@ -1256,7 +1281,7 @@ function handleListRegistrations($conn) {
     $registrations = [];
     
     while ($row = $result->fetch_assoc()) {
-        $registrations[] = [
+        $registrationData = [
             'id' => intval($row['id']),
             'nama' => $row['nama'],
             'npk' => $row['npk'],
@@ -1271,6 +1296,13 @@ function handleListRegistrations($conn) {
             'createdAt' => $row['created_at'],
             'updatedAt' => $row['updated_at']
         ];
+        
+        // Include password only for pending registrations (for admin to see during approval)
+        if ($hasPasswordColumn && isset($row['password']) && $row['status'] === 'pending') {
+            $registrationData['password'] = $row['password'];
+        }
+        
+        $registrations[] = $registrationData;
     }
     
     $stmt->close();
@@ -1350,8 +1382,10 @@ function handleApproveRegistration($conn) {
     // Generate username from NPK (lowercase)
     $username = strtolower($registration['npk']);
     
-    // Generate fixed password for all users: "User@25"
-    $passwordHash = 'User@25';
+    // Get password from registration (user created it during registration)
+    $passwordHash = isset($registration['password']) && $registration['password'] !== '' 
+        ? $registration['password'] 
+        : 'User@25'; // Fallback to default if password not set (for backward compatibility)
 
     // Start transaction
     $conn->begin_transaction();
@@ -1469,11 +1503,9 @@ function generateApprovalMessage($registration, $username, $password) {
     $message .= "Detail Akun:\n";
     $message .= "• Nama: " . $registration['nama'] . "\n";
     $message .= "• Username: " . $username . "\n";
-    $message .= "• Password: " . $password . "\n";
     $message .= "• NPK: " . $registration['npk'] . "\n";
     $message .= "• Unit Kerja: " . $registration['unit_kerja'] . "\n\n";
-    $message .= "Silakan login menggunakan username dan password di atas.\n";
-    $message .= "Sangat disarankan untuk mengubah password setelah login pertama kali.\n\n";
+    $message .= "Silakan login menggunakan username di atas.\n\n";
     $message .= "Terima kasih.";
     
     return $message;
