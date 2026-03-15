@@ -1,12 +1,10 @@
 <?php
-// Konfigurasi database MySQL
 
 define('DB_HOST', 'localhost');
 define('DB_USER', 'u207689956_andaladkorpkt');
 define('DB_PASS', 'Permintaandof2025!');
 define('DB_NAME', 'u207689956_permintaandof');
 
-// Koneksi database
 function getDBConnection() {
     static $conn = null;
     
@@ -28,9 +26,7 @@ function getDBConnection() {
     return $conn;
 }
 
-// Helper function untuk response JSON
 function sendJSONResponse($success, $data = null, $error = null, $headers = null) {
-    // Clear any output buffer before sending JSON
     if (ob_get_level() > 0) {
         ob_clean();
     }
@@ -60,7 +56,6 @@ function sendJSONResponse($success, $data = null, $error = null, $headers = null
     exit;
 }
 
-// Helper function untuk escape string
 function escapeString($str) {
     if ($str === null || $str === '') {
         return '';

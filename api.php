@@ -1,15 +1,12 @@
 <?php
-// Disable error display, but log errors
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-// Start output buffering to catch any unexpected output
 ob_start();
 
 require_once 'config.php';
 
-// Fungsi untuk convert format datetime dari ISO 8601 ke MySQL DATETIME
 function convertToMySQLDateTime($dateString) {
     if (empty($dateString) || trim($dateString) === '') {
         return null;
@@ -17,7 +14,6 @@ function convertToMySQLDateTime($dateString) {
     
     $dateString = trim($dateString);
     
-    // Handle format datetime-local: 2026-03-06T08:03 (tanpa seconds)
     if (preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/', $dateString, $matches)) {
         $year = $matches[1];
         $month = $matches[2];
@@ -27,10 +23,7 @@ function convertToMySQLDateTime($dateString) {
         return "$year-$month-$day $hour:$minute:00";
     }
     
-    // Handle format ISO 8601 dengan timezone Z (UTC): 2026-03-06T08:03:48.328Z atau 2026-03-06T08:03:48Z
     if (preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/', $dateString, $matches)) {
-        // Format dengan Z (UTC) - simpan sebagai UTC di database (tidak dikonversi ke timezone server)
-        // Konversi ke timezone lokal akan dilakukan di sisi client (JavaScript)
         $year = $matches[1];
         $month = $matches[2];
         $day = $matches[3];
@@ -153,6 +146,21 @@ try {
             
         case 'getUnitKerja':
             handleGetUnitKerja($conn);
+            break;
+        case 'getAllUnitKerja':
+            handleGetAllUnitKerja($conn);
+            break;
+            
+        case 'createUnitKerja':
+            handleCreateUnitKerja($conn);
+            break;
+            
+        case 'updateUnitKerja':
+            handleUpdateUnitKerja($conn);
+            break;
+            
+        case 'deleteUnitKerja':
+            handleDeleteUnitKerja($conn);
             break;
             
         case 'getPilihPermintaanOptions':
@@ -1484,11 +1492,12 @@ function handleGetData($conn) {
     $session = null;
     $userId = null;
     $userRole = null;
+    $userUnitKerja = null;
     
     try {
         $token = getAuthTokenFromRequest();
         if ($token !== '') {
-            $sessionResult = $conn->query("SELECT s.`user_id`, s.`token`, s.`expires_at`, u.`username`, u.`name`, u.`role`, u.`is_active`
+            $sessionResult = $conn->query("SELECT s.`user_id`, s.`token`, s.`expires_at`, u.`username`, u.`name`, u.`role`, u.`is_active`, u.`unit_kerja`
                 FROM `auth_sessions` s
                 JOIN `users` u ON u.`id` = s.`user_id`
                 WHERE s.`token` = '" . $conn->real_escape_string($token) . "' 
@@ -1500,6 +1509,7 @@ function handleGetData($conn) {
                 $sessionRow = $sessionResult->fetch_assoc();
                 $userId = intval($sessionRow['user_id']);
                 $userRole = $sessionRow['role'];
+                $userUnitKerja = isset($sessionRow['unit_kerja']) ? trim($sessionRow['unit_kerja']) : null;
             }
         }
     } catch (Exception $e) {
@@ -1509,13 +1519,14 @@ function handleGetData($conn) {
     $table = $_GET['table'] ?? 'permintaan'; // default permintaan
     
     if ($table === 'backdate') {
-        // Filter by user_id if role is 'user'
-        if ($userRole === 'user' && $userId) {
-            // Check if user_id column exists
-            $checkColumn = $conn->query("SHOW COLUMNS FROM `backdate` LIKE 'user_id'");
+        // Filter by unit_kerja if role is 'user'
+        if ($userRole === 'user' && $userUnitKerja) {
+            // Check if unit_kerja column exists
+            $checkColumn = $conn->query("SHOW COLUMNS FROM `backdate` LIKE 'unit_kerja'");
             if ($checkColumn && $checkColumn->num_rows > 0) {
-                // STRICT: Only show data where user_id matches exactly
-                $sql = "SELECT * FROM `backdate` WHERE `user_id` = $userId AND `user_id` IS NOT NULL ORDER BY `timestamp` DESC, `id` DESC";
+                // Filter by unit_kerja - show all data from same unit kerja
+                $unitKerjaEscaped = $conn->real_escape_string($userUnitKerja);
+                $sql = "SELECT * FROM `backdate` WHERE `unit_kerja` = '$unitKerjaEscaped' AND `unit_kerja` IS NOT NULL ORDER BY `timestamp` DESC, `id` DESC";
             } else {
                 // If column doesn't exist, return empty for user (they can't see old data)
                 $sql = "SELECT * FROM `backdate` WHERE 1=0";
@@ -1525,24 +1536,24 @@ function handleGetData($conn) {
             // This includes cases where:
             // - userRole is null (no auth token)
             // - userRole is 'admin' or 'super_admin'
-            // - userRole is 'user' but userId is null (shouldn't happen, but fallback)
+            // - userRole is 'user' but userUnitKerja is null (shouldn't happen, but fallback)
             $sql = "SELECT * FROM `backdate` ORDER BY `timestamp` DESC, `id` DESC";
         }
     } else {
-        // Filter by user_id if role is 'user'
-        if ($userRole === 'user' && $userId) {
-            // Check if user_id column exists
-            $checkColumn = $conn->query("SHOW COLUMNS FROM `permintaan` LIKE 'user_id'");
+        // Filter by unit_kerja if role is 'user'
+        if ($userRole === 'user' && $userUnitKerja) {
+            // Check if unit_kerja column exists
+            $checkColumn = $conn->query("SHOW COLUMNS FROM `permintaan` LIKE 'unit_kerja'");
             if ($checkColumn && $checkColumn->num_rows > 0) {
-                // STRICT: Only show data where user_id matches exactly
-                // This ensures users only see their own data
-                $sql = "SELECT * FROM `permintaan` WHERE `user_id` = $userId AND `user_id` IS NOT NULL ORDER BY `timestamp` DESC, `id` DESC";
+                // Filter by unit_kerja - show all data from same unit kerja
+                $unitKerjaEscaped = $conn->real_escape_string($userUnitKerja);
+                $sql = "SELECT * FROM `permintaan` WHERE `unit_kerja` = '$unitKerjaEscaped' AND `unit_kerja` IS NOT NULL ORDER BY `timestamp` DESC, `id` DESC";
             } else {
                 // If column doesn't exist, return empty for user (they can't see old data)
                 $sql = "SELECT * FROM `permintaan` WHERE 1=0";
             }
-        } else if ($userRole === 'user' && !$userId) {
-            // If user role but no userId found, return empty
+        } else if ($userRole === 'user' && !$userUnitKerja) {
+            // If user role but no unit kerja found, return empty
             $sql = "SELECT * FROM `permintaan` WHERE 1=0";
         } else {
             // For admin/super_admin, show all data
@@ -1608,7 +1619,7 @@ function handleGetData($conn) {
             // Headers untuk permintaan (sesuai struktur spreadsheet sebenarnya)
             if (empty($headers)) {
                 $headers = [
-                    'Timestamp', 'NPK', 'Nama Lengkap', 'Unit Kerja :', 
+                    'ID Permintaan', 'Timestamp', 'NPK', 'Nama Lengkap', 'Unit Kerja :', 
                     'No Telepon (HP)', 'No Surat', 'Pilih Permintaan', 
                     'Status Surat', 'Alasan Permintaan/Permintaan', 
                     'Email Address', 'Jenis Surat', 'Isi Penjelasan Singkat Permintaanya',
@@ -1653,6 +1664,8 @@ function handleGetData($conn) {
             // Tambahkan petugas_id dan petugas_no_wa untuk kebutuhan chat
             $rowData['Petugas ID'] = $row['petugas_id'] ?? '';
             $rowData['Petugas No WA'] = $row['petugas_no_wa'] ?? '';
+            // Tambahkan ID Permintaan untuk dashboard
+            $rowData['ID Permintaan'] = $row['row_number'] ?? $rowData['rowNumber'] ?? '';
         }
         
         $data[] = $rowData;
@@ -2339,6 +2352,36 @@ function handleValidateApprovalPin($conn) {
 
 // Handler untuk getUnitKerja
 function handleGetUnitKerja($conn) {
+    // Ensure unit_kerja table exists
+    $checkTable = $conn->query("SHOW TABLES LIKE 'unit_kerja'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `unit_kerja` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `nama_unit` VARCHAR(200) NOT NULL,
+            `is_active` TINYINT(1) DEFAULT 1,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_nama_unit` (`nama_unit`),
+            INDEX `idx_is_active` (`is_active`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createTableSql)) {
+            throw new Exception("Error creating unit_kerja table: " . $conn->error);
+        }
+    } else {
+        // Ensure is_active column exists
+        $checkColumn = $conn->query("SHOW COLUMNS FROM `unit_kerja` LIKE 'is_active'");
+        if (!$checkColumn || $checkColumn->num_rows === 0) {
+            $conn->query("ALTER TABLE `unit_kerja` ADD COLUMN `is_active` TINYINT(1) DEFAULT 1");
+            // Update all existing records to active (only NULL values, not 0)
+            $conn->query("UPDATE `unit_kerja` SET `is_active` = 1 WHERE `is_active` IS NULL");
+        } else {
+            // Update all existing records to active (only NULL values - data yang belum pernah di-set)
+            // Jangan update yang 0 karena itu data yang sengaja dinonaktifkan
+            $conn->query("UPDATE `unit_kerja` SET `is_active` = 1 WHERE `is_active` IS NULL");
+        }
+    }
+    
     $sql = "SELECT `id`, `nama_unit` FROM `unit_kerja` WHERE `is_active` = 1 ORDER BY `nama_unit` ASC";
     $result = $conn->query($sql);
     
@@ -2355,6 +2398,298 @@ function handleGetUnitKerja($conn) {
     }
     
     sendJSONResponse(true, $data);
+}
+
+// Handler untuk getAllUnitKerja (untuk admin - mengembalikan semua data termasuk non-aktif)
+function handleGetAllUnitKerja($conn) {
+    $session = requireSuperAdmin($conn);
+    
+    // Ensure unit_kerja table exists
+    $checkTable = $conn->query("SHOW TABLES LIKE 'unit_kerja'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `unit_kerja` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `nama_unit` VARCHAR(200) NOT NULL,
+            `is_active` TINYINT(1) DEFAULT 1,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_nama_unit` (`nama_unit`),
+            INDEX `idx_is_active` (`is_active`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createTableSql)) {
+            throw new Exception("Error creating unit_kerja table: " . $conn->error);
+        }
+    } else {
+        // Ensure is_active column exists
+        $checkColumn = $conn->query("SHOW COLUMNS FROM `unit_kerja` LIKE 'is_active'");
+        if (!$checkColumn || $checkColumn->num_rows === 0) {
+            $conn->query("ALTER TABLE `unit_kerja` ADD COLUMN `is_active` TINYINT(1) DEFAULT 1");
+        }
+        
+        // Update all existing records to active (only NULL values - data yang belum pernah di-set)
+        // Jangan update yang 0 karena itu data yang sengaja dinonaktifkan
+        $conn->query("UPDATE `unit_kerja` SET `is_active` = 1 WHERE `is_active` IS NULL");
+    }
+    
+    $sql = "SELECT `id`, `nama_unit`, `is_active` FROM `unit_kerja` ORDER BY `nama_unit` ASC";
+    $result = $conn->query($sql);
+    
+    if (!$result) {
+        throw new Exception("Query error: " . $conn->error);
+    }
+    
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = [
+            'id' => intval($row['id']),
+            'nama_unit' => $row['nama_unit'],
+            'nama' => $row['nama_unit'], // Alias for compatibility
+            'is_active' => intval($row['is_active']) === 1
+        ];
+    }
+    
+    sendJSONResponse(true, $data);
+}
+
+function handleCreateUnitKerja($conn) {
+    $session = requireSuperAdmin($conn);
+    
+    // Ensure unit_kerja table exists
+    $checkTable = $conn->query("SHOW TABLES LIKE 'unit_kerja'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `unit_kerja` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `nama_unit` VARCHAR(200) NOT NULL,
+            `is_active` TINYINT(1) DEFAULT 1,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_nama_unit` (`nama_unit`),
+            INDEX `idx_is_active` (`is_active`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($createTableSql)) {
+            throw new Exception("Error creating unit_kerja table: " . $conn->error);
+        }
+    }
+    
+    $nama = trim(getRequestParam('nama', ''));
+    
+    if ($nama === '') {
+        throw new Exception("Nama unit kerja wajib diisi.");
+    }
+    
+    // Check if nama already exists
+    $check = $conn->prepare("SELECT `id` FROM `unit_kerja` WHERE `nama_unit` = ? AND `is_active` = 1 LIMIT 1");
+    if ($check) {
+        $check->bind_param('s', $nama);
+        $check->execute();
+        $result = $check->get_result();
+        if ($result && $result->num_rows > 0) {
+            $check->close();
+            throw new Exception("Unit kerja dengan nama tersebut sudah ada.");
+        }
+        $check->close();
+    }
+    
+    $sql = "INSERT INTO `unit_kerja` (`nama_unit`, `is_active`) VALUES (?, 1)";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('s', $nama);
+    
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal membuat unit kerja: " . $err);
+    }
+    $newId = $conn->insert_id;
+    $stmt->close();
+    
+    auditLog($conn, $session['user_id'], 'create_unit_kerja', 'unit_kerja', ['createdUnitKerjaId' => $newId, 'nama' => $nama]);
+    sendJSONResponse(true, ['message' => 'Unit kerja berhasil dibuat', 'id' => $newId]);
+}
+
+function handleUpdateUnitKerja($conn) {
+    $session = requireSuperAdmin($conn);
+    
+    $id = intval(getRequestParam('id', 0));
+    $nama = trim(getRequestParam('nama', ''));
+    
+    if ($id <= 0) {
+        throw new Exception("ID unit kerja tidak valid.");
+    }
+    
+    if ($nama === '') {
+        throw new Exception("Nama unit kerja wajib diisi.");
+    }
+    
+    // Get old nama_unit before update
+    $getOld = $conn->prepare("SELECT `nama_unit` FROM `unit_kerja` WHERE `id` = ? LIMIT 1");
+    if (!$getOld) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $getOld->bind_param('i', $id);
+    $getOld->execute();
+    $oldResult = $getOld->get_result();
+    if (!$oldResult || $oldResult->num_rows === 0) {
+        $getOld->close();
+        throw new Exception("Unit kerja tidak ditemukan.");
+    }
+    $oldRow = $oldResult->fetch_assoc();
+    $oldNama = $oldRow['nama_unit'];
+    $getOld->close();
+    
+    // Check if new nama already exists (for different id)
+    $check = $conn->prepare("SELECT `id` FROM `unit_kerja` WHERE `nama_unit` = ? AND `id` != ? AND `is_active` = 1 LIMIT 1");
+    if ($check) {
+        $check->bind_param('si', $nama, $id);
+        $check->execute();
+        $result = $check->get_result();
+        if ($result && $result->num_rows > 0) {
+            $check->close();
+            throw new Exception("Unit kerja dengan nama tersebut sudah ada.");
+        }
+        $check->close();
+    }
+    
+    // Start transaction
+    $conn->begin_transaction();
+    
+    try {
+        // Update unit_kerja table
+        $isActive = getRequestParam('is_active', null);
+        if ($isActive !== null) {
+            $isActive = intval($isActive);
+            $sql = "UPDATE `unit_kerja` SET `nama_unit` = ?, `is_active` = ? WHERE `id` = ?";
+            $stmt = $conn->prepare($sql);
+            if (!$stmt) {
+                throw new Exception("Prepare error: " . $conn->error);
+            }
+            $stmt->bind_param('sii', $nama, $isActive, $id);
+        } else {
+            $sql = "UPDATE `unit_kerja` SET `nama_unit` = ? WHERE `id` = ?";
+            $stmt = $conn->prepare($sql);
+            if (!$stmt) {
+                throw new Exception("Prepare error: " . $conn->error);
+            }
+            $stmt->bind_param('si', $nama, $id);
+        }
+        
+        if (!$stmt->execute()) {
+            $err = $stmt->error;
+            $stmt->close();
+            throw new Exception("Gagal update unit kerja: " . $err);
+        }
+        $stmt->close();
+        
+        // Update all references in users table
+        $checkUsersColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
+        if ($checkUsersColumn && $checkUsersColumn->num_rows > 0) {
+            $updateUsers = $conn->prepare("UPDATE `users` SET `unit_kerja` = ? WHERE `unit_kerja` = ?");
+            if ($updateUsers) {
+                $updateUsers->bind_param('ss', $nama, $oldNama);
+                $updateUsers->execute();
+                $updateUsers->close();
+            }
+        }
+        
+        // Update all references in user_registrations table
+        $checkRegColumn = $conn->query("SHOW TABLES LIKE 'user_registrations'");
+        if ($checkRegColumn && $checkRegColumn->num_rows > 0) {
+            $checkRegUnitColumn = $conn->query("SHOW COLUMNS FROM `user_registrations` LIKE 'unit_kerja'");
+            if ($checkRegUnitColumn && $checkRegUnitColumn->num_rows > 0) {
+                $updateReg = $conn->prepare("UPDATE `user_registrations` SET `unit_kerja` = ? WHERE `unit_kerja` = ?");
+                if ($updateReg) {
+                    $updateReg->bind_param('ss', $nama, $oldNama);
+                    $updateReg->execute();
+                    $updateReg->close();
+                }
+            }
+        }
+        
+        // Update all references in permintaan_backdate table
+        $checkBackdateTable = $conn->query("SHOW TABLES LIKE 'permintaan_backdate'");
+        if ($checkBackdateTable && $checkBackdateTable->num_rows > 0) {
+            $checkBackdateUnitColumn = $conn->query("SHOW COLUMNS FROM `permintaan_backdate` LIKE 'unit_kerja'");
+            if ($checkBackdateUnitColumn && $checkBackdateUnitColumn->num_rows > 0) {
+                $updateBackdate = $conn->prepare("UPDATE `permintaan_backdate` SET `unit_kerja` = ? WHERE `unit_kerja` = ?");
+                if ($updateBackdate) {
+                    $updateBackdate->bind_param('ss', $nama, $oldNama);
+                    $updateBackdate->execute();
+                    $updateBackdate->close();
+                }
+            }
+        }
+        
+        // Update all references in nomor_surat_backdate table
+        $checkNomorSuratTable = $conn->query("SHOW TABLES LIKE 'nomor_surat_backdate'");
+        if ($checkNomorSuratTable && $checkNomorSuratTable->num_rows > 0) {
+            $checkNomorSuratUnitColumn = $conn->query("SHOW COLUMNS FROM `nomor_surat_backdate` LIKE 'unit_kerja'");
+            if ($checkNomorSuratUnitColumn && $checkNomorSuratUnitColumn->num_rows > 0) {
+                $updateNomorSurat = $conn->prepare("UPDATE `nomor_surat_backdate` SET `unit_kerja` = ? WHERE `unit_kerja` = ?");
+                if ($updateNomorSurat) {
+                    $updateNomorSurat->bind_param('ss', $nama, $oldNama);
+                    $updateNomorSurat->execute();
+                    $updateNomorSurat->close();
+                }
+            }
+        }
+        
+        // Update all references in permintaan table (if exists)
+        $checkPermintaanTable = $conn->query("SHOW TABLES LIKE 'permintaan'");
+        if ($checkPermintaanTable && $checkPermintaanTable->num_rows > 0) {
+            $checkPermintaanUnitColumn = $conn->query("SHOW COLUMNS FROM `permintaan` LIKE 'unit_kerja'");
+            if ($checkPermintaanUnitColumn && $checkPermintaanUnitColumn->num_rows > 0) {
+                $updatePermintaan = $conn->prepare("UPDATE `permintaan` SET `unit_kerja` = ? WHERE `unit_kerja` = ?");
+                if ($updatePermintaan) {
+                    $updatePermintaan->bind_param('ss', $nama, $oldNama);
+                    $updatePermintaan->execute();
+                    $updatePermintaan->close();
+                }
+            }
+        }
+        
+        // Commit transaction
+        $conn->commit();
+        
+        auditLog($conn, $session['user_id'], 'update_unit_kerja', 'unit_kerja', ['updatedUnitKerjaId' => $id, 'oldNama' => $oldNama, 'newNama' => $nama]);
+        sendJSONResponse(true, ['message' => 'Unit kerja berhasil diupdate dan semua referensi telah diperbarui']);
+        
+    } catch (Exception $e) {
+        // Rollback on error
+        $conn->rollback();
+        throw $e;
+    }
+}
+
+function handleDeleteUnitKerja($conn) {
+    $session = requireSuperAdmin($conn);
+    
+    $id = intval(getRequestParam('id', 0));
+    
+    if ($id <= 0) {
+        throw new Exception("ID unit kerja tidak valid.");
+    }
+    
+    // Soft delete (set is_active = 0)
+    $sql = "UPDATE `unit_kerja` SET `is_active` = 0 WHERE `id` = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('i', $id);
+    
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal menghapus unit kerja: " . $err);
+    }
+    $stmt->close();
+    
+    auditLog($conn, $session['user_id'], 'delete_unit_kerja', 'unit_kerja', ['deletedUnitKerjaId' => $id]);
+    sendJSONResponse(true, ['message' => 'Unit kerja berhasil dihapus']);
 }
 
 // Handler untuk getPilihPermintaanOptions
@@ -3976,11 +4311,41 @@ function handleGetListPermintaanBackdate($conn) {
     $params = [];
     $types = '';
     
+    // Get user unit_kerja for filtering
+    $userUnitKerja = null;
+    $userSql = "SELECT unit_kerja FROM `users` WHERE id = ? LIMIT 1";
+    $userStmt = $conn->prepare($userSql);
+    if ($userStmt) {
+        $userStmt->bind_param('i', $userId);
+        $userStmt->execute();
+        $userResult = $userStmt->get_result();
+        $userRow = $userResult->fetch_assoc();
+        $userStmt->close();
+        if ($userRow && isset($userRow['unit_kerja'])) {
+            $userUnitKerja = trim($userRow['unit_kerja']);
+        }
+    }
+    
     // Filter berdasarkan role
     if ($role === 'user') {
-        $sql .= " AND p.user_id = ?";
-        $params[] = $userId;
-        $types .= 'i';
+        // Filter by unit_kerja instead of user_id
+        if ($userUnitKerja) {
+            // Check if unit_kerja column exists in permintaan_backdate
+            $checkColumn = $conn->query("SHOW COLUMNS FROM `permintaan_backdate` LIKE 'unit_kerja'");
+            if ($checkColumn && $checkColumn->num_rows > 0) {
+                $sql .= " AND p.unit_kerja = ?";
+                $params[] = $userUnitKerja;
+                $types .= 's';
+            } else {
+                // If unit_kerja column doesn't exist, try to filter via user join
+                $sql .= " AND u.unit_kerja = ?";
+                $params[] = $userUnitKerja;
+                $types .= 's';
+            }
+        } else {
+            // If no unit_kerja found, return empty
+            $sql .= " AND 1=0";
+        }
     } elseif ($role === 'approver' || $role === 'admin' || $role === 'super_admin') {
         // Approver/admin bisa lihat semua
         if ($statusFilter && $statusFilter !== 'all') {

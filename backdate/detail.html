@@ -7,8 +7,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Detail & Approval Permintaan Backdate</title>
-    <script src="../version.js?v=202412011200"></script>
-    <link rel="stylesheet" href="../layout.css?v=202412011200">
+    <script src="../version.js?v=202503151300"></script>
+    <link rel="stylesheet" href="../layout.css?v=202503151300">
     <style>
         body {
             background: #f5f7fa;
@@ -328,7 +328,6 @@
 </head>
 <body>
     <div class="approval-container">
-        <!-- PIN Card -->
         <div id="pinCard" class="pin-card">
             <div class="pin-icon-wrapper">
                 <svg viewBox="0 0 24 24" stroke-width="2">
@@ -351,7 +350,6 @@
             <button id="pinSubmitBtn" class="pin-submit-btn">Verifikasi PIN</button>
         </div>
 
-        <!-- Details Card -->
         <div id="detailsCard" class="details-card">
             <div class="details-header">
                 <h2>Detail & Approval Permintaan Backdate</h2>
@@ -361,7 +359,6 @@
                 <div id="error" class="error" style="display: none;"></div>
                 
                 <div id="detailInfo" style="display: none;">
-                    <!-- Content akan diisi oleh JavaScript -->
                 </div>
             </div>
         </div>
@@ -442,6 +439,7 @@
 Saya ingin menanyakan progress permintaan backdate saya.
 
 Detail permintaan:
+ID Permintaan: ${permintaanData.id || 'N/A'}
 Nomor: ${permintaanData.row_number}
 Nama Pegawai: ${permintaanData.nama_pegawai_backdate}
 NPK: ${permintaanData.npk_pegawai_backdate}

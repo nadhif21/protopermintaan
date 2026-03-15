@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Dashboard Approver - Permintaan Backdate</title>
-    <script src="../version.js?v=202412011200"></script>
-    <link rel="stylesheet" href="../layout.css?v=202412011200">
-    <link rel="stylesheet" href="backdate.css?v=202412011200">
-    <link rel="stylesheet" href="../icons.css?v=202412011200">
+    <script src="../version.js?v=202503151300"></script>
+    <link rel="stylesheet" href="../layout.css?v=202503151300">
+    <link rel="stylesheet" href="backdate.css?v=202503151300">
+    <link rel="stylesheet" href="../icons.css?v=202503151300">
     <style>
         .dashboard-container {
             padding: 20px;
@@ -822,8 +822,8 @@
         </div>
     </div>
 
-    <script src="../auth.js?v=202412011200"></script>
-    <script src="../sidebar.js?v=202412011200"></script>
+    <script src="../auth.js?v=202503151300"></script>
+    <script src="../sidebar.js?v=202503151300"></script>
     <script>
         // Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
         function getApiUrl() {
@@ -1464,12 +1464,18 @@
                 let message = template
                     .replace(/{approver_name}/g, approver.name || approver.username || 'Approver')
                     .replace(/{detail_url}/g, correctDetailUrl)
+                    .replace(/{id_permintaan}/g, req.id || id || 'N/A')
                     .replace(/{nomor_permintaan}/g, req.row_number || 'N/A')
                     .replace(/{nama_pegawai}/g, req.nama_pegawai_backdate || req.nama_pegawai || 'N/A')
                     .replace(/{npk}/g, req.npk_pegawai_backdate || req.npk || 'N/A')
                     .replace(/{jumlah_surat}/g, req.jumlah_surat || 'N/A')
                     .replace(/{alasan}/g, req.alasan || req.alasan_permintaan || 'N/A')
                     .replace(/{tanggal}/g, dateStr);
+                
+                // Tambahkan ID permintaan jika belum ada di template
+                if (!message.includes('ID Permintaan') && !message.includes('{id_permintaan}')) {
+                    message = message.replace('*Permintaan Approval Backdate*', `*Permintaan Approval Backdate*\n\nID Permintaan: ${req.id || id || 'N/A'}`);
+                }
                 
                 // Fix URL jika masih ada yang salah (untuk memastikan)
                 // Perbaiki semua URL yang tidak memiliki /permintaandof/
@@ -1540,6 +1546,7 @@
                             let message = `*Permintaan Backdate - Tindak Lanjut*\n\n`;
                             message += `Halo ${finalNama},\n\n`;
                             message += `Saya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n`;
+                            message += `• ID Permintaan: ${req.id || id || 'N/A'}\n`;
                             message += `• Nomor Permintaan: ${req.row_number || 'N/A'}\n`;
                             message += `• Nama Pegawai: ${namaPegawai}\n`;
                             message += `• NPK: ${npkPegawai}\n`;
@@ -1580,6 +1587,7 @@
                 let message = `*Permintaan Backdate - Tindak Lanjut*\n\n`;
                 message += `Halo ${petugasNama},\n\n`;
                 message += `Saya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n`;
+                message += `• ID Permintaan: ${req.id || id || 'N/A'}\n`;
                 message += `• Nomor Permintaan: ${req.row_number || 'N/A'}\n`;
                 message += `• Nama Pegawai: ${namaPegawai}\n`;
                 message += `• NPK: ${npkPegawai}\n`;
@@ -1610,10 +1618,10 @@
         }
         
         const defaultWaTemplates = {
-            'approval-backdate': `*Permintaan Approval Backdate*\n\nHalo {approver_name},\n\nMohon untuk review dan approve/reject permintaan backdate melalui link berikut:\n\n{detail_url}\n\nTerima kasih.`,
-            'hubungi-petugas': `Halo {petugas_name},\n\nSaya telah mengajukan permintaan pembukaan Backdate dengan nomor:\n\n#{nomor_permintaan}\n\nMohon untuk dapat direview melalui link berikut:\n{detail_url}\n\nTerima kasih.`,
-            'hubungi-admin': `*Notifikasi Permintaan Backdate*\n\nHalo {admin_name},\n\nSaya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n• Nomor Permintaan: {nomor_permintaan}\n• Nama Pegawai: {nama_pegawai}\n• NPK: {npk}\n• Jumlah Surat: {jumlah_surat}\n• Alasan: {alasan}\n\nMohon untuk dapat direview dan disetujui. Detail permintaan:\n{detail_url}\n\nTerima kasih.`,
-            'tanya-progress': `Halo {petugas_name},\n\nSaya ingin menanyakan progress permintaan backdate saya.\n\nDetail permintaan:\nNomor: {nomor_permintaan}\nNama Pegawai: {nama_pegawai}\nNPK: {npk}\nJumlah Surat: {jumlah_surat}\nStatus: {status}\n\nLink detail: {detail_url}\n\nMohon informasi progress terbaru. Terima kasih.`,
+            'approval-backdate': `*Permintaan Approval Backdate*\n\nHalo {approver_name},\n\nID Permintaan: {id_permintaan}\nNomor Permintaan: {nomor_permintaan}\n\nMohon untuk review dan approve/reject permintaan backdate melalui link berikut:\n\n{detail_url}\n\nTerima kasih.`,
+            'hubungi-petugas': `Halo {petugas_name},\n\nSaya telah mengajukan permintaan pembukaan Backdate dengan detail berikut:\n\nID Permintaan: {id_permintaan}\nNomor Permintaan: #{nomor_permintaan}\n\nMohon untuk dapat direview melalui link berikut:\n{detail_url}\n\nTerima kasih.`,
+            'hubungi-admin': `*Notifikasi Permintaan Backdate*\n\nHalo {admin_name},\n\nSaya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n• ID Permintaan: {id_permintaan}\n• Nomor Permintaan: {nomor_permintaan}\n• Nama Pegawai: {nama_pegawai}\n• NPK: {npk}\n• Jumlah Surat: {jumlah_surat}\n• Alasan: {alasan}\n\nMohon untuk dapat direview dan disetujui. Detail permintaan:\n{detail_url}\n\nTerima kasih.`,
+            'tanya-progress': `Halo {petugas_name},\n\nSaya ingin menanyakan progress permintaan backdate saya.\n\nDetail permintaan:\nID Permintaan: {id_permintaan}\nNomor: {nomor_permintaan}\nNama Pegawai: {nama_pegawai}\nNPK: {npk}\nJumlah Surat: {jumlah_surat}\nStatus: {status}\n\nLink detail: {detail_url}\n\nMohon informasi progress terbaru. Terima kasih.`,
             'info-akun': `*Informasi Akun*\n\nDetail Akun:\n• Nama: {nama}\n• Username: {username}\n• Password: {password}\n• NPK: {npk}\n• Email: {email}\n• Unit Kerja: {unit_kerja}\n• Role: {role}\n\nSilakan login menggunakan username dan password di atas.\nSangat disarankan untuk mengubah password setelah login pertama kali.\n\nTerima kasih.`,
             'registrasi': `Halo {nama},\n\nTerima kasih telah mendaftar. Data pendaftaran Anda:\n\nNama: {nama}\nNPK: {npk}\nEmail: {email}\nUnit Kerja: {unit_kerja}\n\nSilakan tunggu proses approval dari admin.\n\nTerima kasih.`
         };

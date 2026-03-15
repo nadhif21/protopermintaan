@@ -1,36 +1,27 @@
 const SESSION_KEY = "dof_auth_session";
 const SESSION_DURATION = 24 * 60 * 60 * 1000;
 
-// Base path untuk aplikasi (untuk subfolder deployment)
 const APP_BASE_PATH = '/permintaandof';
 const APP_BASE_URL = 'https://infoadkor.com/permintaandof';
 
-// Fungsi untuk mendapatkan base path aplikasi
 function getBasePath() {
     return APP_BASE_PATH;
 }
 
-// Fungsi untuk mendapatkan base URL aplikasi
 function getBaseUrl() {
     return APP_BASE_URL;
 }
 
-// Fungsi untuk membuat URL dengan base path (relative)
 function getAppUrl(path) {
-    // Pastikan path dimulai dengan /
     const cleanPath = path.startsWith('/') ? path : '/' + path;
-    // Hapus base path jika sudah ada di path
     if (cleanPath.startsWith(APP_BASE_PATH)) {
         return cleanPath;
     }
     return APP_BASE_PATH + cleanPath;
 }
 
-// Fungsi untuk membuat full URL dengan domain
 function getAppFullUrl(path) {
-    // Pastikan path dimulai dengan /
     const cleanPath = path.startsWith('/') ? path : '/' + path;
-    // Hapus base path jika sudah ada di path
     if (cleanPath.startsWith(APP_BASE_PATH)) {
         return APP_BASE_URL + cleanPath.substring(APP_BASE_PATH.length);
     }
@@ -38,7 +29,6 @@ function getAppFullUrl(path) {
 }
 
 function setSession(sessionPayload) {
-    // sessionPayload: { token, expiresAt, user: { id, username, name, role } }
     const isSuperAdmin = (sessionPayload?.user?.role === 'super_admin');
     const sessionData = {
         authenticated: true,
@@ -60,13 +50,11 @@ function getSession() {
         const session = JSON.parse(sessionData);
         const now = Date.now();
         
-        // Expired by client timer (fallback)
         if (now - session.timestamp > SESSION_DURATION) {
             clearSession();
             return null;
         }
 
-        // Expired by server expiry (preferred)
         if (session.expiresAt) {
             const exp = new Date(session.expiresAt);
             if (!isNaN(exp.getTime()) && now > exp.getTime()) {
@@ -142,7 +130,6 @@ function getIndexPathSafe() {
 }
 
 function logout() {
-    // Best effort call logout API (non-blocking)
     const token = getAuthToken();
     if (token) {
         fetch(getApiUrlSafe(), {
@@ -162,7 +149,6 @@ function getApiUrlSafe() {
     const currentPath = window.location.pathname;
     let basePath = '';
     
-    // Deteksi base path aplikasi (misalnya /permintaandof/)
     if (currentPath.includes('/permintaan/')) {
         basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
     } else if (currentPath.includes('/backdate/')) {
@@ -170,22 +156,17 @@ function getApiUrlSafe() {
     } else if (currentPath.includes('/admin/')) {
         basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
     } else {
-        // Jika di root folder aplikasi, ambil path sampai sebelum nama file
         const lastSlash = currentPath.lastIndexOf('/');
         basePath = currentPath.substring(0, lastSlash + 1);
     }
     
-    // Pastikan basePath selalu diakhiri dengan /
     if (basePath && !basePath.endsWith('/')) {
         basePath += '/';
     }
     
-    // Jika basePath kosong atau hanya '/', berarti di root domain
-    // Jika tidak, berarti di subfolder
     if (!basePath || basePath === '/') {
         return '/api.php';
     }
     
-    // Return path absolut dengan leading slash
     return basePath + 'api.php';
 }

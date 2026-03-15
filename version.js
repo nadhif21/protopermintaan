@@ -1,25 +1,17 @@
-// Version Configuration untuk Cache Busting
-// Update nomor ini setiap kali melakukan deploy ke Hostinger
-// Format: YYYYMMDDHHMM (tahun-bulan-tanggal-jam-menit)
-// Contoh: 202412011200 = 1 Desember 2024, jam 12:00
-
-// Cegah eksekusi ganda dengan IIFE dan check
 (function() {
-    // Jika sudah dijalankan sebelumnya, skip
     if (window.__VERSION_JS_LOADED__) {
         return;
     }
     window.__VERSION_JS_LOADED__ = true;
     
-    const APP_VERSION = '202503141605';
+    const APP_VERSION = '202503151300';
     
-    // Simpan version di localStorage untuk check di load berikutnya
     const STORAGE_KEY = '__APP_VERSION__';
     const lastVersion = localStorage.getItem(STORAGE_KEY);
     
-    // Jika version berbeda, clear cache dan reload
     if (lastVersion && lastVersion !== APP_VERSION) {
-        // Clear semua cache
+        console.log('Version changed from', lastVersion, 'to', APP_VERSION, '- Clearing cache and reloading...');
+        
         if ('caches' in window) {
             caches.keys().then(function(names) {
                 for (let name of names) {
@@ -27,46 +19,64 @@
                 }
             });
         }
-        // Clear localStorage cache
+        
         try {
             const keys = Object.keys(localStorage);
             keys.forEach(key => {
-                if (key.startsWith('__CACHE_')) {
+                if (key.startsWith('__CACHE_') || key === STORAGE_KEY) {
                     localStorage.removeItem(key);
                 }
             });
         } catch(e) {}
         
-        // Simpan version baru
+        try {
+            sessionStorage.clear();
+        } catch(e) {}
+        
         localStorage.setItem(STORAGE_KEY, APP_VERSION);
         
-        // Force reload dengan cache bypass
+        const url = new URL(window.location.href);
+        url.searchParams.set('_v', APP_VERSION);
+        url.searchParams.set('_t', Date.now());
+        
         if (window.location.search.indexOf('nocache') === -1) {
-            window.location.reload(true);
+            window.location.href = url.toString();
             return;
         }
     } else if (!lastVersion) {
-        // First time, simpan version
         localStorage.setItem(STORAGE_KEY, APP_VERSION);
+    } else {
+        const allLinks = document.querySelectorAll('link[rel="stylesheet"], script[src]');
+        let needsReload = false;
+        allLinks.forEach(link => {
+            const href = link.getAttribute('href') || link.getAttribute('src');
+            if (href && !href.includes('version.js') && !href.includes('v=' + APP_VERSION)) {
+                needsReload = true;
+            }
+        });
+        
+        if (needsReload && window.location.search.indexOf('_v=' + APP_VERSION) === -1) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('_v', APP_VERSION);
+            url.searchParams.set('_t', Date.now());
+            window.location.href = url.toString();
+            return;
+        }
     }
 
-    // Function untuk mendapatkan URL dengan version parameter
     function getVersionedUrl(url) {
         if (!url || url.includes('v=')) return url;
         const separator = url.includes('?') ? '&' : '?';
         return url + separator + 'v=' + APP_VERSION;
     }
 
-    // Function untuk apply version ke semua CSS dan JS
     function applyVersionToAssets() {
-        // Update semua CSS links
         const cssLinks = document.querySelectorAll('link[rel="stylesheet"]');
         cssLinks.forEach(link => {
             const href = link.getAttribute('href');
             if (href && !href.includes('v=')) {
                 const newHref = getVersionedUrl(href);
                 if (newHref !== href) {
-                    // Hapus link lama dan buat baru untuk force reload
                     const newLink = document.createElement('link');
                     newLink.rel = 'stylesheet';
                     newLink.href = newHref;
@@ -75,14 +85,12 @@
             }
         });
         
-        // Update semua JS scripts (kecuali version.js sendiri)
         const jsScripts = document.querySelectorAll('script[src]');
         jsScripts.forEach(script => {
             const src = script.getAttribute('src');
             if (src && !src.includes('v=') && !src.includes('version.js')) {
                 const newSrc = getVersionedUrl(src);
                 if (newSrc !== src) {
-                    // Hapus script lama dan buat baru untuk force reload
                     const newScript = document.createElement('script');
                     newScript.src = newSrc;
                     newScript.async = script.async;
@@ -93,28 +101,23 @@
         });
     }
 
-    // Jalankan segera untuk elemen yang sudah ada
-    // Coba jalankan langsung (untuk elemen yang sudah ada di head)
     if (document.head) {
         applyVersionToAssets();
     }
     
-    // Jalankan lagi saat DOM ready (untuk elemen yang ditambahkan kemudian)
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', applyVersionToAssets);
     } else {
-        // DOM sudah ready, jalankan langsung
         applyVersionToAssets();
     }
     
-    // Gunakan MutationObserver untuk menangkap elemen yang ditambahkan secara dinamis
     if (typeof MutationObserver !== 'undefined') {
         const observer = new MutationObserver(function(mutations) {
             let shouldUpdate = false;
             mutations.forEach(function(mutation) {
                 if (mutation.addedNodes.length > 0) {
                     mutation.addedNodes.forEach(function(node) {
-                        if (node.nodeType === 1) { // Element node
+                        if (node.nodeType === 1) {
                             if (node.tagName === 'LINK' || node.tagName === 'SCRIPT') {
                                 shouldUpdate = true;
                             }

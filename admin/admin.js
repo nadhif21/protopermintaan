@@ -1,4 +1,3 @@
-// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
 function getApiUrl() {
     const currentPath = window.location.pathname;
     let basePath = '';
@@ -54,17 +53,22 @@ document.addEventListener('DOMContentLoaded', () => {
     bindCreateUserModal();
     bindEditUserModal();
     bindResetPasswordModal();
+    bindPasswordToggles();
     bindRefreshButtons();
+    bindConfirmToggleUserStatusModal();
+    bindGenericConfirmModal();
     bindRegistrations();
     bindPinApproval();
     bindApprovers();
     bindPetugas();
+    bindUnitKerja();
 
     loadUsers();
     loadRegistrations();
     loadApprovalPin();
     loadApprovers();
     loadPetugas();
+    loadUnitKerja();
     loadUnitKerjaForApprover();
 });
 
@@ -75,11 +79,13 @@ function bindLogout() {
         if (typeof logout === 'function') {
             logout();
         } else {
-            if (confirm('Apakah Anda yakin ingin logout?')) {
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('userData');
-                window.location.href = getAppFullUrl('/login.html');
-            }
+            showConfirm('Apakah Anda yakin ingin logout?', 'Konfirmasi Logout', 'Anda akan keluar dari sistem dan harus login kembali untuk mengakses.').then(confirmed => {
+                if (confirmed) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userData');
+                    window.location.href = getAppFullUrl('/login.html');
+                }
+            });
         }
     });
 }
@@ -179,6 +185,7 @@ function bindEditUserModal() {
         const npk = document.getElementById('editNpk')?.value?.trim() || '';
         const nomorTelepon = document.getElementById('editNomorTelepon')?.value?.trim() || '';
         const unitKerja = document.getElementById('editUnitKerja')?.value?.trim() || '';
+        const status = document.getElementById('editUserStatus')?.value || '1';
 
         if (!name) {
             showEditUserError('Nama wajib diisi.');
@@ -196,7 +203,8 @@ function bindEditUserModal() {
             const updateData = { 
                 id: currentEditUserId, 
                 name: name, 
-                role: role
+                role: role,
+                isActive: status === '1' ? 1 : 0
             };
 
             if (username) updateData.username = username;
@@ -236,111 +244,133 @@ let usersData = [];
 async function loadUsers() {
     const tbody = document.getElementById('usersTbody');
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="5" class="loading">Memuat...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="loading">Memuat...</td></tr>`;
 
     try {
         const users = await apiGet('listUsers');
         usersData = users; // Simpan data users untuk realtime update
-        tbody.innerHTML = users.map(u => userRowHtml(u)).join('');
-        bindUserRowActions();
+        
+        // Store all data and reset to page 1
+        paginationState.users.allData = users;
+        paginationState.users.totalItems = users.length;
+        paginationState.users.currentPage = 1;
+        
+        renderUsersTable();
+        setupPagination('users');
         
         // Mulai realtime update untuk last login
         startRealtimeLastLoginUpdate();
-
-        // Update cards for mobile
-        const cardsContainer = document.getElementById('usersCards');
-        if (cardsContainer) {
-            if (users.length === 0) {
-                cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada user</div>';
-            } else {
-                cardsContainer.innerHTML = users.map(u => {
-                    const statusBadge = u.isActive
-                        ? `<span class="badge badge-active">Active</span>`
-                        : `<span class="badge badge-inactive">Inactive</span>`;
-                    const roleBadge = `<span class="badge badge-role">${escapeHtml(u.role.toUpperCase())}</span>`;
-                    const initials = getInitials(u.name || u.username);
-                    const email = u.email || `${u.username}@company.com`;
-                    const lastLogin = formatLastLogin(u.lastLogin || u.updatedAt);
-                    const lastLoginTime = u.lastLogin || u.updatedAt || '';
-
-                    return `
-                        <div class="admin-card" data-user-id="${u.id}">
-                            <div class="admin-card-row">
-                                <div class="admin-card-label">User</div>
-                                <div class="admin-card-value">
-                                    <div class="user-cell">
-                                        <div class="user-avatar">${initials}</div>
-                                        <div class="user-info">
-                                            <div class="user-name">${escapeHtml(u.name || u.username)}</div>
-                                            <div class="user-email">${escapeHtml(email)}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="admin-card-row">
-                                <div class="admin-card-label">Role</div>
-                                <div class="admin-card-value">${roleBadge}</div>
-                            </div>
-                            <div class="admin-card-row">
-                                <div class="admin-card-label">Status</div>
-                                <div class="admin-card-value">${statusBadge}</div>
-                            </div>
-                            <div class="admin-card-row">
-                                <div class="admin-card-label">Last Login</div>
-                                <div class="admin-card-value last-login-card-value" data-last-login="${lastLoginTime}">${lastLogin}</div>
-                            </div>
-                            <div class="admin-card-actions">
-                                <button class="btn-icon-action" data-action="edit" data-user-id="${u.id}" title="Edit">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                    </svg>
-                                    Edit
-                                </button>
-                                <button class="btn-icon-action" data-action="reset" data-user-id="${u.id}" title="Reset Password">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
-                                    </svg>
-                                    Reset
-                                </button>
-                                <button class="btn-icon-action btn-icon-danger" data-action="delete" data-user-id="${u.id}" title="Delete">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                    </svg>
-                                    Hapus
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                
-                // Bind actions for cards
-                cardsContainer.querySelectorAll('button[data-action]').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        const action = btn.getAttribute('data-action');
-                        const userId = parseInt(btn.getAttribute('data-user-id') || '0');
-                        if (!userId) return;
-
-                        if (action === 'reset') {
-                            await resetPasswordFlow(userId);
-                        } else if (action === 'edit') {
-                            await openEditUserModal(userId);
-                        } else if (action === 'delete') {
-                            await deleteUser(userId);
-                        }
-                    });
-                });
-            }
-        }
     } catch (e) {
         const tbody = document.getElementById('usersTbody');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="5" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="loading"><strong style="color:#b71c1c;">${escapeHtml(e.message)}</strong></td></tr>`;
         }
         const cardsContainer = document.getElementById('usersCards');
         if (cardsContainer) {
             cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${escapeHtml(e.message)}</div>`;
+        }
+    }
+}
+
+function renderUsersTable() {
+    const tbody = document.getElementById('usersTbody');
+    const users = getPaginatedData('users');
+    const state = paginationState.users;
+    
+    if (state.totalItems === 0) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="loading">Tidak ada user</td></tr>';
+        const cardsContainer = document.getElementById('usersCards');
+        if (cardsContainer) cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada user</div>';
+        return;
+    }
+    
+    if (tbody) {
+        tbody.innerHTML = users.map(u => userRowHtml(u)).join('');
+        bindUserRowActions();
+    }
+    
+    // Update cards for mobile
+    const cardsContainer = document.getElementById('usersCards');
+    if (cardsContainer) {
+        if (users.length === 0) {
+            cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada user</div>';
+        } else {
+            cardsContainer.innerHTML = users.map(u => {
+                const statusBadge = u.isActive
+                    ? `<span class="badge badge-active">Active</span>`
+                    : `<span class="badge badge-inactive">Inactive</span>`;
+                const roleBadge = `<span class="badge badge-role">${escapeHtml(u.role.toUpperCase())}</span>`;
+                const initials = getInitials(u.name || u.username);
+                const email = u.email || `${u.username}@company.com`;
+                const lastLogin = formatLastLogin(u.lastLogin || u.updatedAt);
+                const lastLoginTime = u.lastLogin || u.updatedAt || '';
+
+                return `
+                    <div class="admin-card" data-user-id="${u.id}">
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">User</div>
+                            <div class="admin-card-value">
+                                <div class="user-cell">
+                                    <div class="user-avatar">${initials}</div>
+                                    <div class="user-info">
+                                        <div class="user-name">${escapeHtml(u.name || u.username)}</div>
+                                        <div class="user-email">${escapeHtml(email)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Role</div>
+                            <div class="admin-card-value">${roleBadge}</div>
+                        </div>
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Status</div>
+                            <div class="admin-card-value">${statusBadge}</div>
+                        </div>
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Last Login</div>
+                            <div class="admin-card-value last-login-card-value" data-last-login="${lastLoginTime}">${lastLogin}</div>
+                        </div>
+                        <div class="admin-card-actions">
+                            <button class="btn-icon-action" data-action="edit" data-user-id="${u.id}" title="Edit">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                Edit
+                            </button>
+                            <button class="btn-icon-action" data-action="reset" data-user-id="${u.id}" title="Reset Password">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+                                </svg>
+                                Reset
+                            </button>
+                    <button class="btn-icon-action" data-action="${u.isActive ? 'deactivate' : 'activate'}" data-user-id="${u.id}" title="${u.isActive ? 'Non Aktifkan' : 'Aktifkan'}">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            ${u.isActive ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
+                        </svg>
+                    </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Bind actions for cards
+            cardsContainer.querySelectorAll('button[data-action]').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const action = btn.getAttribute('data-action');
+                    const userId = parseInt(btn.getAttribute('data-user-id') || '0');
+                    if (!userId) return;
+
+                    if (action === 'reset') {
+                        await resetPasswordFlow(userId);
+                    } else if (action === 'edit') {
+                        await openEditUserModal(userId);
+                    } else if (action === 'activate' || action === 'deactivate') {
+                        await toggleUserStatus(userId, action === 'activate');
+                    }
+                });
+            });
         }
     }
 }
@@ -444,12 +474,20 @@ function formatLastLogin(lastLoginTime) {
 
 function userRowHtml(u) {
     const statusBadge = u.isActive
-        ? `<span class="badge badge-active">Active</span>`
-        : `<span class="badge badge-inactive">Inactive</span>`;
-    const roleBadge = `<span class="badge badge-role">${escapeHtml(u.role.toUpperCase())}</span>`;
+        ? `<span class="badge badge-active">Aktif</span>`
+        : `<span class="badge badge-inactive">Non Aktif</span>`;
+    
+    // Map role to display name
+    let roleDisplay = u.role || 'user';
+    if (roleDisplay === 'super_admin') roleDisplay = 'Admin';
+    else if (roleDisplay === 'admin') roleDisplay = 'Petugas';
+    else if (roleDisplay === 'user') roleDisplay = 'User';
+    
+    const roleBadge = `<span class="badge badge-role">${escapeHtml(roleDisplay)}</span>`;
     const initials = getInitials(u.name || u.username);
     const email = u.email || `${u.username}@company.com`;
     const lastLogin = formatLastLogin(u.lastLogin || u.updatedAt);
+    const unitKerja = u.unitKerja || u.unit_kerja || '-';
 
     return `
         <tr data-user-id="${u.id}">
@@ -462,6 +500,7 @@ function userRowHtml(u) {
                     </div>
                 </div>
             </td>
+            <td>${escapeHtml(unitKerja)}</td>
             <td>${roleBadge}</td>
             <td>${statusBadge}</td>
             <td class="last-login-cell" data-last-login="${u.lastLogin || u.updatedAt || ''}">${lastLogin}</td>
@@ -478,10 +517,9 @@ function userRowHtml(u) {
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
                         </svg>
                     </button>
-                    <button class="btn-icon-action btn-icon-danger" data-action="delete" title="Delete">
+                    <button class="btn-icon-action" data-action="${u.isActive ? 'deactivate' : 'activate'}" title="${u.isActive ? 'Non Aktifkan' : 'Aktifkan'}">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            ${u.isActive ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
                         </svg>
                     </button>
                 </div>
@@ -504,27 +542,29 @@ function bindUserRowActions() {
                 await resetPasswordFlow(userId);
             } else if (action === 'edit') {
                 await editUserFlow(tr, userId);
-            } else if (action === 'delete') {
-                await deleteUserFlow(userId);
+            } else if (action === 'activate' || action === 'deactivate') {
+                await toggleUserStatus(userId, action === 'activate');
             }
         });
     });
 }
 
 async function editUserFlow(tr, userId) {
-    // Get user details from API
     try {
         const users = await apiGet('listUsers');
         const user = users.find(u => u.id === userId);
         
         if (!user) {
-            alert('User tidak ditemukan.');
+            await showAlert('User tidak ditemukan.', 'Error', 'error');
             return;
         }
 
         // Set current edit user ID
         currentEditUserId = userId;
 
+        // Load unit kerja options
+        await loadUnitKerjaForUserEdit();
+        
         // Fill form with current user data
         document.getElementById('editName').value = user.name || '';
         document.getElementById('editUsername').value = user.username || '';
@@ -532,7 +572,8 @@ async function editUserFlow(tr, userId) {
         document.getElementById('editEmail').value = user.email || '';
         document.getElementById('editNpk').value = user.npk || '';
         document.getElementById('editNomorTelepon').value = user.nomorTelepon || '';
-        document.getElementById('editUnitKerja').value = user.unitKerja || '';
+        document.getElementById('editUnitKerja').value = user.unitKerja || user.unit_kerja || '';
+        document.getElementById('editUserStatus').value = user.isActive !== false ? '1' : '0';
 
         // Show modal
         const modal = document.getElementById('editUserModal');
@@ -542,26 +583,357 @@ async function editUserFlow(tr, userId) {
             document.getElementById('editName')?.focus();
         }
     } catch (e) {
-        alert('Error: ' + e.message);
+        showAlert('Error: ' + e.message, 'Error', 'error');
     }
 }
 
-async function deleteUserFlow(userId) {
-    if (!confirm('Hapus user ini? Tindakan ini tidak dapat dibatalkan.')) {
-        return;
-    }
+let currentToggleUserStatusId = null;
+let currentToggleUserStatusAction = null;
 
-    if (!confirm('Apakah Anda yakin? User akan dihapus permanen dari sistem.')) {
-        return;
-    }
+function bindConfirmToggleUserStatusModal() {
+    const modal = document.getElementById('confirmToggleUserStatusModal');
+    const closeBtn = document.getElementById('closeConfirmToggleUserStatusModal');
+    const cancelBtn = document.getElementById('cancelConfirmToggleUserStatusBtn');
+    const confirmBtn = document.getElementById('confirmToggleUserStatusBtn');
 
-    try {
-        await apiPost('deleteUser', { id: userId });
-        alert('User berhasil dihapus.');
-        await loadUsers();
-    } catch (e) {
-        alert('Error: ' + e.message);
+    const close = () => {
+        modal?.classList.remove('show');
+        document.body.style.overflow = 'auto';
+        currentToggleUserStatusId = null;
+        currentToggleUserStatusAction = null;
+    };
+
+    closeBtn?.addEventListener('click', close);
+    cancelBtn?.addEventListener('click', close);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal?.classList.contains('show')) close();
+    });
+
+    confirmBtn?.addEventListener('click', async () => {
+        if (!currentToggleUserStatusId || currentToggleUserStatusAction === null) return;
+        
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Memproses...';
+        
+        try {
+            await apiPost('updateUser', { 
+                id: currentToggleUserStatusId, 
+                isActive: currentToggleUserStatusAction ? 1 : 0 
+            });
+            
+            close();
+            
+            // Show success message
+            showSuccessMessage(
+                `User berhasil ${currentToggleUserStatusAction ? 'diaktifkan' : 'dinonaktifkan'}.`
+            );
+            
+            await loadUsers();
+        } catch (e) {
+            showAlert('Error: ' + e.message, 'Error', 'error');
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Ya, Lanjutkan';
+        }
+    });
+}
+
+function showConfirmToggleUserStatus(userId, activate) {
+    currentToggleUserStatusId = userId;
+    currentToggleUserStatusAction = activate;
+    
+    const modal = document.getElementById('confirmToggleUserStatusModal');
+    const title = document.getElementById('confirmToggleUserStatusTitle');
+    const message = document.getElementById('confirmToggleUserStatusMessage');
+    const description = document.getElementById('confirmToggleUserStatusDescription');
+    const icon = document.getElementById('confirmToggleUserStatusIcon');
+    const confirmBtn = document.getElementById('confirmToggleUserStatusBtn');
+    
+    if (!modal) return;
+    
+    if (activate) {
+        title.textContent = 'Aktifkan User';
+        message.textContent = 'Aktifkan user ini?';
+        description.textContent = 'User akan dapat login dan mengakses sistem setelah diaktifkan.';
+        confirmBtn.textContent = 'Ya, Aktifkan';
+        confirmBtn.className = 'btn btn-success';
+        
+        // Icon centang
+        icon.innerHTML = `
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        `;
+        icon.style.color = '#28a745';
+    } else {
+        title.textContent = 'Nonaktifkan User';
+        message.textContent = 'Nonaktifkan user ini?';
+        description.textContent = 'User tidak akan dapat login dan mengakses sistem setelah dinonaktifkan.';
+        confirmBtn.textContent = 'Ya, Nonaktifkan';
+        confirmBtn.className = 'btn btn-warning';
+        
+        // Icon X
+        icon.innerHTML = `
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        `;
+        icon.style.color = '#dc3545';
     }
+    
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function showSuccessMessage(message) {
+    // Create a temporary success notification
+    const notification = document.createElement('div');
+    notification.className = 'success-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #28a745;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+        font-size: 14px;
+        font-weight: 500;
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+async function toggleUserStatus(userId, activate) {
+    showConfirmToggleUserStatus(userId, activate);
+}
+
+// ========== GENERIC CONFIRM MODAL ==========
+let genericConfirmCallback = null;
+
+function bindGenericConfirmModal() {
+    const modal = document.getElementById('genericConfirmModal');
+    const closeBtn = document.getElementById('closeGenericConfirmModal');
+    const cancelBtn = document.getElementById('cancelGenericConfirmBtn');
+    const confirmBtn = document.getElementById('confirmGenericConfirmBtn');
+
+    const close = () => {
+        modal?.classList.remove('show');
+        document.body.style.overflow = 'auto';
+        genericConfirmCallback = null;
+    };
+
+    closeBtn?.addEventListener('click', close);
+    cancelBtn?.addEventListener('click', close);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal?.classList.contains('show')) close();
+    });
+
+    confirmBtn?.addEventListener('click', async () => {
+        if (genericConfirmCallback) {
+            const callback = genericConfirmCallback;
+            close();
+            callback(true);
+        }
+    });
+}
+
+function showGenericConfirm(options) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('genericConfirmModal');
+        const title = document.getElementById('genericConfirmTitle');
+        const message = document.getElementById('genericConfirmMessage');
+        const description = document.getElementById('genericConfirmDescription');
+        const icon = document.getElementById('genericConfirmIcon');
+        const confirmBtn = document.getElementById('confirmGenericConfirmBtn');
+        const cancelBtn = document.getElementById('cancelGenericConfirmBtn');
+        
+        if (!modal) {
+            resolve(false);
+            return;
+        }
+        
+        // Set title
+        title.textContent = options.title || 'Konfirmasi';
+        
+        // Set message
+        message.textContent = options.message || 'Apakah Anda yakin?';
+        
+        // Set description
+        if (options.description) {
+            description.textContent = options.description;
+            description.style.display = 'block';
+        } else {
+            description.style.display = 'none';
+        }
+        
+        // Set icon
+        const iconType = options.iconType || 'warning'; // warning, success, error, info
+        if (iconType === 'warning') {
+            icon.innerHTML = `
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            `;
+            icon.style.color = '#dc3545';
+        } else if (iconType === 'success') {
+            icon.innerHTML = `
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            `;
+            icon.style.color = '#28a745';
+        } else if (iconType === 'error') {
+            icon.innerHTML = `
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            `;
+            icon.style.color = '#dc3545';
+        } else {
+            icon.innerHTML = `
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            `;
+            icon.style.color = '#ff9800';
+        }
+        
+        // Set button text
+        confirmBtn.textContent = options.confirmText || 'Ya, Lanjutkan';
+        cancelBtn.textContent = options.cancelText || 'Batal';
+        
+        // Set button style
+        if (options.confirmButtonClass) {
+            confirmBtn.className = `btn ${options.confirmButtonClass}`;
+        } else {
+            confirmBtn.className = 'btn btn-primary';
+        }
+        
+        // Set callback
+        genericConfirmCallback = (confirmed) => {
+            resolve(confirmed);
+        };
+        
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    });
+}
+
+// Helper function untuk replace confirm()
+async function showConfirm(message, title = 'Konfirmasi', description = '') {
+    return await showGenericConfirm({
+        title: title,
+        message: message,
+        description: description,
+        iconType: 'warning'
+    });
+}
+
+// Helper function untuk replace alert() dengan info modal
+async function showAlert(message, title = 'Informasi', type = 'info') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('genericConfirmModal');
+        const titleEl = document.getElementById('genericConfirmTitle');
+        const messageEl = document.getElementById('genericConfirmMessage');
+        const descriptionEl = document.getElementById('genericConfirmDescription');
+        const icon = document.getElementById('genericConfirmIcon');
+        const confirmBtn = document.getElementById('confirmGenericConfirmBtn');
+        const cancelBtn = document.getElementById('cancelGenericConfirmBtn');
+        
+        if (!modal) {
+            resolve(true);
+            return;
+        }
+        
+        // Set title
+        titleEl.textContent = title;
+        
+        // Set message
+        messageEl.textContent = message;
+        
+        // Hide description
+        descriptionEl.style.display = 'none';
+        
+        // Set icon
+        if (type === 'error') {
+            icon.innerHTML = `
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            `;
+            icon.style.color = '#dc3545';
+        } else if (type === 'success') {
+            icon.innerHTML = `
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            `;
+            icon.style.color = '#28a745';
+        } else {
+            icon.innerHTML = `
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            `;
+            icon.style.color = '#ff9800';
+        }
+        
+        // Set button text and hide cancel
+        confirmBtn.textContent = 'OK';
+        confirmBtn.className = 'btn btn-primary';
+        cancelBtn.style.display = 'none';
+        
+        // Set callback
+        const close = () => {
+            modal.classList.remove('show');
+            document.body.style.overflow = 'auto';
+            cancelBtn.style.display = '';
+            resolve(true);
+        };
+        
+        // Remove previous listeners and add new one
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        newConfirmBtn.addEventListener('click', close);
+        
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    });
 }
 
 let currentResetPasswordUserId = null;
@@ -603,7 +975,7 @@ function bindResetPasswordModal() {
         try {
             await apiPost('resetUserPassword', { id: currentResetPasswordUserId, newPassword: newPassword });
             close();
-            alert('Password berhasil direset. Semua session user tersebut dicabut.');
+            showSuccessMessage('Password berhasil direset. Semua session user tersebut dicabut.');
             await loadUsers(); // Refresh user list after reset
         } catch (e) {
             showResetPasswordError(e.message);
@@ -635,6 +1007,58 @@ async function resetPasswordFlow(userId) {
         if (input) {
             setTimeout(() => input.focus(), 100);
         }
+    }
+}
+
+function bindPasswordToggles() {
+    // Toggle untuk newPassword
+    const toggleNewPassword = document.getElementById('toggleNewPassword');
+    const newPasswordInput = document.getElementById('newPassword');
+    
+    if (toggleNewPassword && newPasswordInput) {
+        toggleNewPassword.addEventListener('click', () => {
+            const type = newPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            newPasswordInput.setAttribute('type', type);
+            
+            // Update icon
+            const svg = toggleNewPassword.querySelector('svg');
+            if (svg) {
+                if (type === 'text') {
+                    // Icon hide (mata tertutup)
+                    svg.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+                    toggleNewPassword.setAttribute('title', 'Sembunyikan password');
+                } else {
+                    // Icon show (mata terbuka)
+                    svg.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+                    toggleNewPassword.setAttribute('title', 'Lihat password');
+                }
+            }
+        });
+    }
+    
+    // Toggle untuk resetPasswordInput
+    const toggleResetPassword = document.getElementById('toggleResetPassword');
+    const resetPasswordInput = document.getElementById('resetPasswordInput');
+    
+    if (toggleResetPassword && resetPasswordInput) {
+        toggleResetPassword.addEventListener('click', () => {
+            const type = resetPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            resetPasswordInput.setAttribute('type', type);
+            
+            // Update icon
+            const svg = toggleResetPassword.querySelector('svg');
+            if (svg) {
+                if (type === 'text') {
+                    // Icon hide (mata tertutup)
+                    svg.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+                    toggleResetPassword.setAttribute('title', 'Sembunyikan password');
+                } else {
+                    // Icon show (mata terbuka)
+                    svg.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+                    toggleResetPassword.setAttribute('title', 'Lihat password');
+                }
+            }
+        });
     }
 }
 
@@ -750,95 +1174,14 @@ async function loadRegistrations(status = '') {
     try {
         const params = status ? { status } : {};
         const registrations = await apiGet('listRegistrations', params);
-        tbody.innerHTML = registrations.map(r => registrationRowHtml(r)).join('');
-        bindRegistrationRowActions();
-
-        // Update cards for mobile
-        const cardsContainer = document.getElementById('registrationsCards');
-        if (cardsContainer) {
-            if (registrations.length === 0) {
-                cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada registrasi</div>';
-            } else {
-                cardsContainer.innerHTML = registrations.map(r => {
-                    const email = r.email || `${r.nama?.toLowerCase().replace(/\s+/g, '.')}@external.io`;
-                    const requestedRole = r.requestedRole || 'User';
-                    const date = formatDateShort(r.createdAt);
-
-                    let actions = '';
-                    if (r.status === 'pending') {
-                        actions = `
-                            <div class="admin-card-actions">
-                                <button class="btn btn-approve" data-action="approve" data-registration-id="${r.id}">Approve</button>
-                                <button class="btn btn-reject" data-action="reject" data-registration-id="${r.id}">Reject</button>
-                            </div>
-                        `;
-                    } else {
-                        actions = `<div class="admin-card-value" style="color:#666; font-size:0.85rem;">${r.approvedByName ? `Oleh: ${escapeHtml(r.approvedByName)}` : '-'}</div>`;
-                    }
-
-                    return `
-                        <div class="admin-card" data-registration-id="${r.id}" style="cursor: pointer;">
-                            <div class="admin-card-row">
-                                <div class="admin-card-label">Applicant</div>
-                                <div class="admin-card-value">
-                                    <div class="applicant-cell">
-                                        <div class="applicant-icon">
-                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                                <circle cx="12" cy="7" r="4"></circle>
-                                            </svg>
-                                        </div>
-                                        <div class="applicant-info">
-                                            <div class="applicant-name">${escapeHtml(r.nama)}</div>
-                                            <div class="applicant-email">${escapeHtml(email)}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="admin-card-row">
-                                <div class="admin-card-label">Requested Role</div>
-                                <div class="admin-card-value">${escapeHtml(requestedRole)}</div>
-                            </div>
-                            <div class="admin-card-row">
-                                <div class="admin-card-label">Date</div>
-                                <div class="admin-card-value">${date}</div>
-                            </div>
-                            <div class="admin-card-row">
-                                <div class="admin-card-label">Approval Actions</div>
-                                ${actions}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                // Bind actions for cards
-                cardsContainer.querySelectorAll('button[data-action]').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        const action = btn.getAttribute('data-action');
-                        const registrationId = parseInt(btn.getAttribute('data-registration-id') || '0');
-                        if (!registrationId) return;
-
-                        if (action === 'approve') {
-                            await approveRegistrationFlow(registrationId);
-                        } else if (action === 'reject') {
-                            await openRejectModal(registrationId);
-                        }
-                    });
-                });
-
-                // Click on card to show detail
-                cardsContainer.querySelectorAll('.admin-card[data-registration-id]').forEach(card => {
-                    card.addEventListener('click', (e) => {
-                        if (e.target.closest('button')) return;
-                        const registrationId = parseInt(card.getAttribute('data-registration-id') || '0');
-                        if (registrationId) {
-                            showDetailModal(registrationId);
-                        }
-                    });
-                });
-            }
-        }
+        
+        // Store all data and reset to page 1
+        paginationState.registrations.allData = registrations;
+        paginationState.registrations.totalItems = registrations.length;
+        paginationState.registrations.currentPage = 1;
+        
+        renderRegistrationsTable();
+        setupPagination('registrations');
         
         // Update pending count badge
         const pendingCount = registrations.filter(r => r.status === 'pending').length;
@@ -859,6 +1202,111 @@ async function loadRegistrations(status = '') {
         const cardsContainer = document.getElementById('registrationsCards');
         if (cardsContainer) {
             cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${escapeHtml(e.message)}</div>`;
+        }
+    }
+}
+
+function renderRegistrationsTable() {
+    const tbody = document.getElementById('registrationsTbody');
+    const registrations = getPaginatedData('registrations');
+    const state = paginationState.registrations;
+    
+    if (state.totalItems === 0) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="loading">Tidak ada registrasi</td></tr>';
+        const cardsContainer = document.getElementById('registrationsCards');
+        if (cardsContainer) cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada registrasi</div>';
+        return;
+    }
+    
+    if (tbody) {
+        tbody.innerHTML = registrations.map(r => registrationRowHtml(r)).join('');
+        bindRegistrationRowActions();
+    }
+    
+    // Update cards for mobile
+    const cardsContainer = document.getElementById('registrationsCards');
+    if (cardsContainer) {
+        if (registrations.length === 0) {
+            cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada registrasi</div>';
+        } else {
+            cardsContainer.innerHTML = registrations.map(r => {
+                const email = r.email || `${r.nama?.toLowerCase().replace(/\s+/g, '.')}@external.io`;
+                const requestedRole = r.requestedRole || 'User';
+                const date = formatDateShort(r.createdAt);
+
+                let actions = '';
+                if (r.status === 'pending') {
+                    actions = `
+                        <div class="admin-card-actions">
+                            <button class="btn btn-approve" data-action="approve" data-registration-id="${r.id}">Approve</button>
+                            <button class="btn btn-reject" data-action="reject" data-registration-id="${r.id}">Reject</button>
+                        </div>
+                    `;
+                } else {
+                    actions = `<div class="admin-card-value" style="color:#666; font-size:0.85rem;">${r.approvedByName ? `Oleh: ${escapeHtml(r.approvedByName)}` : '-'}</div>`;
+                }
+
+                return `
+                    <div class="admin-card" data-registration-id="${r.id}" style="cursor: pointer;">
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Applicant</div>
+                            <div class="admin-card-value">
+                                <div class="applicant-cell">
+                                    <div class="applicant-icon">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="12" cy="7" r="4"></circle>
+                                        </svg>
+                                    </div>
+                                    <div class="applicant-info">
+                                        <div class="applicant-name">${escapeHtml(r.nama)}</div>
+                                        <div class="applicant-email">${escapeHtml(email)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Requested Role</div>
+                            <div class="admin-card-value">${escapeHtml(requestedRole)}</div>
+                        </div>
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Date</div>
+                            <div class="admin-card-value">${date}</div>
+                        </div>
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Approval Actions</div>
+                            ${actions}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Bind actions for cards
+            cardsContainer.querySelectorAll('button[data-action]').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const action = btn.getAttribute('data-action');
+                    const registrationId = parseInt(btn.getAttribute('data-registration-id') || '0');
+                    if (!registrationId) return;
+
+                    if (action === 'approve') {
+                        await approveRegistrationFlow(registrationId);
+                    } else if (action === 'reject') {
+                        await openRejectModal(registrationId);
+                    }
+                });
+            });
+
+            // Click on card to show detail
+            cardsContainer.querySelectorAll('.admin-card[data-registration-id]').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('button')) return;
+                    const registrationId = parseInt(card.getAttribute('data-registration-id') || '0');
+                    if (registrationId) {
+                        showDetailModal(registrationId);
+                    }
+                });
+            });
         }
     }
 }
@@ -987,9 +1435,9 @@ function bindDetailModal() {
 
     // WhatsApp button in detail modal
     const whatsappBtn = document.getElementById('whatsappDetailBtn');
-    whatsappBtn?.addEventListener('click', () => {
+    whatsappBtn?.addEventListener('click', async () => {
         if (!currentDetailRegistration || !currentDetailRegistration.nomorTelepon || currentDetailRegistration.nomorTelepon === '-') {
-            alert('Nomor telepon tidak tersedia.');
+            await showAlert('Nomor telepon tidak tersedia.', 'Informasi', 'info');
             return;
         }
         
@@ -1003,9 +1451,11 @@ function bindDetailModal() {
 function generateWhatsAppMessage(registration) {
     const baseUrl = window.location.origin;
     const detailUrl = `${baseUrl}/admin/admin.html`;
+    const nomorTiket = registration.id || registration.tiket || '-';
     
     let message = `Halo ${registration.nama || 'Applicant'},\n\n`;
     message += `Terima kasih telah mendaftar. Data pendaftaran Anda:\n\n`;
+    message += `Nomor Tiket: ${nomorTiket}\n`;
     message += `Nama: ${registration.nama || '-'}\n`;
     message += `NPK: ${registration.npk || '-'}\n`;
     message += `Email: ${registration.email || '-'}\n`;
@@ -1027,7 +1477,7 @@ async function openDetailModal(id) {
         const registration = registrations.find(r => r.id === id);
         
         if (!registration) {
-            alert('Data registrasi tidak ditemukan.');
+            await showAlert('Data registrasi tidak ditemukan.', 'Error', 'error');
             return;
         }
 
@@ -1081,7 +1531,7 @@ async function openDetailModal(id) {
         modal.classList.add('show');
         document.body.style.overflow = 'hidden';
     } catch (e) {
-        alert('Error: ' + e.message);
+        showAlert('Error: ' + e.message, 'Error', 'error');
     }
 }
 
@@ -1381,7 +1831,7 @@ function bindPinApproval() {
                 throw new Error(result.error || 'Gagal menyimpan PIN');
             }
             
-            alert('PIN berhasil disimpan!');
+            showSuccessMessage('PIN berhasil disimpan!');
             
             // Exit edit mode and mask PIN
             const savedPin = result.pin ? String(result.pin).trim().replace(/\s/g, '') : pin;
@@ -1482,7 +1932,7 @@ async function loadApprovalPin() {
         
     } catch (error) {
         console.error('Error loading PIN:', error);
-        alert('Gagal memuat PIN: ' + error.message);
+        showAlert('Gagal memuat PIN: ' + error.message, 'Error', 'error');
     }
 }
 
@@ -1512,17 +1962,17 @@ async function openApproverModal(id = null) {
     const errorBox = document.getElementById('approverError');
     
     if (!modal) {
-        alert('Modal approver tidak ditemukan. Pastikan modal sudah ditambahkan di HTML.');
+        console.error('Modal approver tidak ditemukan. Pastikan modal sudah ditambahkan di HTML.');
         return;
     }
     
     if (!title) {
-        alert('Title element tidak ditemukan.');
+        console.error('Title element tidak ditemukan.');
         return;
     }
     
     if (!form) {
-        alert('Form element tidak ditemukan.');
+        console.error('Form element tidak ditemukan.');
         return;
     }
     
@@ -1541,7 +1991,7 @@ async function openApproverModal(id = null) {
             if (result.success && result.data && result.data.length > 0) {
                 const activeApprovers = result.data.filter(a => a.is_active !== false);
                 if (activeApprovers.length > 0) {
-                    alert('Hanya boleh ada 1 approver aktif. Silakan edit atau nonaktifkan approver yang sudah ada terlebih dahulu.');
+                    await showAlert('Hanya boleh ada 1 approver aktif. Silakan edit atau nonaktifkan approver yang sudah ada terlebih dahulu.', 'Peringatan', 'warning');
                     return;
                 }
             }
@@ -1582,6 +2032,39 @@ async function loadUnitKerjaForApprover() {
         
         const result = await response.json();
         const select = document.getElementById('approverUnitKerja');
+        
+        if (!select) return;
+        
+        if (result.success && result.data && Array.isArray(result.data)) {
+            // Keep the first option (Pilih Unit Kerja)
+            const firstOption = select.querySelector('option[value=""]');
+            select.innerHTML = '';
+            if (firstOption) select.appendChild(firstOption);
+            
+            result.data.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit.nama_unit || unit.nama || unit.id;
+                option.textContent = unit.nama_unit || unit.nama || unit.id;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading unit kerja:', error);
+    }
+}
+
+async function loadUnitKerjaForUserEdit() {
+    try {
+        const token = getAuthToken();
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getUnitKerja`, {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        const select = document.getElementById('editUnitKerja');
         
         if (!select) return;
         
@@ -1667,7 +2150,7 @@ async function saveApprover(e) {
             throw new Error(result.error || 'Gagal menyimpan approver');
         }
         
-        alert(result.data?.message || 'Approver berhasil disimpan');
+        showSuccessMessage(result.data?.message || 'Approver berhasil disimpan');
         closeApproverModal();
         loadApprovers();
     } catch (error) {
@@ -1716,7 +2199,7 @@ async function loadApprovers() {
         }
         
         tbody.innerHTML = approvers.map(approver => {
-            const status = approver.is_active !== false ? 'Active' : 'Inactive';
+            const status = approver.is_active !== false ? 'Aktif' : 'Non Aktif';
             const statusClass = approver.is_active !== false ? 'badge-active' : 'badge-inactive';
             
             return `
@@ -1729,8 +2212,17 @@ async function loadApprovers() {
                     <td><span class="badge ${statusClass}">${status}</span></td>
                     <td>
                         <div class="row-actions">
-                            <button class="btn-small" onclick="openApproverModal(${approver.id})" title="Edit">✏️</button>
-                            <button class="btn-small btn-danger" onclick="deleteApprover(${approver.id})" title="Hapus">🗑️</button>
+                            <button class="btn-icon-action" onclick="openApproverModal(${approver.id})" title="Edit">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <button class="btn-icon-action" onclick="toggleApproverStatus(${approver.id}, ${approver.is_active !== false ? 'false' : 'true'})" title="${approver.is_active !== false ? 'Non Aktifkan' : 'Aktifkan'}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    ${approver.is_active !== false ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
+                                </svg>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -1774,8 +2266,19 @@ async function loadApprovers() {
                                 <div class="admin-card-value"><span class="badge ${statusClass}">${status}</span></div>
                             </div>
                             <div class="admin-card-actions">
-                                <button class="btn-small" onclick="openApproverModal(${approver.id})" title="Edit">✏️ Edit</button>
-                                <button class="btn-small btn-danger" onclick="deleteApprover(${approver.id})" title="Hapus">🗑️ Hapus</button>
+                                <button class="btn-icon-action" onclick="openApproverModal(${approver.id})" title="Edit">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                    Edit
+                                </button>
+                                <button class="btn-icon-action ${approver.is_active !== false ? 'btn-icon-warning' : 'btn-icon-success'}" onclick="toggleApproverStatus(${approver.id}, ${approver.is_active !== false ? 'false' : 'true'})" title="${approver.is_active !== false ? 'Non Aktifkan' : 'Aktifkan'}">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        ${approver.is_active !== false ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
+                                    </svg>
+                                    ${approver.is_active !== false ? 'Non Aktif' : 'Aktif'}
+                                </button>
                             </div>
                         </div>
                     `;
@@ -1795,27 +2298,37 @@ async function loadApprovers() {
     }
 }
 
-async function deleteApprover(id) {
-    if (!confirm('Apakah Anda yakin ingin menghapus approver ini?')) return;
+async function toggleApproverStatus(id, activate) {
+    const action = activate ? 'mengaktifkan' : 'menonaktifkan';
+    const title = activate ? 'Aktifkan Approver' : 'Nonaktifkan Approver';
+    const description = activate 
+        ? 'Approver akan dapat digunakan untuk approval setelah diaktifkan.'
+        : 'Approver tidak akan dapat digunakan untuk approval setelah dinonaktifkan.';
+    const confirmed = await showConfirm(
+        `${activate ? 'Aktifkan' : 'Nonaktifkan'} approver ini?`,
+        title,
+        description
+    );
+    if (!confirmed) return;
     
     try {
         const token = getAuthToken();
         const apiUrl = getApiUrl();
         const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
         const fullUrl = window.location.origin + path;
-        const response = await fetch(`${fullUrl}?action=deleteApprover&id=${id}`, {
+        const response = await fetch(`${fullUrl}?action=updateApprover&id=${id}&is_active=${activate ? 1 : 0}`, {
             headers: { 'X-Auth-Token': token || '' }
         });
         
         const result = await response.json();
         if (!result.success) {
-            throw new Error(result.error || 'Gagal menghapus approver');
+            throw new Error(result.error || `Gagal ${action} approver`);
         }
         
-        alert('Approver berhasil dihapus');
+        showSuccessMessage(`Approver berhasil ${activate ? 'diaktifkan' : 'dinonaktifkan'}`);
         loadApprovers();
     } catch (error) {
-        alert('Error: ' + error.message);
+        await showAlert('Error: ' + error.message, 'Error', 'error');
     }
 }
 
@@ -1843,12 +2356,15 @@ function openPetugasModal(id = null) {
     const title = document.getElementById('petugasModalTitle');
     const form = document.getElementById('petugasForm');
     const errorBox = document.getElementById('petugasError');
+    const statusRow = document.getElementById('petugasStatusRow');
     
     if (id) {
         title.textContent = 'Edit Petugas';
+        if (statusRow) statusRow.style.display = 'block';
         loadPetugasData(id);
     } else {
         title.textContent = 'Tambah Petugas';
+        if (statusRow) statusRow.style.display = 'none';
         form.reset();
     }
     
@@ -1862,21 +2378,16 @@ function openPetugasModal(id = null) {
 
 function loadPetugasData(id) {
     loadPetugas().then(() => {
-        const tbody = document.getElementById('petugasTbody');
-        const rows = tbody.querySelectorAll('tr[data-id]');
-        for (let row of rows) {
-            if (parseInt(row.getAttribute('data-id')) === id) {
-                const nama = row.querySelector('[data-field="nama"]')?.textContent || '';
-                const npk = row.querySelector('[data-field="npk"]')?.textContent || '';
-                const jabatan = row.querySelector('[data-field="jabatan"]')?.textContent || '';
-                const noWa = row.querySelector('[data-field="no_wa"]')?.textContent || '';
-                
-                document.getElementById('petugasNama').value = nama;
-                document.getElementById('petugasNpk').value = npk;
-                document.getElementById('petugasJabatan').value = jabatan;
-                document.getElementById('petugasNoWa').value = noWa;
-                break;
-            }
+        const petugasList = paginationState.petugas.allData;
+        const petugas = petugasList.find(p => p.id === id);
+        
+        if (petugas) {
+            document.getElementById('petugasNama').value = petugas.nama || '';
+            document.getElementById('petugasNpk').value = petugas.npk || '';
+            document.getElementById('petugasJabatan').value = petugas.jabatan || '';
+            document.getElementById('petugasNoWa').value = petugas.no_wa || '';
+            document.getElementById('petugasStatus').value = petugas.is_active !== false ? '1' : '0';
+            document.getElementById('petugasStatusRow').style.display = 'block';
         }
     });
 }
@@ -1888,6 +2399,7 @@ async function savePetugas(e) {
     const npk = document.getElementById('petugasNpk').value.trim();
     const jabatan = document.getElementById('petugasJabatan').value.trim();
     const noWa = document.getElementById('petugasNoWa').value.trim();
+    const status = document.getElementById('petugasStatus')?.value || '1';
     
     if (!nama) {
         showError(errorBox, 'Nama petugas wajib diisi');
@@ -1905,6 +2417,9 @@ async function savePetugas(e) {
         if (npk) url.searchParams.append('npk', npk);
         if (jabatan) url.searchParams.append('jabatan', jabatan);
         if (noWa) url.searchParams.append('no_wa', noWa);
+        if (currentPetugasId) {
+            url.searchParams.append('is_active', status);
+        }
         
         const response = await fetch(url.toString(), {
             headers: { 'X-Auth-Token': token || '' }
@@ -1915,7 +2430,7 @@ async function savePetugas(e) {
             throw new Error(result.error || 'Gagal menyimpan petugas');
         }
         
-        alert(result.data?.message || 'Petugas berhasil disimpan');
+        showSuccessMessage(result.data?.message || 'Petugas berhasil disimpan');
         closePetugasModal();
         loadPetugas();
     } catch (error) {
@@ -1944,41 +2459,64 @@ async function loadPetugas() {
             throw new Error(result.error || 'Gagal memuat petugas');
         }
         
-        const tbody = document.getElementById('petugasTbody');
         const petugasList = Array.isArray(result.data) ? result.data : [];
         
-        console.log('Petugas data loaded:', petugasList);
+        // Store all data and reset to page 1
+        paginationState.petugas.allData = petugasList;
+        paginationState.petugas.totalItems = petugasList.length;
+        paginationState.petugas.currentPage = 1;
         
-        if (petugasList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="loading">Tidak ada petugas</td></tr>';
-            return;
+        renderPetugasTable();
+        setupPagination('petugas');
+    } catch (error) {
+        console.error('Error loading petugas:', error);
+        const tbody = document.getElementById('petugasTbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="5" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
         }
-        
+        const cardsContainer = document.getElementById('petugasCards');
+        if (cardsContainer) {
+            cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${error.message}</div>`;
+        }
+    }
+}
+
+function renderPetugasTable() {
+    const tbody = document.getElementById('petugasTbody');
+    const petugasList = getPaginatedData('petugas');
+    const state = paginationState.petugas;
+    
+    if (state.totalItems === 0) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="loading">Tidak ada petugas</td></tr>';
+        const cardsContainer = document.getElementById('petugasCards');
+        if (cardsContainer) cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada petugas</div>';
+        return;
+    }
+    
+    if (tbody) {
         tbody.innerHTML = petugasList.map(petugas => {
-            const status = petugas.is_active !== false ? 'Active' : 'Inactive';
+            const status = petugas.is_active !== false ? 'Aktif' : 'Non Aktif';
             const statusClass = petugas.is_active !== false ? 'badge-active' : 'badge-inactive';
-            
-            let statusApproverBadge = '-';
-            if (petugas.status_approver && petugas.status_approver.trim() !== '') {
-                const statusApprover = petugas.status_approver.trim();
-                if (statusApprover === 'Approved') {
-                    statusApproverBadge = '<span class="badge badge-active">Approved</span>';
-                } else if (statusApprover === 'Rejected') {
-                    statusApproverBadge = '<span class="badge badge-inactive">Rejected</span>';
-                } else {
-                    statusApproverBadge = statusApprover;
-                }
-            }
             
             return `
                 <tr data-id="${petugas.id}">
                     <td data-field="nama">${escapeHtml(petugas.nama || '')}</td>
-                    <td>${statusApproverBadge}</td>
+                    <td data-field="npk">${escapeHtml(petugas.npk || '-')}</td>
+                    <td data-field="jabatan">${escapeHtml(petugas.jabatan || '-')}</td>
                     <td><span class="badge ${statusClass}">${status}</span></td>
                     <td>
                         <div class="row-actions">
-                            <button class="btn-small" onclick="openPetugasModal(${petugas.id})" title="Edit">✏️</button>
-                            <button class="btn-small btn-danger" onclick="deletePetugas(${petugas.id})" title="Hapus">🗑️</button>
+                            <button class="btn-icon-action" onclick="openPetugasModal(${petugas.id})" title="Edit">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <button class="btn-icon-action" onclick="togglePetugasStatus(${petugas.id}, ${petugas.is_active !== false ? 'false' : 'true'})" title="${petugas.is_active !== false ? 'Non Aktifkan' : 'Aktifkan'}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    ${petugas.is_active !== false ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
+                                </svg>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -1995,18 +2533,6 @@ async function loadPetugas() {
                     const status = petugas.is_active !== false ? 'Active' : 'Inactive';
                     const statusClass = petugas.is_active !== false ? 'badge-active' : 'badge-inactive';
                     
-                    let statusApproverBadge = '-';
-                    if (petugas.status_approver && petugas.status_approver.trim() !== '') {
-                        const statusApprover = petugas.status_approver.trim();
-                        if (statusApprover === 'Approved') {
-                            statusApproverBadge = '<span class="badge badge-active">Approved</span>';
-                        } else if (statusApprover === 'Rejected') {
-                            statusApproverBadge = '<span class="badge badge-inactive">Rejected</span>';
-                        } else {
-                            statusApproverBadge = statusApprover;
-                        }
-                    }
-                    
                     return `
                         <div class="admin-card" data-id="${petugas.id}">
                             <div class="admin-card-row">
@@ -2014,55 +2540,501 @@ async function loadPetugas() {
                                 <div class="admin-card-value">${escapeHtml(petugas.nama || '')}</div>
                             </div>
                             <div class="admin-card-row">
-                                <div class="admin-card-label">Status Approver</div>
-                                <div class="admin-card-value">${statusApproverBadge}</div>
+                                <div class="admin-card-label">NPK</div>
+                                <div class="admin-card-value">${escapeHtml(petugas.npk || '-')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Jabatan</div>
+                                <div class="admin-card-value">${escapeHtml(petugas.jabatan || '-')}</div>
                             </div>
                             <div class="admin-card-row">
                                 <div class="admin-card-label">Status</div>
                                 <div class="admin-card-value"><span class="badge ${statusClass}">${status}</span></div>
                             </div>
                             <div class="admin-card-actions">
-                                <button class="btn-small" onclick="openPetugasModal(${petugas.id})" title="Edit">✏️ Edit</button>
-                                <button class="btn-small btn-danger" onclick="deletePetugas(${petugas.id})" title="Hapus">🗑️ Hapus</button>
+                                <button class="btn-icon-action" onclick="openPetugasModal(${petugas.id})" title="Edit">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                    Edit
+                                </button>
+                                <button class="btn-icon-action" onclick="togglePetugasStatus(${petugas.id}, ${petugas.is_active !== false ? 'false' : 'true'})" title="${petugas.is_active !== false ? 'Non Aktifkan' : 'Aktifkan'}">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        ${petugas.is_active !== false ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
+                                    </svg>
+                                    ${petugas.is_active !== false ? 'Non Aktif' : 'Aktif'}
+                                </button>
                             </div>
                         </div>
                     `;
                 }).join('');
             }
         }
-    } catch (error) {
-        console.error('Error loading petugas:', error);
-        const tbody = document.getElementById('petugasTbody');
-        if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="4" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
-        }
-        const cardsContainer = document.getElementById('petugasCards');
-        if (cardsContainer) {
-            cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${error.message}</div>`;
-        }
     }
 }
 
-async function deletePetugas(id) {
-    if (!confirm('Apakah Anda yakin ingin menghapus petugas ini?')) return;
+async function togglePetugasStatus(id, activate) {
+    const action = activate ? 'mengaktifkan' : 'menonaktifkan';
+    const title = activate ? 'Aktifkan Petugas' : 'Nonaktifkan Petugas';
+    const description = activate 
+        ? 'Petugas akan dapat digunakan untuk notifikasi setelah diaktifkan.'
+        : 'Petugas tidak akan dapat digunakan untuk notifikasi setelah dinonaktifkan.';
+    const confirmed = await showConfirm(
+        `${activate ? 'Aktifkan' : 'Nonaktifkan'} petugas ini?`,
+        title,
+        description
+    );
+    if (!confirmed) return;
     
     try {
         const token = getAuthToken();
         const apiUrl = getApiUrl();
         const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
         const fullUrl = window.location.origin + path;
-        const response = await fetch(`${fullUrl}?action=deletePetugas&id=${id}`, {
+        const response = await fetch(`${fullUrl}?action=updatePetugas&id=${id}&is_active=${activate ? 1 : 0}`, {
             headers: { 'X-Auth-Token': token || '' }
         });
         
         const result = await response.json();
         if (!result.success) {
-            throw new Error(result.error || 'Gagal menghapus petugas');
+            throw new Error(result.error || `Gagal ${action} petugas`);
         }
         
-        alert('Petugas berhasil dihapus');
+        showSuccessMessage(`Petugas berhasil ${activate ? 'diaktifkan' : 'dinonaktifkan'}`);
         loadPetugas();
     } catch (error) {
-        alert('Error: ' + error.message);
+        await showAlert('Error: ' + error.message, 'Error', 'error');
+    }
+}
+
+// ========== PAGINATION FUNCTIONS ==========
+// Pagination state for each table
+const paginationState = {
+    petugas: { currentPage: 1, itemsPerPage: 5, totalItems: 0, allData: [] },
+    users: { currentPage: 1, itemsPerPage: 5, totalItems: 0, allData: [] },
+    registrations: { currentPage: 1, itemsPerPage: 5, totalItems: 0, allData: [] },
+    unitKerja: { currentPage: 1, itemsPerPage: 5, totalItems: 0, allData: [] }
+};
+
+function setupPagination(tableName) {
+    const state = paginationState[tableName];
+    if (!state) return;
+    
+    const prefix = tableName;
+    const firstBtn = document.getElementById(`${prefix}PaginationFirst`);
+    const prevBtn = document.getElementById(`${prefix}PaginationPrev`);
+    const nextBtn = document.getElementById(`${prefix}PaginationNext`);
+    const lastBtn = document.getElementById(`${prefix}PaginationLast`);
+    const paginationContainer = document.getElementById(`${prefix}Pagination`);
+    
+    if (!paginationContainer) return;
+    
+    // Show pagination if more than itemsPerPage items
+    if (state.totalItems > state.itemsPerPage) {
+        paginationContainer.style.display = 'flex';
+    } else {
+        paginationContainer.style.display = 'none';
+        return;
+    }
+    
+    const totalPages = Math.ceil(state.totalItems / state.itemsPerPage);
+    const startIndex = (state.currentPage - 1) * state.itemsPerPage;
+    const endIndex = Math.min(startIndex + state.itemsPerPage, state.totalItems);
+    
+    // Update info
+    document.getElementById(`${prefix}PaginationStart`).textContent = state.totalItems > 0 ? startIndex + 1 : 0;
+    document.getElementById(`${prefix}PaginationEnd`).textContent = endIndex;
+    document.getElementById(`${prefix}PaginationTotal`).textContent = state.totalItems;
+    document.getElementById(`${prefix}PaginationPageInfo`).textContent = `Halaman ${state.currentPage} dari ${totalPages}`;
+    
+    // Update buttons
+    if (firstBtn) {
+        firstBtn.disabled = state.currentPage === 1;
+        firstBtn.onclick = () => goToPage(tableName, 1);
+    }
+    if (prevBtn) {
+        prevBtn.disabled = state.currentPage === 1;
+        prevBtn.onclick = () => goToPage(tableName, state.currentPage - 1);
+    }
+    if (nextBtn) {
+        nextBtn.disabled = state.currentPage >= totalPages;
+        nextBtn.onclick = () => goToPage(tableName, state.currentPage + 1);
+    }
+    if (lastBtn) {
+        lastBtn.disabled = state.currentPage >= totalPages;
+        lastBtn.onclick = () => goToPage(tableName, totalPages);
+    }
+}
+
+function goToPage(tableName, page) {
+    const state = paginationState[tableName];
+    if (!state) return;
+    
+    const totalPages = Math.ceil(state.totalItems / state.itemsPerPage);
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    
+    state.currentPage = page;
+    
+    // Reload table data
+    if (tableName === 'petugas') {
+        renderPetugasTable();
+    } else if (tableName === 'users') {
+        renderUsersTable();
+    } else if (tableName === 'registrations') {
+        renderRegistrationsTable();
+    } else if (tableName === 'unitKerja') {
+        renderUnitKerjaTable();
+    }
+    
+    setupPagination(tableName);
+}
+
+function getPaginatedData(tableName) {
+    const state = paginationState[tableName];
+    if (!state) return [];
+    
+    const startIndex = (state.currentPage - 1) * state.itemsPerPage;
+    const endIndex = startIndex + state.itemsPerPage;
+    return state.allData.slice(startIndex, endIndex);
+}
+
+// ========== UNIT KERJA MANAGEMENT ==========
+let currentUnitKerjaId = null;
+
+function bindUnitKerja() {
+    const addBtn = document.getElementById('addUnitKerjaBtn');
+    const refreshBtn = document.getElementById('refreshUnitKerjaBtn');
+    const modal = document.getElementById('unitKerjaModal');
+    const form = document.getElementById('unitKerjaForm');
+    const closeBtn = document.getElementById('closeUnitKerjaModal');
+    const cancelBtn = document.getElementById('cancelUnitKerjaBtn');
+    
+    if (addBtn) addBtn.addEventListener('click', () => openUnitKerjaModal());
+    if (refreshBtn) refreshBtn.addEventListener('click', loadUnitKerja);
+    if (closeBtn) closeBtn.addEventListener('click', closeUnitKerjaModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeUnitKerjaModal);
+    if (form) form.addEventListener('submit', saveUnitKerja);
+}
+
+function openUnitKerjaModal(id = null) {
+    currentUnitKerjaId = id;
+    const modal = document.getElementById('unitKerjaModal');
+    const title = document.getElementById('unitKerjaModalTitle');
+    const form = document.getElementById('unitKerjaForm');
+    const errorBox = document.getElementById('unitKerjaError');
+    const statusRow = document.getElementById('unitKerjaStatusRow');
+    const namaInput = document.getElementById('unitKerjaNama');
+    
+    if (id) {
+        title.textContent = 'Edit Unit Kerja';
+        if (statusRow) statusRow.style.display = 'block';
+        loadUnitKerjaData(id);
+    } else {
+        title.textContent = 'Tambah Unit Kerja';
+        if (statusRow) statusRow.style.display = 'none';
+        form.reset();
+    }
+    
+    if (errorBox) {
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
+        errorBox.classList.remove('show');
+    }
+    
+    // Focus pada input nama saat modal dibuka
+    if (namaInput) {
+        setTimeout(() => namaInput.focus(), 100);
+    }
+    
+    modal.classList.add('show');
+}
+
+function loadUnitKerjaData(id) {
+    loadUnitKerja().then(() => {
+        const unitKerjaList = paginationState.unitKerja.allData;
+        const unit = unitKerjaList.find(u => u.id === id);
+        
+        if (unit) {
+            const nama = unit.nama_unit || unit.nama || '';
+            document.getElementById('unitKerjaNama').value = nama;
+            const status = unit.is_active !== false ? '1' : '0';
+            const statusSelect = document.getElementById('unitKerjaStatus');
+            if (statusSelect) {
+                statusSelect.value = status;
+            }
+        }
+    });
+}
+
+async function saveUnitKerja(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const errorBox = document.getElementById('unitKerjaError');
+    const namaInput = document.getElementById('unitKerjaNama');
+    const nama = namaInput ? namaInput.value.trim() : '';
+    
+    // Clear previous errors
+    if (errorBox) {
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
+        errorBox.classList.remove('show');
+    }
+    
+    // Remove any validation styling
+    if (namaInput) {
+        namaInput.classList.remove('error');
+        namaInput.style.borderColor = '';
+    }
+    
+    // Validate nama
+    if (!nama) {
+        if (errorBox) {
+            showError(errorBox, 'Nama unit kerja wajib diisi');
+        }
+        if (namaInput) {
+            namaInput.focus();
+            namaInput.classList.add('error');
+            namaInput.style.borderColor = '#f44336';
+        }
+        return false;
+    }
+    
+    try {
+        const token = getAuthToken();
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const url = new URL(`${fullUrl}?action=${currentUnitKerjaId ? 'updateUnitKerja' : 'createUnitKerja'}`);
+        if (currentUnitKerjaId) {
+            url.searchParams.append('id', currentUnitKerjaId);
+            const statusSelect = document.getElementById('unitKerjaStatus');
+            if (statusSelect) {
+                url.searchParams.append('is_active', statusSelect.value);
+            }
+        }
+        url.searchParams.append('nama', nama);
+        
+        const response = await fetch(url.toString(), {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal menyimpan unit kerja');
+        }
+        
+        // Show success message using the notification function
+        showSuccessMessage(result.data?.message || 'Unit kerja berhasil disimpan');
+        closeUnitKerjaModal();
+        loadUnitKerja();
+        // Reload unit kerja dropdowns
+        loadUnitKerjaForApprover();
+        loadUnitKerjaForUserEdit();
+        return true;
+    } catch (error) {
+        if (errorBox) {
+            showError(errorBox, error.message);
+        }
+        if (namaInput) {
+            namaInput.focus();
+        }
+        return false;
+    }
+}
+
+function closeUnitKerjaModal() {
+    const modal = document.getElementById('unitKerjaModal');
+    const form = document.getElementById('unitKerjaForm');
+    const errorBox = document.getElementById('unitKerjaError');
+    
+    if (modal) modal.classList.remove('show');
+    if (form) form.reset();
+    if (errorBox) {
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
+        errorBox.classList.remove('show');
+    }
+    currentUnitKerjaId = null;
+}
+
+async function loadUnitKerja() {
+    try {
+        const token = getAuthToken();
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getAllUnitKerja`, {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal memuat unit kerja');
+        }
+        
+        const unitKerjaList = Array.isArray(result.data) ? result.data : [];
+        
+        // Store all data and reset to page 1
+        paginationState.unitKerja.allData = unitKerjaList;
+        paginationState.unitKerja.totalItems = unitKerjaList.length;
+        paginationState.unitKerja.currentPage = 1;
+        
+        renderUnitKerjaTable();
+        setupPagination('unitKerja');
+    } catch (error) {
+        console.error('Error loading unit kerja:', error);
+        const tbody = document.getElementById('unitKerjaTbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="3" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
+        }
+        const cardsContainer = document.getElementById('unitKerjaCards');
+        if (cardsContainer) {
+            cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${error.message}</div>`;
+        }
+    }
+}
+
+function renderUnitKerjaTable() {
+    const tbody = document.getElementById('unitKerjaTbody');
+    const unitKerjaList = getPaginatedData('unitKerja');
+    const state = paginationState.unitKerja;
+    
+    if (state.totalItems === 0) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="loading">Tidak ada unit kerja</td></tr>';
+        const cardsContainer = document.getElementById('unitKerjaCards');
+        if (cardsContainer) cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada unit kerja</div>';
+        return;
+    }
+    
+    if (tbody) {
+        tbody.innerHTML = unitKerjaList.map(unit => {
+            const status = unit.is_active !== false ? 'Aktif' : 'Non Aktif';
+            const statusClass = unit.is_active !== false ? 'badge-active' : 'badge-inactive';
+            
+            return `
+                <tr data-id="${unit.id}">
+                    <td data-field="nama">${escapeHtml(unit.nama_unit || unit.nama || '')}</td>
+                    <td><span class="badge ${statusClass}">${status}</span></td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn-icon-action" onclick="openUnitKerjaModal(${unit.id})" title="Edit">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <button class="btn-icon-action" onclick="toggleUnitKerjaStatus(${unit.id}, ${unit.is_active !== false ? false : true})" title="${unit.is_active !== false ? 'Non Aktifkan' : 'Aktifkan'}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    ${unit.is_active !== false ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Update cards for mobile
+    const cardsContainer = document.getElementById('unitKerjaCards');
+    if (cardsContainer) {
+        if (unitKerjaList.length === 0) {
+            cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada unit kerja</div>';
+        } else {
+            cardsContainer.innerHTML = unitKerjaList.map(unit => {
+                const status = unit.is_active !== false ? 'Aktif' : 'Non Aktif';
+                const statusClass = unit.is_active !== false ? 'badge-active' : 'badge-inactive';
+                
+                return `
+                    <div class="admin-card" data-id="${unit.id}">
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Nama Unit Kerja</div>
+                            <div class="admin-card-value">${escapeHtml(unit.nama_unit || unit.nama || '')}</div>
+                        </div>
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Status</div>
+                            <div class="admin-card-value"><span class="badge ${statusClass}">${status}</span></div>
+                        </div>
+                        <div class="admin-card-actions">
+                            <button class="btn-icon-action" onclick="openUnitKerjaModal(${unit.id})" title="Edit">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                Edit
+                            </button>
+                            <button class="btn-icon-action" onclick="toggleUnitKerjaStatus(${unit.id}, ${unit.is_active !== false ? false : true})" title="${unit.is_active !== false ? 'Non Aktifkan' : 'Aktifkan'}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    ${unit.is_active !== false ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
+                                </svg>
+                                ${unit.is_active !== false ? 'Non Aktif' : 'Aktif'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+}
+
+async function toggleUnitKerjaStatus(id, activate) {
+    // Ensure activate is a boolean
+    activate = activate === true || activate === 'true' || activate === 1;
+    
+    // Get unit kerja data from current list to get the nama
+    const unitKerjaList = paginationState.unitKerja.allData;
+    const unit = unitKerjaList.find(u => u.id === id);
+    
+    if (!unit) {
+        await showAlert('Error: Unit kerja tidak ditemukan', 'Error', 'error');
+        return;
+    }
+    
+    const nama = unit.nama_unit || unit.nama || '';
+    if (!nama) {
+        await showAlert('Error: Nama unit kerja tidak ditemukan', 'Error', 'error');
+        return;
+    }
+    
+    const action = activate ? 'mengaktifkan' : 'menonaktifkan';
+    const title = activate ? 'Aktifkan Unit Kerja' : 'Nonaktifkan Unit Kerja';
+    const description = activate 
+        ? 'Unit kerja akan dapat digunakan dan muncul di dropdown setelah diaktifkan.'
+        : 'Unit kerja tidak akan dapat digunakan dan tidak muncul di dropdown setelah dinonaktifkan.';
+    const confirmed = await showConfirm(
+        `${activate ? 'Aktifkan' : 'Nonaktifkan'} unit kerja ini?`,
+        title,
+        description
+    );
+    if (!confirmed) return;
+    
+    try {
+        const token = getAuthToken();
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const url = new URL(`${fullUrl}?action=updateUnitKerja`);
+        url.searchParams.append('id', id);
+        url.searchParams.append('nama', nama);
+        url.searchParams.append('is_active', activate ? 1 : 0);
+        
+        const response = await fetch(url.toString(), {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || `Gagal ${action} unit kerja`);
+        }
+        
+        showSuccessMessage(`Unit kerja berhasil ${activate ? 'diaktifkan' : 'dinonaktifkan'}`);
+        loadUnitKerja();
+        // Reload unit kerja dropdowns
+        loadUnitKerjaForApprover();
+        loadUnitKerjaForUserEdit();
+    } catch (error) {
+        await showAlert('Error: ' + error.message, 'Error', 'error');
     }
 }

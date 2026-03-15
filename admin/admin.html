@@ -7,16 +7,14 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Panel Admin - Permintaan DOF</title>
-    <script src="../version.js?v=202412011200"></script>
-    <link rel="stylesheet" href="../layout.css?v=202412011200">
-    <link rel="stylesheet" href="admin.css?v=202412011200">
-    <link rel="stylesheet" href="../icons.css?v=202412011200">
+    <script src="../version.js?v=202503151300"></script>
+    <link rel="stylesheet" href="../layout.css?v=202503151300">
+    <link rel="stylesheet" href="admin.css?v=202503151300">
+    <link rel="stylesheet" href="../icons.css?v=202503151300">
 </head>
 <body>
-    <!-- Sidebar Overlay for Mobile -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
-    <!-- Sidebar -->
     <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-logo-text">Permintaan DOF</div>
@@ -105,12 +103,9 @@
         </div>
     </aside>
 
-    <!-- Main Wrapper -->
     <div class="main-wrapper">
-        <!-- Mobile Menu Toggle -->
         <button id="mobileMenuToggle" class="mobile-menu-toggle">☰</button>
 
-        <!-- Content Header -->
         <div class="content-header">
             <div>
                 <h1>System Administration</h1>
@@ -129,9 +124,7 @@
             </div>
         </div>
 
-        <!-- Main Content -->
         <main class="main-content admin-main">
-            <!-- PIN Approval Section (Super Admin Only) -->
             <section class="panel panel-pin">
                 <div class="panel-header">
                     <div class="panel-title-with-icon">
@@ -167,7 +160,6 @@
                 </div>
             </section>
 
-            <!-- Approver Management Section -->
             <section class="panel">
                 <div class="panel-header">
                     <div class="panel-title-with-icon">
@@ -201,12 +193,10 @@
                             <tr><td colspan="7" class="loading">Memuat...</td></tr>
                         </tbody>
                     </table>
-                    <!-- Mobile Card View -->
                     <div class="admin-cards" id="approversCards"></div>
                 </div>
             </section>
 
-            <!-- Petugas Management Section -->
             <section class="panel">
                 <div class="panel-header">
                     <div class="panel-title-with-icon">
@@ -228,53 +218,29 @@
                         <thead>
                             <tr>
                                 <th>NAMA</th>
-                                <th>STATUS APPROVER</th>
+                                <th>NPK</th>
+                                <th>JABATAN</th>
                                 <th>STATUS</th>
                                 <th>ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody id="petugasTbody">
-                            <tr><td colspan="4" class="loading">Memuat...</td></tr>
-                        </tbody>
-                    </table>
-                    <!-- Mobile Card View -->
-                    <div class="admin-cards" id="petugasCards"></div>
-                </div>
-            </section>
-
-            <section class="panel">
-                <div class="panel-header">
-                    <div class="panel-title-with-icon">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
-                        <h2>User Management</h2>
-                    </div>
-                    <div class="panel-actions">
-                        <button id="refreshUsersBtn" class="btn">Refresh</button>
-                    </div>
-                </div>
-
-                <div class="table-wrap">
-                    <table class="admin-table" id="usersTable">
-                        <thead>
-                            <tr>
-                                <th>USER</th>
-                                <th>ROLE</th>
-                                <th>STATUS</th>
-                                <th>LAST LOGIN</th>
-                                <th>ACTIONS</th>
-                            </tr>
-                        </thead>
-                        <tbody id="usersTbody">
                             <tr><td colspan="5" class="loading">Memuat...</td></tr>
                         </tbody>
                     </table>
-                    <!-- Mobile Card View -->
-                    <div class="admin-cards" id="usersCards"></div>
+                    <div class="admin-cards" id="petugasCards"></div>
+                    <div id="petugasPagination" class="pagination-container" style="display: none;">
+                        <div class="pagination-info">
+                            <span>Menampilkan <span id="petugasPaginationStart">0</span> sampai <span id="petugasPaginationEnd">0</span> dari <span id="petugasPaginationTotal">0</span> data</span>
+                        </div>
+                        <div class="pagination-controls">
+                            <button id="petugasPaginationFirst" class="pagination-btn" disabled>«</button>
+                            <button id="petugasPaginationPrev" class="pagination-btn" disabled>‹</button>
+                            <span id="petugasPaginationPageInfo" class="pagination-page-info">Halaman 1</span>
+                            <button id="petugasPaginationNext" class="pagination-btn">›</button>
+                            <button id="petugasPaginationLast" class="pagination-btn">»</button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -316,8 +282,113 @@
                             <tr><td colspan="4" class="loading">Memuat...</td></tr>
                         </tbody>
                     </table>
-                    <!-- Mobile Card View -->
                     <div class="admin-cards" id="registrationsCards"></div>
+                    <div id="registrationsPagination" class="pagination-container" style="display: none;">
+                        <div class="pagination-info">
+                            <span>Menampilkan <span id="registrationsPaginationStart">0</span> sampai <span id="registrationsPaginationEnd">0</span> dari <span id="registrationsPaginationTotal">0</span> data</span>
+                        </div>
+                        <div class="pagination-controls">
+                            <button id="registrationsPaginationFirst" class="pagination-btn" disabled>«</button>
+                            <button id="registrationsPaginationPrev" class="pagination-btn" disabled>‹</button>
+                            <span id="registrationsPaginationPageInfo" class="pagination-page-info">Halaman 1</span>
+                            <button id="registrationsPaginationNext" class="pagination-btn">›</button>
+                            <button id="registrationsPaginationLast" class="pagination-btn">»</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div class="panel-title-with-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        <div>
+                            <h2>Unit Kerja Management</h2>
+                            <p class="panel-description">Kelola data unit kerja</p>
+                        </div>
+                    </div>
+                    <div class="panel-actions">
+                        <button id="addUnitKerjaBtn" class="btn btn-primary">Tambah Unit Kerja</button>
+                        <button id="refreshUnitKerjaBtn" class="btn">Refresh</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="admin-table" id="unitKerjaTable">
+                        <thead>
+                            <tr>
+                                <th>NAMA UNIT KERJA</th>
+                                <th>STATUS</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="unitKerjaTbody">
+                            <tr><td colspan="3" class="loading">Memuat...</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="admin-cards" id="unitKerjaCards"></div>
+                    <div id="unitKerjaPagination" class="pagination-container" style="display: none;">
+                        <div class="pagination-info">
+                            <span>Menampilkan <span id="unitKerjaPaginationStart">0</span> sampai <span id="unitKerjaPaginationEnd">0</span> dari <span id="unitKerjaPaginationTotal">0</span> data</span>
+                        </div>
+                        <div class="pagination-controls">
+                            <button id="unitKerjaPaginationFirst" class="pagination-btn" disabled>«</button>
+                            <button id="unitKerjaPaginationPrev" class="pagination-btn" disabled>‹</button>
+                            <span id="unitKerjaPaginationPageInfo" class="pagination-page-info">Halaman 1</span>
+                            <button id="unitKerjaPaginationNext" class="pagination-btn">›</button>
+                            <button id="unitKerjaPaginationLast" class="pagination-btn">»</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div class="panel-title-with-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <h2>User Management</h2>
+                    </div>
+                    <div class="panel-actions">
+                        <button id="refreshUsersBtn" class="btn">Refresh</button>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="admin-table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>USER</th>
+                                <th>UNIT KERJA</th>
+                                <th>ROLE</th>
+                                <th>STATUS</th>
+                                <th>LAST LOGIN</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTbody">
+                            <tr><td colspan="6" class="loading">Memuat...</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="admin-cards" id="usersCards"></div>
+                    <div id="usersPagination" class="pagination-container" style="display: none;">
+                        <div class="pagination-info">
+                            <span>Menampilkan <span id="usersPaginationStart">0</span> sampai <span id="usersPaginationEnd">0</span> dari <span id="usersPaginationTotal">0</span> data</span>
+                        </div>
+                        <div class="pagination-controls">
+                            <button id="usersPaginationFirst" class="pagination-btn" disabled>«</button>
+                            <button id="usersPaginationPrev" class="pagination-btn" disabled>‹</button>
+                            <span id="usersPaginationPageInfo" class="pagination-page-info">Halaman 1</span>
+                            <button id="usersPaginationNext" class="pagination-btn">›</button>
+                            <button id="usersPaginationLast" class="pagination-btn">»</button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -325,7 +396,6 @@
     </div>
 
 
-    <!-- Modal Detail Registration -->
     <div id="detailRegistrationModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -381,7 +451,6 @@
         </div>
     </div>
 
-    <!-- Modal Confirm Approve -->
     <div id="confirmApproveModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -409,7 +478,6 @@
         </div>
     </div>
 
-    <!-- Modal Success Approve -->
     <div id="successApproveModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -440,7 +508,6 @@
         </div>
     </div>
 
-    <!-- Modal Reject Registration -->
     <div id="rejectModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -461,7 +528,6 @@
         </div>
     </div>
 
-    <!-- Modal Edit User -->
     <div id="editUserModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -480,9 +546,9 @@
                 <div class="form-row">
                     <label>Role</label>
                     <select id="editRole" required>
-                        <option value="user">user</option>
-                        <option value="admin">petugas</option>
-                        <option value="super_admin">admin</option>
+                        <option value="user">User</option>
+                        <option value="admin">Petugas</option>
+                        <option value="super_admin">Admin</option>
                     </select>
                 </div>
                 <div class="form-row">
@@ -499,7 +565,16 @@
                 </div>
                 <div class="form-row">
                     <label>Unit Kerja</label>
-                    <input type="text" id="editUnitKerja" placeholder="Unit Kerja">
+                    <select id="editUnitKerja">
+                        <option value="">Pilih Unit Kerja</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>Status</label>
+                    <select id="editUserStatus" required>
+                        <option value="1">Aktif</option>
+                        <option value="0">Non Aktif</option>
+                    </select>
                 </div>
                 <div id="editUserError" class="error-box"></div>
                 <div class="form-actions">
@@ -510,7 +585,6 @@
         </div>
     </div>
 
-    <!-- Modal Create User -->
     <div id="createUserModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -530,14 +604,22 @@
                 <div class="form-row">
                     <label>Role</label>
                     <select id="newRole" required>
-                        <option value="user">user</option>
-                        <option value="admin">petugas</option>
-                        <option value="super_admin">admin</option>
+                        <option value="user">User</option>
+                        <option value="admin">Petugas</option>
+                        <option value="super_admin">Admin</option>
                     </select>
                 </div>
                 <div class="form-row">
                     <label>Password</label>
-                    <input type="password" id="newPassword" placeholder="Password awal" required>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="newPassword" placeholder="Password awal" required>
+                        <button type="button" class="password-toggle-btn" id="toggleNewPassword" title="Lihat password">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div id="createUserError" class="error-box"></div>
                 <div class="form-actions">
@@ -548,7 +630,6 @@
         </div>
     </div>
 
-    <!-- Modal Reset Password -->
     <div id="resetPasswordModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -558,7 +639,15 @@
             <form id="resetPasswordForm" class="form">
                 <div class="form-row">
                     <label>Masukkan password baru:</label>
-                    <input type="password" id="resetPasswordInput" placeholder="Password baru" required autofocus>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="resetPasswordInput" placeholder="Password baru" required autofocus>
+                        <button type="button" class="password-toggle-btn" id="toggleResetPassword" title="Lihat password">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
                     <div class="form-hint">Password akan direset dan semua session user akan dicabut.</div>
                 </div>
                 <div id="resetPasswordError" class="error-box"></div>
@@ -570,7 +659,6 @@
         </div>
     </div>
 
-    <!-- Modal Create/Edit Approver -->
     <div id="approverModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -609,7 +697,33 @@
         </div>
     </div>
 
-    <!-- Modal Create/Edit Petugas -->
+    <div id="unitKerjaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="unitKerjaModalTitle">Tambah Unit Kerja</h3>
+                <button id="closeUnitKerjaModal" class="icon-btn" title="Tutup">✕</button>
+            </div>
+            <form id="unitKerjaForm" class="form" novalidate>
+                <div class="form-row">
+                    <label>Nama Unit Kerja <span style="color: red;">*</span></label>
+                    <input type="text" id="unitKerjaNama" placeholder="Nama Unit Kerja">
+                </div>
+                <div class="form-row" id="unitKerjaStatusRow" style="display: none;">
+                    <label>Status</label>
+                    <select id="unitKerjaStatus" required>
+                        <option value="1">Aktif</option>
+                        <option value="0">Non Aktif</option>
+                    </select>
+                </div>
+                <div id="unitKerjaError" class="error-box"></div>
+                <div class="form-actions">
+                    <button type="button" id="cancelUnitKerjaBtn" class="btn">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="petugasModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -633,6 +747,13 @@
                     <label>Nomor WhatsApp</label>
                     <input type="tel" id="petugasNoWa" placeholder="08xxxxxxxxxx">
                 </div>
+                <div class="form-row" id="petugasStatusRow" style="display: none;">
+                    <label>Status</label>
+                    <select id="petugasStatus" required>
+                        <option value="1">Aktif</option>
+                        <option value="0">Non Aktif</option>
+                    </select>
+                </div>
                 <div id="petugasError" class="error-box"></div>
                 <div class="form-actions">
                     <button type="button" id="cancelPetugasBtn" class="btn">Batal</button>
@@ -642,9 +763,61 @@
         </div>
     </div>
 
-    <script src="../auth.js?v=202412011200"></script>
-    <script src="../sidebar.js?v=202412011200"></script>
-    <script src="admin.js?v=202412011200"></script>
+    <div id="confirmToggleUserStatusModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="confirmToggleUserStatusTitle">Konfirmasi</h3>
+                <button id="closeConfirmToggleUserStatusModal" class="icon-btn" title="Tutup">✕</button>
+            </div>
+            <div class="confirm-modal-body">
+                <div class="confirm-icon" id="confirmToggleUserStatusIcon">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <div class="confirm-message">
+                    <h4 id="confirmToggleUserStatusMessage">Apakah Anda yakin?</h4>
+                    <p id="confirmToggleUserStatusDescription"></p>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" id="cancelConfirmToggleUserStatusBtn" class="btn">Batal</button>
+                <button type="button" id="confirmToggleUserStatusBtn" class="btn btn-primary">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="genericConfirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="genericConfirmTitle">Konfirmasi</h3>
+                <button id="closeGenericConfirmModal" class="icon-btn" title="Tutup">✕</button>
+            </div>
+            <div class="confirm-modal-body">
+                <div class="confirm-icon" id="genericConfirmIcon">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <div class="confirm-message">
+                    <h4 id="genericConfirmMessage">Apakah Anda yakin?</h4>
+                    <p id="genericConfirmDescription"></p>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" id="cancelGenericConfirmBtn" class="btn">Batal</button>
+                <button type="button" id="confirmGenericConfirmBtn" class="btn btn-primary">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../auth.js?v=202503151300"></script>
+    <script src="../sidebar.js?v=202503151300"></script>
+    <script src="admin.js?v=202503151300"></script>
 </body>
 </html>
 

@@ -52,3 +52,56 @@ AddDefaultCharset UTF-8
 # Custom error pages (optional)
 # ErrorDocument 404 /404.html
 # ErrorDocument 500 /500.html
+
+# ========================================
+# CACHE CONTROL - Memastikan Browser Selalu Memuat Versi Terbaru
+# ========================================
+
+# Disable caching untuk file HTML - HARUS selalu fresh
+<IfModule mod_headers.c>
+    # File HTML - NO CACHE sama sekali
+    <FilesMatch "\.(html|htm)$">
+        Header unset ETag
+        Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0, private"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+        Header append Cache-Control "post-check=0, pre-check=0"
+    </FilesMatch>
+    
+    # File CSS dan JS - Revalidate dengan version parameter
+    # Browser akan request ulang jika versi berbeda karena query parameter v=
+    <FilesMatch "\.(css|js)$">
+        Header unset ETag
+        Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+    
+    # Tambahkan header untuk prevent proxy/CDN caching
+    Header set Vary "Accept-Encoding"
+    Header append Vary "User-Agent"
+</IfModule>
+
+# Disable ETag untuk prevent caching issues
+<IfModule mod_headers.c>
+    Header unset ETag
+</IfModule>
+FileETag None
+
+# Force browser untuk revalidate SEMUA file
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresDefault "access plus 0 seconds"
+    ExpiresByType text/html "access plus 0 seconds"
+    ExpiresByType text/css "access plus 0 seconds"
+    ExpiresByType application/javascript "access plus 0 seconds"
+    ExpiresByType text/javascript "access plus 0 seconds"
+    ExpiresByType application/json "access plus 0 seconds"
+</IfModule>
+
+# Disable browser caching via rewrite (backup method)
+<IfModule mod_rewrite.c>
+    # Tambahkan timestamp untuk file HTML saat diakses
+    RewriteCond %{REQUEST_FILENAME} \.(html|htm)$ [NC]
+    RewriteRule .* - [E=no-cache:1]
+</IfModule>

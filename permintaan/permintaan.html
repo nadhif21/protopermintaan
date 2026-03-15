@@ -7,16 +7,14 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Data Permintaan - Permintaan DOF</title>
-    <script src="../version.js?v=202412011200"></script>
-    <link rel="stylesheet" href="../layout.css?v=202412011200">
-    <link rel="stylesheet" href="permintaan.css?v=202412011200">
-    <link rel="stylesheet" href="../icons.css?v=202412011200">
+    <script src="../version.js?v=202503151300"></script>
+    <link rel="stylesheet" href="../layout.css?v=202503151300">
+    <link rel="stylesheet" href="permintaan.css?v=202503151300">
+    <link rel="stylesheet" href="../icons.css?v=202503151300">
 </head>
 <body>
-    <!-- Sidebar Overlay for Mobile -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
-    <!-- Sidebar -->
     <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-logo-text">Permintaan DOF</div>
@@ -105,24 +103,19 @@
         </div>
     </aside>
 
-    <!-- Main Wrapper -->
     <div class="main-wrapper">
-        <!-- Mobile Menu Toggle -->
         <button id="mobileMenuToggle" class="mobile-menu-toggle">☰</button>
 
-        <!-- Content Header -->
         <div class="content-header">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
                 <div>
                     <h1>Data Permintaan</h1>
-                    <p>Manage and monitor all requests from various business units in real-time.</p>
+                    <p id="unitKerjaLabel">Dep...</p>
                 </div>
             </div>
         </div>
 
-        <!-- Main Content -->
         <main class="main-content">
-            <!-- Statistics Cards -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">
@@ -171,7 +164,6 @@
                 </div>
             </div>
 
-            <!-- Filters Section -->
             <div class="filters-section">
                 <div class="filter-row">
                     <div class="filter-group">
@@ -217,11 +209,7 @@
                 </div>
             </div>
 
-            <div id="userInfoMessage" class="user-info-message" style="display: none; padding: 12px; background: #e3f2fd; border-radius: 8px; margin-bottom: 16px; color: #1976d2; font-weight: 600;">
-                ℹ️ Anda hanya melihat data permintaan yang Anda input sendiri.
-            </div>
 
-            <!-- Table Container -->
             <div class="table-container">
                 <table id="dataTable">
                     <thead>
@@ -230,7 +218,6 @@
                             <th>TANGGAL MINTA</th>
                             <th>JENIS PERMINTAAN</th>
                             <th>NAMA LENGKAP</th>
-                            <th>UNIT KERJA</th>
                             <th>NO SURAT</th>
                             <th>PETUGAS</th>
                             <th>STATUS APPROVER</th>
@@ -240,13 +227,12 @@
                     </thead>
                     <tbody id="tableBody">
                         <tr>
-                            <td colspan="10" class="loading">Memuat data...</td>
+                            <td colspan="9" class="loading">Memuat data...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Pagination -->
             <div id="paginationContainer" class="pagination-container" style="display: none;">
                 <div class="pagination-info">
                     <span>Showing <span id="paginationStart">0</span> to <span id="paginationEnd">0</span> of <span id="paginationTotal">0</span> results</span>
@@ -269,18 +255,19 @@
                 </div>
             </div>
 
-            <!-- Cards Container for Mobile -->
             <div id="cardsContainer" class="cards-container"></div>
         </main>
     </div>
 
-    <!-- Detail Popup -->
     <div id="detailPopup" class="popup">
         <div class="popup-content">
-            <span class="close-btn">&times;</span>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <button class="close-btn" title="Tutup">✕</button>
+            <div style="margin-bottom: 15px;">
                 <h2>Detail Data</h2>
-                <button id="editModeBtn" class="btn" style="display: none;">✏️ Edit</button>
+                <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px;">
+                    <button id="editModeBtn" class="btn btn-edit" style="display: none;">✏️ Edit</button>
+                    <button id="cancelEditBtn" class="btn btn-cancel" style="display: none;">❌ Batal</button>
+                </div>
             </div>
             <div id="detailContent" class="detail-content"></div>
             <div class="status-flag-container">
@@ -330,8 +317,8 @@
     </div>
 
 
-    <script src="../auth.js?v=202412011200"></script>
-    <script src="../sidebar.js?v=202412011200"></script>
-    <script src="permintaan.js?v=202412011200"></script>
+    <script src="../auth.js?v=202503151300"></script>
+    <script src="../sidebar.js?v=202503151300"></script>
+    <script src="permintaan.js?v=202503151300"></script>
 </body>
 </html>

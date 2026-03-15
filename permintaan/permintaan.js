@@ -1,12 +1,9 @@
-// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
 function getApiUrl() {
     const currentPath = window.location.pathname;
     let basePath = '';
     
-    // Debug: log current path
     console.log('Current path:', currentPath);
     
-    // Deteksi base path aplikasi (misalnya /permintaandof/)
     if (currentPath.includes('/permintaan/')) {
         basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
     } else if (currentPath.includes('/backdate/')) {
@@ -14,34 +11,27 @@ function getApiUrl() {
     } else if (currentPath.includes('/admin/')) {
         basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
     } else {
-        // Jika di root folder aplikasi, ambil path sampai sebelum nama file
         const lastSlash = currentPath.lastIndexOf('/');
         basePath = currentPath.substring(0, lastSlash + 1);
     }
     
-    // Pastikan basePath selalu diakhiri dengan /
     if (basePath && !basePath.endsWith('/')) {
         basePath += '/';
     }
     
-    // Jika basePath kosong atau hanya '/', berarti di root domain
-    // Jika tidak, berarti di subfolder
     if (!basePath || basePath === '/') {
         const result = '/api.php';
         console.log('API URL (root):', result);
         return result;
     }
     
-    // Return path absolut dengan leading slash
     const result = basePath + 'api.php';
     console.log('API URL (subfolder):', result, 'basePath:', basePath);
     return result;
 }
 
-// Fungsi helper untuk membuat URL API dengan query parameters
 function getApiUrlWithParams(action, params = {}) {
     const apiUrl = getApiUrl();
-    // Pastikan apiUrl selalu dimulai dengan /
     const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
     const fullUrl = window.location.origin + path;
     
@@ -87,13 +77,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const userRole = getUserRole();
     const isUser = userRole === 'user';
     
+    // Load user data to get unit kerja for label
+    loadUserDataForLabel();
+    
     if (isUser) {
-        // Show info message for user
-        const userInfoMessage = document.getElementById('userInfoMessage');
-        if (userInfoMessage) {
-            userInfoMessage.style.display = 'block';
-        }
-        
         // Hide edit sections for regular users
         const flagSection = document.getElementById('flagSection');
         const statusSection = document.getElementById('statusSection');
@@ -128,6 +115,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     }
 });
+
+async function loadUserDataForLabel() {
+    try {
+        const token = getAuthToken();
+        if (!token) return;
+        
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        
+        const response = await fetch(fullUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Auth-Token': token
+            },
+            body: new URLSearchParams({
+                action: 'me'
+            }).toString()
+        });
+        
+        if (!response.ok) return;
+        
+        const result = await response.json();
+        // API returns { success: true, user: {...} } directly, not wrapped in data
+        let user = null;
+        if (result.success) {
+            if (result.user) {
+                user = result.user;
+            } else if (result.data && result.data.user) {
+                user = result.data.user;
+            } else if (result.data && !result.data.user) {
+                user = result.data;
+            }
+        }
+        
+        if (user) {
+            const unitKerja = user.unitKerja || user.unit_kerja || '';
+            const unitKerjaLabel = document.getElementById('unitKerjaLabel');
+            if (unitKerjaLabel) {
+                if (unitKerja && unitKerja.trim() !== '') {
+                    unitKerjaLabel.textContent = unitKerja;
+                } else {
+                    unitKerjaLabel.textContent = '';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading user data for label:', error);
+    }
+}
 
 function setupLogout() {
     const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
@@ -438,7 +476,7 @@ async function loadData() {
         const tableBody = document.getElementById('tableBody');
         if (tableBody) {
             tableBody.innerHTML = 
-                '<tr><td colspan="10" class="loading">' +
+                '<tr><td colspan="9" class="loading">' +
             '<strong style="color: #dc3545;">Error: ' + escapeHtml(error.message) + '</strong>' +
             '</td></tr>';
         }
@@ -730,7 +768,7 @@ function displayData() {
     
     if (filteredData.length === 0) {
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="10" class="loading">Tidak ada data yang ditemukan</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="loading">Tidak ada data yang ditemukan</td></tr>';
         }
         if (cardsContainer) {
         cardsContainer.innerHTML = '<div class="loading">Tidak ada data yang ditemukan</div>';
@@ -894,7 +932,6 @@ function findColumnValueFromRow(row, columnName) {
 
 function formatPersetujuan(persetujuan, flag) {
     if (!persetujuan || persetujuan.trim() === '') {
-        // Cek apakah perlu persetujuan (kuning/merah)
         if (flag && (flag.toLowerCase() === 'kuning' || flag.toLowerCase() === 'merah')) {
             return '<span class="persetujuan-badge persetujuan-pending" title="Menunggu Persetujuan">⏳ Menunggu</span>';
         }
@@ -963,7 +1000,6 @@ function displayTable() {
                 <td>${tanggalMinta}</td>
                 <td>${highlightText(escapeHtml(jenisPermintaan))}</td>
                 <td>${highlightText(escapeHtml(namaLengkap))}</td>
-                <td>${highlightText(escapeHtml(unitKerja))}</td>
                 <td>${highlightText(escapeHtml(noSurat))}</td>
                 <td>${highlightText(escapeHtml(petugas))}</td>
                 <td onclick="event.stopPropagation()" style="text-align: center;">${statusApproverCell}</td>
@@ -1319,7 +1355,7 @@ async function showDetail(rowId) {
         'Timestamp',
         'NPK',
         'Nama Lengkap',
-        'Unit Kerja :',
+        'Unit Kerja',
         'No Telepon (HP)',
         'No Surat',
         'Pilih Permintaan',
@@ -2001,101 +2037,44 @@ async function showDetail(rowId) {
         
         // Build message template
         let message = `*Permintaan Persetujuan*\n\n`;
-        message += `Detail Permintaan:\n`;
         
-        // Find alasan permintaan field - gunakan yang sudah disimpan atau cari dari original row
-        let alasanPermintaan = '';
+        // Urutan informasi yang benar:
+        // 1. ID Permintaan
+        message += `ID Permintaan: ${rowNumber}\n`;
         
-        // Prioritas 1: Gunakan yang sudah disimpan di row.alasanPermintaan
-        if (row.alasanPermintaan && row.alasanPermintaan.trim() !== '') {
-            alasanPermintaan = row.alasanPermintaan.trim();
-        }
-        
-        // Prioritas 2: Jika tidak ada, cari dari original row menggunakan findColumnValue
-        if (!alasanPermintaan && row._originalRow) {
-            const originalRow = row._originalRow;
-            const alasanKeys = [
-                'Alasan Permintaan/Permintaan',
-                'ALASAN PERMINTAAN/PERMINTAAN',
-                'Alasan Permintaan',
-                'ALASAN PERMINTAAN'
-            ];
-            
-            for (const key of alasanKeys) {
-                const value = findColumnValue(originalRow, key);
-                if (value && value.trim() !== '') {
-                    alasanPermintaan = value.trim();
-                    break;
-                }
-            }
-        }
-        
-        // Prioritas 3: Jika masih tidak ditemukan, cari di spreadsheetHeaders
-        if (!alasanPermintaan || alasanPermintaan.trim() === '') {
-            for (let i = 0; i < spreadsheetHeaders.length; i++) {
-                const header = spreadsheetHeaders[i];
-                if (header) {
-                    const headerLower = header.toLowerCase().trim();
-                    // Pastikan header mengandung BOTH "alasan" DAN "permintaan"
-                    // Dan bukan field lain seperti "Unit Kerja" atau "Status Surat"
-                    if (headerLower.includes('alasan') && 
-                        headerLower.includes('permintaan') &&
-                        !headerLower.includes('unit') &&
-                        !headerLower.includes('kerja') &&
-                        !headerLower.includes('status') &&
-                        !headerLower.includes('surat')) {
-                        const colLetter = String.fromCharCode(65 + i);
-                        const value = row[colLetter] || '';
-                        if (value && value.trim() !== '') {
-                            alasanPermintaan = value.trim();
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Find nomor surat - cari dari kolom yang benar
-        let nomorSurat = '';
-        
-        // Prioritas 1: Cari dari original row menggunakan findColumnValue
+        // 2. Unit Kerja
+        let unitKerja = '';
         if (row._originalRow) {
             const originalRow = row._originalRow;
-            const suratKeys = [
-                'NO SURAT',
-                'No. Surat',
-                'Nomor Surat',
-                'NO. SURAT',
-                'NOMOR SURAT'
+            const unitKerjaKeys = [
+                'Unit Kerja :',
+                'Unit Kerja',
+                'UNIT KERJA',
+                'UNIT KERJA :'
             ];
             
-            for (const key of suratKeys) {
+            for (const key of unitKerjaKeys) {
                 const value = findColumnValue(originalRow, key);
                 if (value && value.trim() !== '') {
-                    nomorSurat = value.trim();
+                    unitKerja = value.trim();
                     break;
                 }
             }
         }
         
-        // Prioritas 2: Cari dari spreadsheetHeaders
-        if (!nomorSurat || nomorSurat.trim() === '') {
-            for (let i = 0; i < spreadsheetHeaders.length; i++) {
-                const header = spreadsheetHeaders[i];
-                if (header) {
-                    const headerLower = header.toLowerCase().trim();
-                    // Cari header yang mengandung "surat" tapi bukan "status surat" atau "jenis surat"
-                    if (headerLower.includes('surat') && 
-                        (headerLower.includes('no') || headerLower.includes('nomor')) &&
-                        !headerLower.includes('status') &&
-                        !headerLower.includes('jenis') &&
-                        !headerLower.includes('backdate')) {
-                        const colLetter = String.fromCharCode(65 + i);
-                        const value = row[colLetter] || '';
-                        if (value && value.trim() !== '') {
-                            // Pastikan bukan timestamp (format ISO date)
-                            if (!value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
-                                nomorSurat = value.trim();
+        // Jika tidak ditemukan, cari dari row.D atau spreadsheetHeaders
+        if (!unitKerja || unitKerja.trim() === '') {
+            unitKerja = row.D || '';
+            if (!unitKerja || unitKerja.trim() === '') {
+                for (let i = 0; i < spreadsheetHeaders.length; i++) {
+                    const header = spreadsheetHeaders[i];
+                    if (header) {
+                        const headerLower = header.toLowerCase().trim();
+                        if (headerLower.includes('unit') && headerLower.includes('kerja')) {
+                            const colLetter = String.fromCharCode(65 + i);
+                            const value = row[colLetter] || '';
+                            if (value && value.trim() !== '') {
+                                unitKerja = value.trim();
                                 break;
                             }
                         }
@@ -2104,15 +2083,87 @@ async function showDetail(rowId) {
             }
         }
         
-        // Add key details
-        if (nomorSurat) message += `No. Surat: ${nomorSurat}\n`;
-        if (dataName) message += `Nama: ${dataName}\n`;
+        message += `Unit Kerja: ${unitKerja || 'N/A'}\n`;
+        
+        let namaLengkap = '';
+        if (row._originalRow) {
+            const originalRow = row._originalRow;
+            const namaKeys = [
+                'Nama Lengkap',
+                'NAMA LENGKAP',
+                'Nama',
+                'NAMA'
+            ];
+            
+            for (const key of namaKeys) {
+                const value = findColumnValue(originalRow, key);
+                if (value && value.trim() !== '') {
+                    namaLengkap = value.trim();
+                    break;
+                }
+            }
+        }
+        
+        if (!namaLengkap || namaLengkap.trim() === '') {
+            namaLengkap = row.C || '';
+            if (!namaLengkap || namaLengkap.trim() === '') {
+                for (let i = 0; i < spreadsheetHeaders.length; i++) {
+                    const header = spreadsheetHeaders[i];
+                    if (header) {
+                        const headerLower = header.toLowerCase().trim();
+                        if ((headerLower.includes('nama') && headerLower.includes('lengkap')) || 
+                            (headerLower === 'nama' && !headerLower.includes('unit') && !headerLower.includes('kerja'))) {
+                            const colLetter = String.fromCharCode(65 + i);
+                            const value = row[colLetter] || '';
+                            if (value && value.trim() !== '') {
+                                namaLengkap = value.trim();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (namaLengkap) message += `Nama: ${namaLengkap}\n`;
+        
+        // 4. Jenis Permintaan
         if (row.pilihPermintaan) message += `Jenis Permintaan: ${row.pilihPermintaan}\n`;
-        if (alasanPermintaan) message += `Alasan: ${alasanPermintaan}\n`;
         
-        message += `\nFlag: ${selectedFlag}\n`;
-        message += `Status: ${statusSelect.value}\n\n`;
+        // 5. Flag
+        message += `Flag: ${selectedFlag}\n`;
         
+        // 6. Status
+        message += `Status: ${statusSelect.value}\n`;
+        
+        // 7. Petugas
+        let petugas = '';
+        if (row._originalRow) {
+            const originalRow = row._originalRow;
+            const petugasKeys = [
+                'Petugas',
+                'PETUGAS'
+            ];
+            
+            for (const key of petugasKeys) {
+                const value = findColumnValue(originalRow, key);
+                if (value && value.trim() !== '') {
+                    petugas = value.trim();
+                    break;
+                }
+            }
+        }
+        
+        // Jika tidak ditemukan, cari dari row.petugas
+        if (!petugas || petugas.trim() === '') {
+            petugas = row.petugas || '';
+        }
+        
+        if (petugas) message += `Petugas: ${petugas}\n`;
+        
+        message += `\n`;
+        
+        // 8. Link Persetujuan
         message += `*Link Persetujuan:*\n`;
         message += `${approvalUrl}\n\n`;
         message += `Klik link di atas untuk menyetujui atau menolak permintaan ini.`;
@@ -2306,16 +2357,23 @@ async function showDetail(rowId) {
     let originalData = null;
     let saveEditBtn = null;
     
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    
     if (editModeBtn) {
         // Cek apakah user adalah super admin
         if (isSuperAdmin()) {
-            editModeBtn.style.display = 'block';
-            editModeBtn.textContent = 'Edit';
-            editModeBtn.classList.remove('cancel-btn');
+            editModeBtn.style.display = 'inline-flex';
+            editModeBtn.textContent = '✏️ Edit';
+            editModeBtn.classList.add('btn-edit');
+            editModeBtn.classList.remove('btn-cancel');
         } else {
             // Sembunyikan tombol Edit untuk non-super admin
             editModeBtn.style.display = 'none';
         }
+    }
+    
+    if (cancelEditBtn) {
+        cancelEditBtn.style.display = 'none';
     }
     
     function enterEditMode() {
@@ -2326,8 +2384,10 @@ async function showDetail(rowId) {
             return;
         }
         isEditMode = true;
-        editModeBtn.textContent = 'Batal';
-        editModeBtn.classList.add('cancel-btn');
+        editModeBtn.style.display = 'none';
+        if (cancelEditBtn) {
+            cancelEditBtn.style.display = 'inline-flex';
+        }
         originalData = { ...row };
         // Ensure Status Surat is stored in originalData
         if (row.G) {
@@ -2591,8 +2651,10 @@ async function showDetail(rowId) {
     function exitEditMode() {
         if (!editModeBtn) return;
         isEditMode = false;
-        editModeBtn.textContent = 'Edit';
-        editModeBtn.classList.remove('cancel-btn');
+        editModeBtn.style.display = 'inline-flex';
+        if (cancelEditBtn) {
+            cancelEditBtn.style.display = 'none';
+        }
         if (saveEditBtn) saveEditBtn.style.display = 'none';
         
         // Remove editing class from all detail items
@@ -2615,8 +2677,16 @@ async function showDetail(rowId) {
         editModeBtn.onclick = () => {
             if (!isEditMode) {
                 enterEditMode();
-            } else {
+            }
+        };
+    }
+    
+    if (cancelEditBtn) {
+        cancelEditBtn.onclick = () => {
+            if (isEditMode) {
                 exitEditMode();
+                // Reload detail to restore original values
+                showDetail(rowId);
             }
         };
     }
@@ -3220,8 +3290,10 @@ function setupHubungiPetugasButton(row, currentPetugas, dataName, chatUlangBtn, 
         }
         
         // Build message untuk hubungi petugas
+        const idPermintaan = row.originalRowNumber || row.rowNumber || '';
         let message = `Halo ${currentPetugas},\n\n`;
         message += `Saya ingin menanyakan progress permintaan saya:\n\n`;
+        if (idPermintaan) message += `ID Permintaan: ${idPermintaan}\n`;
         
         // Add request details
         if (dataName) message += `Nama: ${dataName}\n`;

@@ -1,11 +1,7 @@
-/* Backdate Page Specific Styles */
-/* Layout styles are in layout.css */
-
 body {
     background: #f5f7fa;
 }
 
-/* Table Styles */
 .table-container {
     overflow-x: auto;
     padding: 0;
@@ -130,7 +126,6 @@ tbody td {
     text-align: right;
 }
 
-/* Popup Styles */
 .popup {
     display: none;
     position: fixed;
@@ -407,7 +402,6 @@ tbody td {
     color: #c62828;
 }
 
-/* Styling untuk form input */
 .form-input {
     width: 100%;
     padding: 12px 16px;
@@ -440,7 +434,6 @@ select.form-input {
     padding-right: 40px;
 }
 
-/* Styling untuk button Add dan Detail */
 .btn-add-perjanjian:hover {
     background: #45a049 !important;
     transform: translateY(-1px);
@@ -453,7 +446,6 @@ select.form-input {
     box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
 }
 
-/* Styling untuk perjanjian list */
 .perjanjian-list {
     display: flex;
     flex-direction: column;
@@ -469,7 +461,6 @@ select.form-input {
     transform: translateY(-2px);
 }
 
-/* Pagination Styles */
 .pagination-container {
     display: flex;
     align-items: center;
@@ -549,7 +540,6 @@ select.form-input {
     box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
 }
 
-/* Mobile Styles */
 @media (max-width: 768px) {
     .table-container {
         display: none;
@@ -668,7 +658,6 @@ select.form-input {
         padding-right: 30px;
     }
 
-    /* Ensure all form inputs are touch-friendly */
     .form-input,
     select.form-input,
     input[type="text"],
@@ -678,11 +667,10 @@ select.form-input {
     select,
     textarea {
         min-height: 44px;
-        font-size: 16px; /* Prevents zoom on iOS */
+        font-size: 16px;
         padding: 12px 16px;
     }
 
-    /* Better button sizing */
     button, .btn, .action-btn {
         min-height: 44px;
         padding: 10px 16px;
@@ -730,7 +718,6 @@ select.form-input {
         justify-content: center;
     }
 
-    /* Better spacing for detail items */
     .detail-item {
         padding: 12px 0;
     }
@@ -745,7 +732,6 @@ select.form-input {
         line-height: 1.5;
     }
 
-    /* Ensure status badges are readable */
     .status-badge,
     .flag-badge {
         font-size: 0.8rem;
@@ -826,7 +812,6 @@ select.form-input {
     background: #1565c0;
 }
 
-/* Event listener untuk menutup modal saat klik di luar */
 #addPerjanjianModal,
 #detailPerjanjianModal {
     cursor: pointer;
@@ -837,13 +822,11 @@ select.form-input {
     cursor: default;
 }
 
-/* Animasi loading spinner */
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
 
-/* Disable pointer events saat loading */
 .perjanjian-item button:disabled {
     opacity: 0.5;
     cursor: not-allowed;

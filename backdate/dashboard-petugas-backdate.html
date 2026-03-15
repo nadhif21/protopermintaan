@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Dashboard Petugas - Permintaan Backdate</title>
-    <script src="../version.js?v=202412011200"></script>
-    <link rel="stylesheet" href="../layout.css?v=202412011200">
-    <link rel="stylesheet" href="backdate.css?v=202412011200">
-    <link rel="stylesheet" href="../icons.css?v=202412011200">
+    <script src="../version.js?v=202503151300"></script>
+    <link rel="stylesheet" href="../layout.css?v=202503151300">
+    <link rel="stylesheet" href="backdate.css?v=202503151300">
+    <link rel="stylesheet" href="../icons.css?v=202503151300">
     <style>
         .dashboard-container {
             padding: 20px;
@@ -80,10 +80,8 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar Overlay for Mobile -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
-    <!-- Sidebar -->
     <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-logo-text">Permintaan DOF</div>
@@ -172,12 +170,9 @@
         </div>
     </aside>
 
-    <!-- Main Wrapper -->
     <div class="main-wrapper">
-        <!-- Mobile Menu Toggle -->
         <button id="mobileMenuToggle" class="mobile-menu-toggle">☰</button>
 
-        <!-- Content Header -->
         <div class="content-header">
             <div>
                 <h1>Dashboard Petugas - Permintaan Backdate</h1>
@@ -185,10 +180,8 @@
             </div>
         </div>
 
-        <!-- Main Content -->
         <main class="main-content">
             <div class="dashboard-container">
-                <!-- Stats -->
                 <div class="stats-grid">
                     <div class="stat-card">
                         <h3>Total Tugas</h3>
@@ -208,7 +201,6 @@
                     </div>
                 </div>
 
-                <!-- Approved Requests Table -->
                 <div class="requests-table">
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f5f5f5; border-bottom: 2px solid #2196f3;">
                         <h2 style="margin: 0;">Tugas Approved (In Progress)</h2>
@@ -249,7 +241,6 @@
         </main>
     </div>
 
-    <!-- Update Modal -->
     <div id="updateModal" class="popup">
         <div class="popup-content" style="max-width: 700px;">
             <span class="close-btn" onclick="closeUpdateModal()">&times;</span>
@@ -281,7 +272,6 @@
         </div>
     </div>
 
-    <!-- Detail Modal -->
     <div id="detailModal" class="popup">
         <div class="popup-content" style="max-width: 700px;">
             <span class="close-btn" onclick="closeDetailModal()">&times;</span>
@@ -290,7 +280,6 @@
         </div>
     </div>
 
-    <!-- Modal Detail Nomor Surat -->
     <div id="detailNomorSuratModal" class="popup">
         <div class="popup-content" style="max-width: 600px;">
             <span class="close-btn" onclick="closeDetailNomorSuratModal()">&times;</span>
@@ -301,8 +290,8 @@
         </div>
     </div>
 
-    <script src="../auth.js?v=202412011200"></script>
-    <script src="../sidebar.js?v=202412011200"></script>
+    <script src="../auth.js?v=202503151300"></script>
+    <script src="../sidebar.js?v=202503151300"></script>
     <script>
         // Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
         function getApiUrl() {
@@ -1344,7 +1333,6 @@
         });
     </script>
     
-    <!-- Modal Add Nomor Surat Backdate -->
     <div id="addNomorSuratModal" class="popup">
         <div class="popup-content popup-add-nomor-surat">
             <span class="close-btn" onclick="closeAddNomorSuratModal()">&times;</span>
@@ -1372,7 +1360,6 @@
         </div>
     </div>
     
-    <!-- Modal Detail Nomor Surat Backdate -->
     <div id="detailNomorSuratModal" class="popup">
         <div class="popup-content popup-detail-nomor-surat">
             <span class="close-btn" onclick="closeDetailNomorSuratModal()">&times;</span>

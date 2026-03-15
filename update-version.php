@@ -1,12 +1,14 @@
 <?php
-/**
- * Script untuk update version di semua file HTML
- * Jalankan script ini setiap kali akan deploy ke Hostinger
- * 
- * Usage: php update-version.php
- */
 
-$version = '202412011200'; // Update ini setiap kali deploy
+$versionFile = __DIR__ . '/VERSION.txt';
+if (!file_exists($versionFile)) {
+    die("Error: VERSION.txt tidak ditemukan!\n");
+}
+
+$version = trim(file_get_contents($versionFile));
+if (empty($version)) {
+    die("Error: VERSION.txt kosong!\n");
+}
 
 function updateVersionInFile($filePath, $version) {
     if (!file_exists($filePath)) {
@@ -14,41 +16,41 @@ function updateVersionInFile($filePath, $version) {
     }
     
     $content = file_get_contents($filePath);
+    $originalContent = $content;
     $updated = false;
     
-    // Update CSS links
+    $patterns = [
+        '/\?v=\d+/i' => '?v=' . $version,
+        '/&v=\d+/i' => '&v=' . $version,
+    ];
+    
+    foreach ($patterns as $pattern => $replacement) {
+        $newContent = preg_replace($pattern, $replacement, $content);
+        if ($newContent !== $content) {
+            $content = $newContent;
+            $updated = true;
+        }
+    }
+    
     $content = preg_replace_callback(
-        '/(<link[^>]+href=["\'])([^"\']+\.css)(["\'][^>]*>)/i',
+        '/(href|src)=["\']([^"\']+\.(css|js))["\']/i',
         function($matches) use ($version, &$updated) {
+            $attr = $matches[1];
             $url = $matches[2];
-            if (strpos($url, 'v=') === false) {
-                $separator = strpos($url, '?') !== false ? '&' : '?';
-                $newUrl = $url . $separator . 'v=' . $version;
-                $updated = true;
-                return $matches[1] . $newUrl . $matches[3];
+            
+            if (strpos($url, 'v=') !== false) {
+                return $matches[0];
             }
-            return $matches[0];
+            
+            $separator = strpos($url, '?') !== false ? '&' : '?';
+            $newUrl = $url . $separator . 'v=' . $version;
+            $updated = true;
+            return $attr . '="' . $newUrl . '"';
         },
         $content
     );
     
-    // Update JS scripts (kecuali version.js)
-    $content = preg_replace_callback(
-        '/(<script[^>]+src=["\'])([^"\']+\.js)(["\'][^>]*>)/i',
-        function($matches) use ($version, &$updated) {
-            $url = $matches[2];
-            if (strpos($url, 'v=') === false && strpos($url, 'version.js') === false) {
-                $separator = strpos($url, '?') !== false ? '&' : '?';
-                $newUrl = $url . $separator . 'v=' . $version;
-                $updated = true;
-                return $matches[1] . $newUrl . $matches[3];
-            }
-            return $matches[0];
-        },
-        $content
-    );
-    
-    if ($updated) {
+    if ($updated && $content !== $originalContent) {
         file_put_contents($filePath, $content);
         return true;
     }
@@ -56,7 +58,6 @@ function updateVersionInFile($filePath, $version) {
     return false;
 }
 
-// Daftar semua file HTML
 $htmlFiles = [
     'index.html',
     'login.html',
@@ -90,6 +91,44 @@ foreach ($htmlFiles as $file) {
     }
 }
 
+$versionJsFile = __DIR__ . '/version.js';
+if (file_exists($versionJsFile)) {
+    $versionJsContent = file_get_contents($versionJsFile);
+    $versionJsOriginal = $versionJsContent;
+    
+    $patterns = [
+        "/const APP_VERSION = '[^']+';/",
+        "/const APP_VERSION = \"[^\"]+\";/",
+        "/APP_VERSION = '[^']+';/",
+        "/APP_VERSION = \"[^\"]+\";/",
+    ];
+    
+    $updatedJs = false;
+    foreach ($patterns as $pattern) {
+        $newContent = preg_replace($pattern, "const APP_VERSION = '$version';", $versionJsContent);
+        if ($newContent !== $versionJsContent) {
+            $versionJsContent = $newContent;
+            $updatedJs = true;
+            break;
+        }
+    }
+    
+    if ($updatedJs && $versionJsContent !== $versionJsOriginal) {
+        file_put_contents($versionJsFile, $versionJsContent);
+        echo "✓ Updated: version.js\n";
+        $updatedCount++;
+    } else {
+        $versionPattern = '/const APP_VERSION = [\'"]?' . preg_quote($version, '/') . '[\'"]?;/';
+        if (preg_match($versionPattern, $versionJsContent)) {
+            echo "✓ version.js sudah menggunakan versi: $version\n";
+        } else {
+            echo "⚠ version.js mungkin perlu diupdate manual\n";
+        }
+    }
+}
+
 echo "\n==============================\n";
 echo "Total files updated: $updatedCount\n";
-echo "Don't forget to update APP_VERSION in version.js to: $version\n";
+echo "Version used: $version\n";
+echo "\n✓ Semua file sudah diupdate dengan versi: $version\n";
+echo "✓ Siap untuk di-upload ke Hostinger!\n";

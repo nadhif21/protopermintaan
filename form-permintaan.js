@@ -1,4 +1,3 @@
-// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
 function getApiUrl() {
     const currentPath = window.location.pathname;
     let basePath = '';
@@ -30,47 +29,36 @@ let customOptions = [];
 let submittedRequestId = null;
 let selectedPetugas = null;
 
-// Opsi yang hanya perlu Bagian 2 + Petugas (Revisi, Pembatalan, Perubahan Plt)
 const SKIP_BAGIAN3_OPTIONS = ['Revisi', 'Pembatalan', 'Perubahan Plt'];
 
-// Load data saat halaman dimuat
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check authentication
     if (!checkAuth()) {
         window.location.href = getAppFullUrl('/login.html');
         return;
     }
     
-    // Wait for DOM to be fully ready
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    // Load user data first and wait for it to complete
     try {
         await loadUserData();
     } catch (error) {
         console.error('Failed to load user data:', error);
-        // Don't retry if there's an error, just continue
     }
     
-    // Wait a bit to ensure fields are filled
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Load unit kerja (this will auto-select user's unit kerja)
     await loadUnitKerja();
     
-    // Wait and retry unit kerja selection if needed
     await new Promise(resolve => setTimeout(resolve, 200));
     const unitKerjaSelect = document.getElementById('unit_kerja');
     if (unitKerjaSelect && window.currentUserUnitKerja && !unitKerjaSelect.value) {
         console.log('Retrying unit kerja selection...');
-        // Try to match again
         for (let i = 0; i < unitKerjaSelect.options.length; i++) {
             const opt = unitKerjaSelect.options[i];
             const optText = opt.text.toLowerCase().trim();
             const userUnitKerjaLower = (window.currentUserUnitKerja || '').toLowerCase().trim();
             if (optText === userUnitKerjaLower || opt.value === window.currentUserUnitKerja) {
                 unitKerjaSelect.value = opt.value;
-                // Make it disabled
                 const existingHidden = document.getElementById('unit_kerja_hidden');
                 if (existingHidden) existingHidden.remove();
                 const hiddenInput = document.createElement('input');
@@ -560,6 +548,12 @@ function renderPilihPermintaanOptions() {
         updateBagian3Visibility();
     });
     
+    // Update visibility saat pertama kali load jika ada value yang sudah dipilih
+    if (finalSelect.value) {
+        selectedPilihPermintaan = finalSelect.value;
+        updateBagian3Visibility();
+    }
+    
     console.log('Pilih Permintaan options rendered:', customOptions.length);
 }
 
@@ -1034,6 +1028,37 @@ function updateBagian3Visibility() {
     if (keteranganGroup) {
         keteranganGroup.style.display = 'none';
     }
+    
+    // Opsi yang perlu label dan placeholder khusus
+    const akunOptions = ['Data/Perubahan Password', 'Pembuatan Akun', 'Perubahan Data Akun', 'Penghapusan Akun'];
+    const isiPenjelasanLabel = document.querySelector('label[for="isi_penjelasan"]');
+    const isiPenjelasanTextarea = document.getElementById('isi_penjelasan');
+    
+    if (akunOptions.includes(selectedPilihPermintaan)) {
+        // Ubah label dan hapus placeholder untuk opsi akun
+        if (isiPenjelasanLabel) {
+            const requiredSpan = isiPenjelasanLabel.querySelector('.required');
+            isiPenjelasanLabel.innerHTML = 'Tulis nama Akun dan Alasannya';
+            if (requiredSpan) {
+                isiPenjelasanLabel.appendChild(requiredSpan);
+            }
+        }
+        if (isiPenjelasanTextarea) {
+            isiPenjelasanTextarea.placeholder = '';
+        }
+    } else {
+        // Kembalikan ke default
+        if (isiPenjelasanLabel) {
+            const requiredSpan = isiPenjelasanLabel.querySelector('.required');
+            isiPenjelasanLabel.innerHTML = 'Isi Penjelasan Singkat Permintaanya';
+            if (requiredSpan) {
+                isiPenjelasanLabel.appendChild(requiredSpan);
+            }
+        }
+        if (isiPenjelasanTextarea) {
+            isiPenjelasanTextarea.placeholder = 'Teks jawaban panjang';
+        }
+    }
 }
 
 async function handleSubmit(e) {
@@ -1358,7 +1383,9 @@ function openWhatsApp() {
     
     const message = encodeURIComponent(
         `Halo ${selectedPetugas.nama},\n\n` +
-        `Saya telah mengajukan permintaan dengan nomor: #${submittedRequestId}\n\n` +
+        `Saya telah mengajukan permintaan dengan detail berikut:\n\n` +
+        `ID Permintaan: ${submittedRequestId}\n` +
+        `Nomor Permintaan: #${submittedRequestId}\n\n` +
         `Silakan review permintaan saya melalui link berikut:\n${detailUrl}\n\n` +
         `Terima kasih.`
     );

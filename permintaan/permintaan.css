@@ -1,11 +1,7 @@
-/* Permintaan Page Specific Styles */
-/* Layout styles are in layout.css */
-
 body {
     background: #f5f7fa;
 }
 
-/* Statistics Cards */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -112,7 +108,6 @@ body {
     }
 }
 
-/* Table Styles */
 .table-container {
     overflow-x: auto;
     padding: 0;
@@ -174,7 +169,6 @@ tbody td {
     line-height: 1.4;
 }
 
-/* Tanggal Minta - format 2 baris */
 tbody td:first-child {
     line-height: 1.4;
 }
@@ -184,7 +178,6 @@ tbody td:first-child div {
     line-height: 1.4;
 }
 
-/* Tanggal Minta - format 2 baris */
 tbody td:first-child {
     line-height: 1.4;
 }
@@ -194,7 +187,6 @@ tbody td:first-child div {
     line-height: 1.4;
 }
 
-/* Status Approver, Status, and Flag column styling (kolom 8, 9, 10) */
 tbody td:nth-child(8),
 tbody td:nth-child(9),
 tbody td:nth-child(10) {
@@ -307,7 +299,6 @@ thead th {
     white-space: nowrap;
 }
 
-/* Column Widths for Desktop */
 @media (min-width: 769px) {
     thead th:nth-child(1),
     tbody td:nth-child(1) {
@@ -380,7 +371,6 @@ thead th {
     }
 }
 
-/* Status and Flag Badge Styles in Table */
 tbody td .status-badge,
 tbody td .flag-badge,
 tbody td .badge {
@@ -473,23 +463,27 @@ tbody td .status-badge {
     position: absolute;
     right: 20px;
     top: 20px;
-    font-size: 1.8rem;
-    font-weight: 300;
-    color: #999;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #666;
     cursor: pointer;
     transition: all 0.3s;
     line-height: 1;
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
+    border-radius: 8px;
+    background: #f5f5f5;
+    border: 2px solid #e0e0e0;
 }
 
 .close-btn:hover {
-    color: #333;
-    background: #f5f5f5;
+    color: #f44336;
+    background: #ffebee;
+    border-color: #f44336;
+    transform: scale(1.1);
 }
 
 .popup-content h2 {
@@ -500,25 +494,70 @@ tbody td .status-badge {
     padding-right: 40px;
 }
 
-/* Edit and Cancel button styling */
-#editModeBtn {
-    padding: 8px 16px;
+.btn-edit {
+    padding: 10px 20px;
     background: #1976d2;
     color: white;
     border: none;
     border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 0.95rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
+}
+
+.btn-edit:hover {
+    background: #1565c0;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(25, 118, 210, 0.4);
+}
+
+.btn-cancel {
+    padding: 10px 20px;
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+}
+
+.btn-cancel:hover {
+    background: #d32f2f;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
+}
+
+#editModeBtn {
+    padding: 10px 20px;
+    background: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
 }
 
 #editModeBtn:hover {
     background: #1565c0;
     transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(25, 118, 210, 0.4);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -527,7 +566,6 @@ tbody td .status-badge {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* Cancel button state (when in edit mode) */
 #editModeBtn.cancel-btn {
     background: #dc3545;
 }
@@ -570,7 +608,6 @@ tbody td .status-badge {
     word-break: break-word;
 }
 
-/* Edit mode input styles - lebih simpel */
 .edit-input {
     width: 100% !important;
     padding: 8px 12px !important;
@@ -600,7 +637,6 @@ tbody td .status-badge {
     opacity: 0.6 !important;
 }
 
-/* Select dropdown styling */
 .edit-input[type="select"],
 .edit-input select,
 select.edit-input {
@@ -612,25 +648,21 @@ select.edit-input {
     padding-right: 40px !important;
 }
 
-/* Textarea styling */
 textarea.edit-input {
     min-height: 80px !important;
     resize: vertical !important;
     line-height: 1.5 !important;
 }
 
-/* Input type text styling */
 input[type="text"].edit-input,
 input[type="email"].edit-input {
     height: auto !important;
 }
 
-/* Datetime input styling */
 input[type="datetime-local"].edit-input {
     cursor: pointer !important;
 }
 
-/* Edit mode detail item styling - lebih simpel */
 .detail-item.editing {
     padding: 16px 20px !important;
     background: transparent !important;
@@ -849,7 +881,7 @@ input[type="datetime-local"].edit-input {
 }
 
 .status-closed {
-    background-color: #4caf50;
+    background-color: #9e9e9e;
     color: white;
 }
 
@@ -894,7 +926,6 @@ input[type="datetime-local"].edit-input {
     color: #666;
 }
 
-/* Badge Styles for Status Approver */
 .badge {
     display: inline-block;
     padding: 4px 10px;
@@ -1182,7 +1213,6 @@ input[type="datetime-local"].edit-input {
     background: #1565c0;
 }
 
-/* Pagination Styles */
 .pagination-container {
     display: flex;
     align-items: center;

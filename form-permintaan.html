@@ -7,16 +7,14 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Daftar Permintaan - Permintaan DOF</title>
-    <script src="version.js?v=202412011200"></script>
-    <link rel="stylesheet" href="layout.css?v=202412011200">
-    <link rel="stylesheet" href="form-permintaan.css?v=202412011200">
-    <link rel="stylesheet" href="icons.css?v=202412011200">
+    <script src="version.js?v=202503151300"></script>
+    <link rel="stylesheet" href="layout.css?v=202503151300">
+    <link rel="stylesheet" href="form-permintaan.css?v=202503151300">
+    <link rel="stylesheet" href="icons.css?v=202503151300">
 </head>
 <body>
-    <!-- Sidebar Overlay for Mobile -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
-    <!-- Sidebar -->
     <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-logo-text">Permintaan DOF</div>
@@ -105,12 +103,9 @@
         </div>
     </aside>
 
-    <!-- Main Wrapper -->
     <div class="main-wrapper">
-        <!-- Mobile Menu Toggle -->
         <button id="mobileMenuToggle" class="mobile-menu-toggle">☰</button>
 
-        <!-- Content Header -->
         <div class="content-header">
             <div>
                 <h1>Form Permintaan</h1>
@@ -118,14 +113,12 @@
             </div>
         </div>
 
-        <!-- Main Content -->
         <main class="main-content">
     <div class="form-container">
         <div class="form-header">
             <h1>Daftar Permintaan</h1>
         </div>
 
-        <!-- Deskripsi Penting -->
         <div class="important-notice">
             <div class="notice-header">
                 <span class="notice-icon">⚠️</span>
@@ -138,36 +131,38 @@
         </div>
 
         <form id="permintaanForm">
-            <!-- Bagian 1: Data Diri -->
             <div class="form-section active" id="bagian1">
 
-                <div class="form-group">
-                    <label for="npk">NPK <span class="required">*</span></label>
-                    <input type="text" id="npk" name="npk" required placeholder="Masukkan NPK">
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="npk">NPK <span class="required">*</span></label>
+                        <input type="text" id="npk" name="npk" required placeholder="Masukkan NPK">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nama_lengkap">Nama Lengkap <span class="required">*</span></label>
+                        <input type="text" id="nama_lengkap" name="nama_lengkap" required placeholder="Masukkan Nama Lengkap">
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="nama_lengkap">Nama Lengkap <span class="required">*</span></label>
-                    <input type="text" id="nama_lengkap" name="nama_lengkap" required placeholder="Masukkan Nama Lengkap">
-                </div>
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="unit_kerja">Unit Kerja <span class="required">*</span></label>
+                        <select id="unit_kerja" name="unit_kerja" required>
+                            <option value="">Pilih Unit Kerja</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label for="unit_kerja">Unit Kerja <span class="required">*</span></label>
-                    <select id="unit_kerja" name="unit_kerja" required>
-                        <option value="">Pilih Unit Kerja</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="no_telepon">No Telepon (HP) <span class="required">*</span></label>
-                    <input type="tel" id="no_telepon" name="no_telepon" required placeholder="Masukkan No Telepon">
+                    <div class="form-group">
+                        <label for="no_telepon">No Telepon (HP) <span class="required">*</span></label>
+                        <input type="tel" id="no_telepon" name="no_telepon" required placeholder="Masukkan No Telepon">
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label for="pilih_permintaan">Pilih Permintaan <span class="required">*</span></label>
                     <select id="pilih_permintaan" name="pilih_permintaan" required>
                         <option value="">Pilih Permintaan</option>
-                        <!-- Options will be loaded dynamically -->
                     </select>
                 </div>
 
@@ -176,7 +171,6 @@
                 </div>
             </div>
 
-            <!-- Bagian 2: Data Surat -->
             <div class="form-section" id="bagian2">
 
                 <div class="form-group">
@@ -208,7 +202,6 @@
                     <textarea id="alasan_permintaan" name="alasan_permintaan" placeholder="Teks jawaban panjang" rows="5" required></textarea>
                 </div>
 
-                <!-- Petugas field untuk Revisi, Pembatalan, Perubahan Plt -->
                 <div class="form-group" id="petugas_bagian2_group">
                     <label for="petugas_bagian2_select">Petugas <span class="required">*</span></label>
                     <select id="petugas_bagian2_select" name="petugas_bagian2" required>
@@ -222,7 +215,6 @@
                 </div>
             </div>
 
-            <!-- Bagian 3: Keterangan -->
             <div class="form-section" id="bagian3">
 
                 <div class="form-group" id="keterangan_permintaan_group" style="display: none;">
@@ -249,7 +241,6 @@
             </div>
         </form>
 
-        <!-- Success Modal -->
         <div id="successModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -271,9 +262,9 @@
     </div>
 
 
-    <script src="auth.js?v=202412011200"></script>
-    <script src="sidebar.js?v=202412011200"></script>
-    <script src="form-permintaan.js?v=202412011200"></script>
+    <script src="auth.js?v=202503151300"></script>
+    <script src="sidebar.js?v=202503151300"></script>
+    <script src="form-permintaan.js?v=202503151300"></script>
     <script>
         // Pastikan hanya Form Permintaan yang aktif di sidebar
         // Jalankan setelah sidebar.js selesai (menggunakan setTimeout untuk memastikan)

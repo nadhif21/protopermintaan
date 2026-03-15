@@ -1,4 +1,3 @@
-// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
 function getApiUrl() {
     const currentPath = window.location.pathname;
     let basePath = '';
@@ -40,7 +39,6 @@ function getApiUrlWithParams(action, params = {}) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Check auth, but allow admin and super_admin
     if (!checkAuth()) return;
     const role = getUserRole();
     if (role !== 'super_admin' && role !== 'admin') {
@@ -49,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Show/hide sections based on role
     if (role === 'super_admin') {
         document.getElementById('registrationsPanel')?.style.setProperty('display', 'block');
         document.getElementById('pageHint').textContent = 'Setujui atau tolak pendaftaran user baru';
@@ -241,23 +238,20 @@ async function approveRegistration(id) {
     try {
         const result = await apiPost('approveRegistration', { id });
         
-        // Get registration data for display
         const registrations = await apiGet('listRegistrations', {});
         const registration = registrations.find(r => r.id === id);
         
         if (result && registration) {
-            // Store data for WhatsApp
             currentApprovedData = {
                 whatsappUrl: result.whatsappUrl,
                 nama: registration.nama,
                 username: registration.npk.toLowerCase(),
-                password: 'User@25', // Fixed password for all users
+                password: 'User@25',
                 npk: registration.npk,
                 unitKerja: registration.unitKerja,
                 nomorTelepon: registration.nomorTelepon
             };
             
-            // Show success modal
             showSuccessApprovalModal(currentApprovedData);
         } else {
             alert('Pendaftaran berhasil disetujui!');
@@ -273,18 +267,15 @@ function showSuccessApprovalModal(data) {
     const modal = document.getElementById('successApprovalModal');
     if (!modal) return;
     
-    // Fill in the details
     document.getElementById('successNama').textContent = data.nama || '-';
     document.getElementById('successUsername').textContent = data.username || '-';
     document.getElementById('successPassword').textContent = data.password || '-';
     document.getElementById('successNpk').textContent = data.npk || '-';
     document.getElementById('successUnitKerja').textContent = data.unitKerja || '-';
     
-    // Show modal
     modal.classList.add('show');
     document.body.style.overflow = 'hidden';
     
-    // Bind WhatsApp button
     const whatsappBtn = document.getElementById('sendWhatsAppBtn');
     if (whatsappBtn) {
         whatsappBtn.onclick = () => {
@@ -513,7 +504,6 @@ function bindEditUserModal() {
             await apiPost('updateUser', updateData);
             close();
             await loadUsers();
-            // Close detail modal if open
             const detailModal = document.getElementById('detailUserModal');
             if (detailModal?.classList.contains('show')) {
                 detailModal.classList.remove('show');
@@ -540,7 +530,6 @@ function clearEditUserError() {
 }
 
 async function editUserFlow(tr, userId) {
-    // Get user details from API
     try {
         if (!userId) {
             alert('User ID tidak valid.');
@@ -555,10 +544,8 @@ async function editUserFlow(tr, userId) {
             return;
         }
 
-        // Set current edit user ID
         currentEditUserId = userId;
 
-        // Fill form with current user data
         const editNameEl = document.getElementById('editName');
         const editUsernameEl = document.getElementById('editUsername');
         const editRoleEl = document.getElementById('editRole');
@@ -575,7 +562,6 @@ async function editUserFlow(tr, userId) {
         if (editNomorTeleponEl) editNomorTeleponEl.value = user.nomorTelepon || '';
         if (editUnitKerjaEl) editUnitKerjaEl.value = user.unitKerja || '';
 
-        // Show modal
         const modal = document.getElementById('editUserModal');
         if (modal) {
             modal.classList.add('show');
@@ -606,7 +592,6 @@ async function deleteUserFlow(userId) {
         await apiPost('deleteUser', { id: userId });
         alert('User berhasil dihapus.');
         await loadUsers();
-        // Close detail modal if open
         const detailModal = document.getElementById('detailUserModal');
         if (detailModal?.classList.contains('show')) {
             detailModal.classList.remove('show');
@@ -629,7 +614,6 @@ async function resetPasswordFlow(userId) {
     try {
         await apiPost('resetUserPassword', { id: userId, newPassword: newPassword.trim() });
         alert('Password berhasil direset. Semua session user tersebut dicabut.');
-        // Refresh user list to get updated password
         await loadUsers();
     } catch (e) {
         alert('Error: ' + e.message);
@@ -742,11 +726,9 @@ async function showDetailUser(userId) {
 
         currentDetailUser = user;
 
-        // Check current user role
         const currentRole = getUserRole();
         const isSuperAdmin = currentRole === 'super_admin';
 
-        // Fill detail modal with null checks
         const detailIdEl = document.getElementById('detailId');
         const detailUsernameEl = document.getElementById('detailUsername');
         const detailNameEl = document.getElementById('detailName');
@@ -771,7 +753,6 @@ async function showDetailUser(userId) {
         if (detailCreatedEl) detailCreatedEl.textContent = formatDateTime(user.createdAt) || '-';
         if (detailUpdatedEl) detailUpdatedEl.textContent = formatDateTime(user.updatedAt) || '-';
 
-        // Show/hide buttons based on role
         const editBtn = document.getElementById('editUserBtn');
         const resetPasswordBtn = document.getElementById('resetPasswordBtn');
         const deleteBtn = document.getElementById('deleteUserBtn');
@@ -786,7 +767,6 @@ async function showDetailUser(userId) {
             deleteBtn.style.display = isSuperAdmin ? 'inline-block' : 'none';
         }
 
-        // Show modal
         const modal = document.getElementById('detailUserModal');
         if (modal) {
             modal.classList.add('show');
@@ -803,7 +783,6 @@ function openWhatsAppForUser(user) {
         return;
     }
 
-    // Generate message
     let message = `*Informasi Akun*\n\n`;
     message += `Detail Akun:\n`;
     message += `• Nama: ${user.name || '-'}\n`;
@@ -817,9 +796,8 @@ function openWhatsAppForUser(user) {
     message += `Sangat disarankan untuk mengubah password setelah login pertama kali.\n\n`;
     message += `Terima kasih.`;
 
-    // Clean phone number (remove leading 0, add country code 62)
     let cleanPhone = user.nomorTelepon.replace(/^0/, '62');
-    cleanPhone = cleanPhone.replace(/\D/g, ''); // Remove non-digits
+    cleanPhone = cleanPhone.replace(/\D/g, '');
     
     const encodedMessage = encodeURIComponent(message);
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;

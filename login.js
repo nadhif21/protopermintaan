@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // If it looks like an email, validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (username.includes('@') && !emailRegex.test(username)) {
             errorMessage.textContent = 'Format email tidak valid.';
@@ -121,7 +120,6 @@ async function doLogin(username, password) {
             submitBtn.disabled = false;
             submitBtn.style.opacity = '1';
         }
-        // keep username filled
         if (usernameInput && !usernameInput.value) usernameInput.value = username;
     }
 }

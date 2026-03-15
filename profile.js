@@ -1,4 +1,3 @@
-// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
 function getApiUrl() {
     const currentPath = window.location.pathname;
     let basePath = '';
@@ -56,7 +55,6 @@ function setupLogout() {
 }
 
 function setupEventListeners() {
-    // Open password modal
     const changePasswordBtn = document.getElementById('changePasswordBtn');
     if (changePasswordBtn) {
         changePasswordBtn.addEventListener('click', openPasswordModal);
@@ -75,7 +73,6 @@ function setupEventListeners() {
         cancelBtn.addEventListener('click', closePasswordModal);
     }
 
-    // Close modal when clicking outside
     if (modal) {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
@@ -84,13 +81,11 @@ function setupEventListeners() {
         });
     }
 
-    // Password form submit
     const passwordForm = document.getElementById('passwordForm');
     if (passwordForm) {
         passwordForm.addEventListener('submit', handlePasswordChange);
     }
 
-    // Toggle password visibility
     const toggleButtons = document.querySelectorAll('.toggle-password');
     toggleButtons.forEach(btn => {
         btn.addEventListener('click', function() {
@@ -168,16 +163,13 @@ function openPasswordModal() {
         modal.classList.add('show');
         document.body.style.overflow = 'hidden';
         
-        // Reset form
         const form = document.getElementById('passwordForm');
         if (form) {
             form.reset();
         }
-        
-        // Clear messages
+
         hideMessages();
         
-        // Focus on old password
         setTimeout(() => {
             const oldPasswordInput = document.getElementById('oldPassword');
             if (oldPasswordInput) {
@@ -193,13 +185,11 @@ function closePasswordModal() {
         modal.classList.remove('show');
         document.body.style.overflow = 'auto';
         
-        // Reset form
         const form = document.getElementById('passwordForm');
         if (form) {
             form.reset();
         }
-        
-        // Clear messages
+
         hideMessages();
     }
 }
@@ -243,7 +233,6 @@ async function handlePasswordChange(e) {
     const confirmPassword = document.getElementById('confirmPassword').value;
     const submitBtn = document.getElementById('submitPasswordBtn');
     
-    // Validation
     if (!oldPassword || !newPassword || !confirmPassword) {
         showError('Semua field wajib diisi.');
         return;
@@ -265,7 +254,6 @@ async function handlePasswordChange(e) {
     }
     
     try {
-        // Disable button
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.querySelector('span').textContent = 'Mengubah...';
@@ -301,10 +289,8 @@ async function handlePasswordChange(e) {
         if (result.success) {
             showSuccess('Password berhasil diubah!');
             
-            // Reset form
             document.getElementById('passwordForm').reset();
             
-            // Close modal after 2 seconds
             setTimeout(() => {
                 closePasswordModal();
             }, 2000);
@@ -315,7 +301,6 @@ async function handlePasswordChange(e) {
         console.error('Error changing password:', error);
         showError(error.message || 'Terjadi kesalahan saat mengubah password');
     } finally {
-        // Enable button
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.querySelector('span').textContent = 'Ubah Password';

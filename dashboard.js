@@ -1,4 +1,3 @@
-// Dashboard Statistics Script
 let dashboardData = {
     total: 0,
     open: 0,
@@ -53,9 +52,7 @@ async function loadDashboardData() {
             fetchHeaders['X-Auth-Token'] = token;
         }
         
-        // Load data from both permintaan and backdate
         const [permintaanResult, backdateResult] = await Promise.all([
-            // Load permintaan data
             fetch(`${fullUrl}?action=getData&table=permintaan&_t=${Date.now()}`, {
                 method: 'GET',
                 headers: fetchHeaders,
@@ -63,7 +60,6 @@ async function loadDashboardData() {
                 cache: 'no-cache'
             }).then(res => res.ok ? res.json() : { success: false, data: [] }),
             
-            // Load backdate data
             fetch(`${fullUrl}?action=getListPermintaanBackdate&_t=${Date.now()}`, {
                 method: 'GET',
                 headers: fetchHeaders,
@@ -72,7 +68,6 @@ async function loadDashboardData() {
             }).then(res => res.ok ? res.json() : { success: false, data: [] })
         ]);
         
-        // Helper function to find column value
         function findColumnValue(row, columnName) {
             const keys = Object.keys(row);
             const searchName = columnName.toLowerCase().trim();
@@ -100,32 +95,28 @@ async function loadDashboardData() {
             return key ? (row[key] || '') : '';
         }
         
-        // Process permintaan data
         let permintaanData = [];
         if (permintaanResult.success && permintaanResult.data) {
             permintaanData = permintaanResult.data || [];
         }
         
-        // Process backdate data
         let backdateData = [];
         if (backdateResult.success && backdateResult.data) {
             backdateData = (backdateResult.data || []).map(item => {
-                // Transform backdate data to match permintaan format
                 return {
                     'ID Permintaan': item.row_number || item.id || '',
                     'Nama Lengkap': item.nama_pegawai_backdate || item.nama_pegawai || item.user_name || '',
                     'Status': item.status || 'Open',
                     'Timestamp': item.created_at || '',
-                    'Type': 'backdate'
+                    'Type': 'backdate',
+                    'Petugas': item.petugas_nama || ''
                 };
             });
         }
         
-        // Combine both datasets
         const allData = [...permintaanData, ...backdateData];
         const headers = permintaanResult.headers || (permintaanData.length > 0 ? Object.keys(permintaanData[0]) : []);
         
-        // Calculate statistics from combined data
         dashboardData.total = allData.length;
         dashboardData.open = allData.filter(row => {
             const status = (findColumnValue(row, 'Status') || row.Status || '').trim().toLowerCase();
@@ -140,7 +131,6 @@ async function loadDashboardData() {
             return status === 'cancelled' || status === 'rejected';
         }).length;
 
-        // Get recent activity (last 5) - sorted by timestamp from both sources
         const sortedData = [...allData].sort((a, b) => {
             const timestampA = findColumnValue(a, 'Timestamp') || a.Timestamp || a.created_at || '';
             const timestampB = findColumnValue(b, 'Timestamp') || b.Timestamp || b.created_at || '';
@@ -160,7 +150,9 @@ async function loadDashboardData() {
             const idPermintaan = findColumnValue(row, 'ID Permintaan') || 
                                 findColumnValue(row, 'ID PERMINTAAN') ||
                                 row['ID Permintaan'] ||
+                                row.rowNumber ||
                                 row.row_number ||
+                                row.id ||
                                 (headers.length > 0 ? (row[headers[0]] || '') : '') ||
                                 `#${index + 1}`;
             const timestamp = findColumnValue(row, 'Timestamp') || 
@@ -169,13 +161,18 @@ async function loadDashboardData() {
                              findColumnValue(row, 'timestamp') || 
                              '';
             const type = row.Type || (row.row_number ? 'backdate' : 'permintaan');
+            const petugas = findColumnValue(row, 'Petugas') || 
+                           row['Petugas'] || 
+                           row['petugas_nama'] ||
+                           '';
             
             return {
                 id: idPermintaan,
                 nama: nama,
                 status: status,
                 timestamp: timestamp,
-                type: type
+                type: type,
+                petugas: petugas
             };
         });
         
@@ -184,7 +181,6 @@ async function loadDashboardData() {
         updateDashboard();
     } catch (error) {
         console.error('Error loading dashboard data:', error);
-        // Show error in UI
         const activityContainer = document.getElementById('recentActivityList');
         if (activityContainer) {
             activityContainer.innerHTML = '<div class="activity-empty">Gagal memuat data</div>';
@@ -193,7 +189,6 @@ async function loadDashboardData() {
 }
 
 function updateDashboard() {
-    // Update statistics cards
     const totalEl = document.getElementById('statTotal');
     const openEl = document.getElementById('statOpen');
     const closedEl = document.getElementById('statClosed');
@@ -204,7 +199,6 @@ function updateDashboard() {
     if (closedEl) closedEl.textContent = dashboardData.closed.toLocaleString('id-ID');
     if (cancelledEl) cancelledEl.textContent = dashboardData.cancelled.toLocaleString('id-ID');
 
-    // Update recent activity
     const activityContainer = document.getElementById('recentActivityList');
     if (activityContainer && dashboardData.recentActivity.length > 0) {
         activityContainer.innerHTML = dashboardData.recentActivity.map(item => {
@@ -212,13 +206,14 @@ function updateDashboard() {
             const statusText = getStatusText(item.status);
             const timeAgo = formatTimeAgo(item.timestamp);
             const typeLabel = item.type === 'backdate' ? 'Backdate' : 'Permintaan';
+            const petugasText = item.petugas ? ` • Petugas: ${item.petugas}` : '';
             
             return `
                 <div class="activity-item">
                     <div class="activity-icon ${statusClass}">${getStatusIcon(item.status)}</div>
                     <div class="activity-content">
-                        <div class="activity-title">${typeLabel} ${item.id}</div>
-                        <div class="activity-subtitle">${item.nama}</div>
+                        <div class="activity-title">${typeLabel} <strong>${item.id}</strong></div>
+                        <div class="activity-subtitle">${item.nama}${petugasText}</div>
                         <div class="activity-time">${timeAgo} • <span class="activity-status ${statusClass}">${statusText}</span></div>
                     </div>
                 </div>

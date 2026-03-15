@@ -1,6 +1,4 @@
-// Sidebar Navigation Script
 document.addEventListener('DOMContentLoaded', function() {
-    // Check authentication
     if (!checkAuth()) {
         return;
     }
@@ -11,13 +9,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    // Update user info in sidebar
     const userNameEl = document.getElementById('sidebarUserName');
     const userRoleEl = document.getElementById('sidebarUserRole');
     const userAvatarEl = document.getElementById('sidebarUserAvatar');
 
     if (userNameEl) {
-        // Use name if available, otherwise use username
         const displayName = session.user.name || session.user.username || 'User';
         userNameEl.textContent = displayName;
     }
@@ -35,7 +31,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (userAvatarEl) {
-        // Get initials from name or username
         const nameSource = session.user.name || session.user.username || 'U';
         const names = nameSource.split(' ');
         let initials = '';
@@ -49,14 +44,12 @@ document.addEventListener('DOMContentLoaded', function() {
         userAvatarEl.textContent = initials.toUpperCase();
     }
 
-    // Show/hide menu items based on role
     const adminMenu = document.getElementById('adminMenuLink');
     const formPermintaanMenu = document.getElementById('formPermintaanMenuLink');
     const dashboardUserBackdateMenu = document.getElementById('dashboardUserBackdateMenuLink');
     const dashboardApproverBackdateMenu = document.getElementById('dashboardApproverBackdateMenuLink');
     const dashboardPetugasBackdateMenu = document.getElementById('dashboardPetugasBackdateMenuLink');
     
-    // Get backdate menu elements early (before they're used)
     const backdateMenu = document.getElementById('backdateMenu');
     const backdateSubmenu = document.getElementById('backdateSubmenu');
 
@@ -68,44 +61,36 @@ document.addEventListener('DOMContentLoaded', function() {
         formPermintaanMenu.style.display = (session.user.role === 'user') ? 'block' : 'none';
     }
 
-    // Show/hide backdate workflow menu based on role
     const userRole = session.user.role || 'user';
     
-    // Control visibility of Backdate main menu - selalu tampilkan untuk semua role yang memiliki akses
     if (backdateMenu) {
         const userHasBackdateAccess = ['user', 'approver', 'petugas', 'admin', 'super_admin'].includes(userRole);
         backdateMenu.style.display = userHasBackdateAccess ? 'block' : 'none';
         
-        // Pastikan submenu juga terlihat jika menu terlihat
         if (backdateSubmenu && userHasBackdateAccess) {
             backdateSubmenu.style.display = 'block';
         }
     }
     
-    // Form Permintaan Backdate (form-permintaan.html) - untuk semua user
     const formBackdateMenu = document.getElementById('formBackdateMenuLink');
     if (formBackdateMenu) {
         formBackdateMenu.style.display = 'block';
     }
     
-    // Dashboard User Backdate - untuk user biasa
     if (dashboardUserBackdateMenu) {
         dashboardUserBackdateMenu.style.display = (userRole === 'user') ? 'block' : 'none';
     }
     
-    // Dashboard Approver Backdate - untuk approver, admin, super_admin
     if (dashboardApproverBackdateMenu) {
         dashboardApproverBackdateMenu.style.display = 
             (userRole === 'approver' || userRole === 'admin' || userRole === 'super_admin') ? 'block' : 'none';
     }
     
-    // Dashboard Petugas Backdate - hanya untuk admin dan super_admin
     if (dashboardPetugasBackdateMenu) {
         dashboardPetugasBackdateMenu.style.display = 
             (userRole === 'admin' || userRole === 'super_admin') ? 'block' : 'none';
     }
 
-    // Mobile menu toggle
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');
     const sidebar = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -126,7 +111,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Set active menu item based on current page
     const currentPath = window.location.pathname;
     const menuItems = document.querySelectorAll('.sidebar-nav-item:not(.sidebar-nav-parent)');
     
@@ -149,12 +133,9 @@ document.addEventListener('DOMContentLoaded', function() {
             let normalizedHref = hrefPath.replace(/^\/+|\/+$/g, '').replace(/\.html$/, '');
             let normalizedPath = currentPath.replace(/^\/+|\/+$/g, '').replace(/\.html$/, '');
             
-            // Exact match - pastikan path lengkap cocok
-            // Jangan match jika hanya filename yang sama (untuk menghindari konflik form-permintaan.html dengan backdate/form-permintaan.html)
             if (normalizedPath === normalizedHref) {
                 isActive = true;
             } else {
-                // Check jika current path berisi full href path (untuk subfolder)
                 const hrefParts = normalizedHref.split('/');
                 const pathParts = normalizedPath.split('/');
                 
@@ -179,21 +160,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Backdate menu click handler - toggle submenu
-    // backdateMenu and backdateSubmenu are already declared above
     if (backdateMenu && backdateSubmenu) {
-        // Check if there's an active submenu item - if yes, expand by default
         const hasActiveItem = backdateSubmenu.querySelector('.sidebar-submenu-item.active');
         if (hasActiveItem) {
             backdateMenu.classList.add('active');
             backdateSubmenu.classList.add('active');
         }
         
-        // Make sure menu is clickable
         backdateMenu.style.cursor = 'pointer';
         backdateMenu.style.userSelect = 'none';
         
-        // Add click event listener
         backdateMenu.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
@@ -209,7 +185,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, false);
         
-        // Also handle click on the entire menu item area
         const menuItems = backdateMenu.querySelectorAll('span');
         menuItems.forEach(item => {
             item.addEventListener('click', function(e) {
@@ -219,13 +194,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Set active submenu item based on current page
     const submenuItems = document.querySelectorAll('.sidebar-submenu-item');
     
-    // First, remove all active classes from submenu items
     submenuItems.forEach(subItem => subItem.classList.remove('active'));
     
-    // Get current URL for more accurate matching
     const currentUrl = window.location.href;
     const currentPathname = window.location.pathname;
     
@@ -248,17 +220,12 @@ document.addEventListener('DOMContentLoaded', function() {
             let normalizedHref = hrefPath.replace(/^\/+|\/+$/g, '').replace(/\.html$/, '');
             let normalizedPath = currentPathname.replace(/^\/+|\/+$/g, '').replace(/\.html$/, '');
             
-            // Exact match - pastikan path lengkap cocok termasuk folder
-            // Ini penting untuk membedakan form-permintaan.html dengan backdate/form-permintaan.html
             if (normalizedPath === normalizedHref) {
                 isActive = true;
             } else {
-                // Check jika current path berisi full href path
-                // Pastikan semua bagian path cocok (termasuk folder backdate)
                 const hrefParts = normalizedHref.split('/');
                 const pathParts = normalizedPath.split('/');
                 
-                // Match jika semua bagian path cocok dan panjangnya sama
                 if (pathParts.length === hrefParts.length) {
                     let allMatch = true;
                     for (let i = 0; i < hrefParts.length; i++) {
@@ -274,9 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (isActive) {
-                // Add active to current item
                 item.classList.add('active');
-                // Auto expand parent menu if submenu item is active
                 if (backdateMenu && backdateSubmenu) {
                     backdateMenu.classList.add('active');
                     backdateSubmenu.style.display = 'block';
@@ -286,14 +251,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Sidebar Logout Button
     const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
     if (sidebarLogoutBtn) {
         sidebarLogoutBtn.addEventListener('click', function() {
             if (typeof logout === 'function') {
                 logout();
             } else {
-                // Fallback if logout function is not available
                 if (confirm('Apakah Anda yakin ingin logout?')) {
                     localStorage.removeItem('authToken');
                     localStorage.removeItem('userData');
@@ -303,14 +266,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Header Logout button (for backward compatibility, redirect to sidebar)
     const headerLogoutBtn = document.getElementById('headerLogoutBtn');
     if (headerLogoutBtn && sidebarLogoutBtn) {
         headerLogoutBtn.addEventListener('click', function() {
             sidebarLogoutBtn.click();
         });
     } else if (headerLogoutBtn) {
-        // If sidebar logout button doesn't exist, keep header logout functionality
         headerLogoutBtn.addEventListener('click', function() {
             if (typeof logout === 'function') {
                 logout();

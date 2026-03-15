@@ -113,7 +113,6 @@
     transform: none;
 }
 
-/* Modal Styles */
 .modal {
     display: none;
     position: fixed;
@@ -333,7 +332,6 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .profile-content {
         padding: 20px;

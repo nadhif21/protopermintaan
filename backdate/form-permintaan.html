@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Form Permintaan Pembukaan Backdate</title>
-    <script src="../version.js?v=202412011200"></script>
-    <link rel="stylesheet" href="../layout.css?v=202412011200">
-    <link rel="stylesheet" href="../form-permintaan.css?v=202412011200">
-    <link rel="stylesheet" href="../icons.css?v=202412011200">
+    <script src="../version.js?v=202503151300"></script>
+    <link rel="stylesheet" href="../layout.css?v=202503151300">
+    <link rel="stylesheet" href="../form-permintaan.css?v=202503151300">
+    <link rel="stylesheet" href="../icons.css?v=202503151300">
     <style>
         /* Override form-permintaan.css untuk form backdate */
         #permintaanBackdateForm {
@@ -550,10 +550,8 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar Overlay for Mobile -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
-    <!-- Sidebar -->
     <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-logo-text">Permintaan DOF</div>
@@ -642,9 +640,7 @@
         </div>
     </aside>
 
-    <!-- Main Content -->
     <div class="main-wrapper">
-        <!-- Mobile Menu Toggle -->
         <button id="mobileMenuToggle" class="mobile-menu-toggle">☰</button>
 
         <header class="content-header">
@@ -656,7 +652,6 @@
 
         <main class="main-content">
             <form id="permintaanBackdateForm">
-                <!-- Bagian 1: Data User (Auto Fill) -->
                 <div class="form-section">
                     <div class="form-section-title">Data User</div>
                     <div class="form-row">
@@ -681,7 +676,6 @@
                     </div>
                 </div>
 
-                <!-- Bagian 2: Data Permintaan Backdate -->
                 <div class="form-section">
                     <div class="form-section-title">Data Permintaan Backdate</div>
                     <div class="form-group">
@@ -702,7 +696,6 @@
                     </div>
                 </div>
 
-                <!-- Bagian 3: Tombol Submit -->
                 <div class="form-actions">
                     <button type="button" class="btn btn-cancel" onclick="window.location.href='https://infoadkor.com/permintaandof/index.html'">Batal</button>
                     <button type="submit" class="btn btn-submit" id="submitBtn">Kirim Permintaan</button>
@@ -711,7 +704,6 @@
         </main>
     </div>
 
-    <!-- Success Modal -->
     <div id="successModal" class="success-modal">
         <div class="success-modal-content">
             <div class="success-icon">✓</div>
@@ -729,8 +721,8 @@
         </div>
     </div>
 
-    <script src="../auth.js?v=202412011200"></script>
-    <script src="../sidebar.js?v=202412011200"></script>
+    <script src="../auth.js?v=202503151300"></script>
+    <script src="../sidebar.js?v=202503151300"></script>
     <script>
         // Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
         function getApiUrl() {
@@ -818,9 +810,10 @@
             
             const message = `Halo ${petugasNama},
 
-Saya telah mengajukan permintaan pembukaan Backdate dengan nomor:
+Saya telah mengajukan permintaan pembukaan Backdate dengan detail berikut:
 
-#${nomorPermintaan}
+ID Permintaan: ${permintaanId || 'N/A'}
+Nomor Permintaan: #${nomorPermintaan}
 
 Mohon untuk dapat direview melalui link berikut:
 ${detailUrl}
@@ -989,6 +982,7 @@ Terima kasih.`;
                 message = `*Permintaan Backdate - Tindak Lanjut*\n\n`;
                 message += `Halo ${contact.name},\n\n`;
                 message += `Saya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n`;
+                message += `• ID Permintaan: ${submittedData.id || 'N/A'}\n`;
                 message += `• Nomor Permintaan: ${submittedData.row_number || 'N/A'}\n`;
                 message += `• Nama Pegawai: ${namaPegawai}\n`;
                 message += `• NPK: ${npkPegawai}\n`;
@@ -1001,6 +995,7 @@ Terima kasih.`;
                 message = `*Notifikasi Permintaan Backdate Baru*\n\n`;
                 message += `Halo ${contact.name},\n\n`;
                 message += `Saya telah mengajukan permintaan pembukaan backdate dengan detail berikut:\n\n`;
+                message += `• ID Permintaan: ${submittedData.id || 'N/A'}\n`;
                 message += `• Nomor Permintaan: ${submittedData.row_number || 'N/A'}\n`;
                 message += `• Nama Pegawai: ${namaPegawai}\n`;
                 message += `• NPK: ${npkPegawai}\n`;

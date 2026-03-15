@@ -1,4 +1,3 @@
-// Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
 function getApiUrl() {
     const currentPath = window.location.pathname;
     let basePath = '';
@@ -26,13 +25,11 @@ function getApiUrl() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Jika sudah login, redirect ke halaman utama
     if (typeof isAuthenticated === 'function' && isAuthenticated()) {
         window.location.href = getAppFullUrl('/index.html');
         return;
     }
 
-    // Load unit kerja options
     loadUnitKerja();
 
     const registerForm = document.getElementById('registerForm');
@@ -43,13 +40,11 @@ document.addEventListener('DOMContentLoaded', function() {
     registerForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        // Reset messages
         errorMessage.classList.remove('show');
         successMessage.classList.remove('show');
         errorMessage.textContent = '';
         successMessage.textContent = '';
 
-        // Get form values
         const nama = document.getElementById('nama').value.trim();
         const npk = document.getElementById('npk').value.trim();
         const nomor_telepon = document.getElementById('nomor_telepon').value.trim();
@@ -58,7 +53,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const unitKerjaId = unitKerjaSelect.value;
         const unitKerjaText = unitKerjaSelect.options[unitKerjaSelect.selectedIndex]?.text || '';
 
-        // Validation
         if (!nama) {
             showError('Nama lengkap wajib diisi.');
             document.getElementById('nama').focus();
@@ -77,7 +71,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Validate phone number format (should start with 08 and be 10-13 digits)
         const phoneRegex = /^08\d{8,11}$/;
         if (!phoneRegex.test(nomor_telepon)) {
             showError('Format nomor telepon tidak valid. Gunakan format: 08xxxxxxxxxx (10-13 digit)');
@@ -91,7 +84,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             showError('Format email tidak valid.');
@@ -105,7 +97,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Submit form
         try {
             submitBtn.disabled = true;
             submitBtn.style.opacity = '0.8';
@@ -138,16 +129,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (!result.success) {
-                throw new Error(result.error || 'Pendaftaran gagal.');
-            }
+            throw new Error(result.error || 'Pendaftaran gagal.');
+        }
 
-            // Success
-            showSuccess('Pendaftaran berhasil! Permintaan Anda sedang menunggu persetujuan admin. Anda akan menerima notifikasi via WhatsApp setelah disetujui.');
-            
-            // Reset form
-            registerForm.reset();
-            
-            // Optional: redirect after 3 seconds
+        showSuccess('Pendaftaran berhasil! Permintaan Anda sedang menunggu persetujuan admin. Anda akan menerima notifikasi via WhatsApp setelah disetujui.');
+        
+        registerForm.reset();
+        
             setTimeout(() => {
                 window.location.href = getAppFullUrl('/login.html');
             }, 3000);
@@ -200,7 +188,6 @@ async function loadUnitKerja() {
         }
     } catch (error) {
         console.error('Error loading unit kerja:', error);
-        // Show error to user
         const errorMessage = document.getElementById('errorMessage');
         if (errorMessage) {
             errorMessage.textContent = 'Gagal memuat daftar unit kerja. Silakan refresh halaman.';

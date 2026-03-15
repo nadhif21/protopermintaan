@@ -7,12 +7,13 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Persetujuan Permintaan</title>
-    <script src="../version.js?v=202412011200"></script>
-    <link rel="stylesheet" href="../layout.css?v=202412011200">
+    <script src="../version.js?v=202503151300"></script>
+    <link rel="stylesheet" href="../layout.css?v=202503151300">
     <style>
         body {
             background: #f5f7fa;
             padding: 20px;
+            padding-bottom: 100px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -149,7 +150,7 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             display: none;
             flex-direction: column;
-            max-height: calc(100vh - 100px);
+            max-height: calc(100vh - 200px);
             overflow: hidden;
         }
 
@@ -304,8 +305,10 @@
             text-align: center;
             font-weight: 600;
             border-radius: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             border: 1px solid;
+            font-size: 16px;
+            line-height: 1.6;
         }
 
         .status-message.loading {
@@ -336,6 +339,19 @@
             position: sticky;
             bottom: 0;
             z-index: 10;
+        }
+
+        .sticky-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 900px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 100;
         }
 
         .btn {
@@ -583,111 +599,38 @@
 
         @media (max-width: 768px) {
             body {
-                padding: 16px;
+                padding: 8px;
+                padding-bottom: 80px;
+                font-size: 13px;
             }
 
             .approval-container {
                 max-width: 100%;
-            }
-
-            .pin-card,
-            .details-card {
-                padding: 20px;
-            }
-
-            .pin-icon-wrapper {
-                width: 60px;
-                height: 60px;
-            }
-
-            .pin-icon-wrapper svg {
-                width: 36px;
-                height: 36px;
-            }
-
-            .pin-card h2 {
-                font-size: 1.25rem;
-            }
-
-            .pin-card p {
-                font-size: 0.9rem;
-            }
-
-            .pin-input {
-                width: 50px;
-                height: 50px;
-                font-size: 20px;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .btn {
-                width: 100%;
-                min-height: 44px;
-            }
-
-            .details-header {
-                padding: 20px;
-            }
-
-            .details-header h2 {
-                font-size: 1.1rem;
-            }
-
-            .detail-info-wrapper {
-                padding: 20px;
-            }
-
-            .detail-item {
-                flex-direction: column;
-                align-items: flex-start;
                 gap: 8px;
             }
 
-            .detail-item label {
-                min-width: auto;
-                font-size: 0.85rem;
-            }
-
-            .detail-item .value {
-                text-align: left;
-                font-size: 0.95rem;
-            }
-
-            .modal-content {
-                max-width: 95%;
-                margin: 20px;
-            }
-
-            .modal-header {
-                padding: 16px 20px;
-            }
-
-            .modal-body {
-                padding: 20px;
-            }
-
-            .modal-footer {
-                padding: 16px 20px;
-                flex-direction: column;
-            }
-
-            .modal-footer .btn {
-                width: 100%;
-            }
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 12px;
-            }
-
             .pin-card,
             .details-card {
-                padding: 16px;
+                padding: 14px;
+            }
+
+            .pin-icon-wrapper {
+                width: 50px;
+                height: 50px;
+                margin-bottom: 12px;
+            }
+
+            .pin-icon-wrapper svg {
+                width: 28px;
+                height: 28px;
+            }
+
+            .pin-card h2 {
+                font-size: 18px;
+            }
+
+            .pin-card p {
+                font-size: 12px;
             }
 
             .pin-input {
@@ -699,12 +642,141 @@
             .pin-input-group {
                 gap: 8px;
             }
+
+            .action-buttons {
+                flex-direction: column;
+                gap: 8px;
+                padding: 10px 12px;
+            }
+
+            .sticky-bottom {
+                max-width: 100%;
+            }
+
+            .btn {
+                width: 100%;
+                min-height: 40px;
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+
+            .details-header {
+                padding: 10px 12px;
+            }
+
+            .details-header h2 {
+                font-size: 1rem;
+            }
+
+            .details-header-icon {
+                width: 28px;
+                height: 28px;
+            }
+
+            .details-header-icon svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            .detail-info-wrapper {
+                padding: 12px;
+                max-height: calc(100vh - 180px);
+            }
+
+            .detail-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+                padding: 6px 0;
+            }
+
+            .detail-item label {
+                min-width: auto;
+                font-size: 10px;
+            }
+
+            .detail-item .value {
+                text-align: left;
+                font-size: 12px;
+            }
+
+            .status-message {
+                padding: 8px 12px;
+                font-size: 12px;
+                margin-bottom: 8px;
+            }
+
+            .modal-content {
+                max-width: 95%;
+                margin: 10px;
+            }
+
+            .modal-header {
+                padding: 12px 16px;
+            }
+
+            .modal-body {
+                padding: 16px;
+            }
+
+            .modal-footer {
+                padding: 12px 16px;
+                flex-direction: column;
+            }
+
+            .modal-footer .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 6px;
+                padding-bottom: 80px;
+                font-size: 12px;
+            }
+
+            .approval-container {
+                gap: 6px;
+            }
+
+            .pin-card,
+            .details-card {
+                padding: 12px;
+            }
+
+            .pin-input {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+
+            .pin-input-group {
+                gap: 6px;
+            }
+
+            .details-header {
+                padding: 8px 10px;
+            }
+
+            .detail-info-wrapper {
+                padding: 10px;
+            }
+
+            .action-buttons {
+                padding: 8px 10px;
+            }
+
+            .btn {
+                min-height: 38px;
+                padding: 8px 12px;
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="approval-container">
-        <!-- PIN Card -->
         <div id="pinCard" class="pin-card">
             <div class="pin-icon-wrapper">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -725,10 +797,8 @@
             <a href="#" id="forgotPinLink" class="forgot-pin-link">Lupa PIN? Hubungi Petugas</a>
         </div>
 
-        <!-- Status Message -->
         <div id="statusMessage" class="status-message loading" style="display: none;"></div>
 
-        <!-- Request Details Card -->
         <div id="detailsCard" class="details-card">
             <div class="details-header">
                 <div class="details-header-icon">
@@ -744,7 +814,6 @@
             <div class="detail-info-wrapper">
                 <div id="detailInfo" class="detail-info"></div>
                 
-                <!-- Edit Flag dan Petugas Section -->
                 <div id="editSection" class="edit-section" style="display: none; margin-top: 24px; padding-top: 24px; border-top: 1px solid #e0e0e0;">
                     <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #333;">Edit Flag dan Petugas</h3>
                     <div class="edit-form" style="display: flex; flex-direction: column; gap: 16px;">
@@ -788,20 +857,20 @@
                     <span>Tolak Permintaan</span>
                 </button>
             </div>
-            <div id="hubungiPetugasSection" class="action-buttons" style="display: none;">
-                <button id="hubungiPetugasBtn" class="btn" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white;">
-                    <span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                        </svg>
-                    </span>
-                    <span>Hubungi Petugas</span>
-                </button>
-            </div>
+        </div>
+        
+        <div id="hubungiPetugasSection" class="action-buttons sticky-bottom" style="display: none;">
+            <button id="hubungiPetugasBtn" class="btn" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white;">
+                <span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                    </svg>
+                </span>
+                <span>Hubungi Petugas</span>
+            </button>
         </div>
     </div>
 
-    <!-- Modal Konfirmasi -->
     <div id="confirmModal" class="modal-overlay" style="display: none;">
         <div class="modal-content" style="max-width: 450px;">
             <div class="modal-header">
@@ -826,7 +895,6 @@
         </div>
     </div>
 
-    <!-- Modal Keterangan Penolakan -->
     <div id="rejectModal" class="modal-overlay" style="display: none;">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
@@ -888,7 +956,14 @@
         
         function showStatus(message, type) {
             const statusMessage = document.getElementById('statusMessage');
-            statusMessage.textContent = message;
+            // Check if message contains HTML tags, if so use innerHTML, otherwise use textContent
+            if (message.includes('<') && message.includes('>')) {
+                statusMessage.innerHTML = message;
+            } else if (message.includes('\n')) {
+                statusMessage.innerHTML = message.replace(/\n/g, '<br>');
+            } else {
+                statusMessage.textContent = message;
+            }
             statusMessage.className = 'status-message ' + type;
             statusMessage.style.display = 'block';
         }
@@ -905,13 +980,15 @@
                 if (isNaN(date.getTime())) return timestamp;
                 
                 const day = String(date.getDate()).padStart(2, '0');
-                const month = String(date.getMonth() + 1).padStart(2, '0');
                 const year = date.getFullYear();
-                const hours = String(date.getHours()).padStart(2, '0');
-                const minutes = String(date.getMinutes()).padStart(2, '0');
-                const seconds = String(date.getSeconds()).padStart(2, '0');
                 
-                return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+                const monthNames = [
+                    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+                ];
+                const month = monthNames[date.getMonth()];
+                
+                return `${day} ${month} ${year}`;
             } catch (e) {
                 return timestamp;
             }
@@ -938,16 +1015,46 @@
             const detailInfo = document.getElementById('detailInfo');
             let html = '';
             
-            // Fields to exclude (internal fields)
+            // Fields to exclude (internal fields and fields that should not be displayed)
             const excludeFields = ['rowNumber', 'id'];
+            const excludeFieldPatterns = [
+                /^petugas\s*id$/i,
+                /^petugas_id$/i,
+                /^petugas\s*no\s*wa$/i,
+                /^petugas_no_wa$/i,
+                /^no\s*telepon\s*\(hp\)$/i,
+                /^no_telepon_hp$/i
+            ];
             
-            // Get all keys and sort them for better display
-            const keys = Object.keys(rowData).filter(key => !excludeFields.includes(key));
+            // Field label mapping
+            const fieldLabelMap = {
+                'Timestamp': 'Waktu Permintaan',
+                'timestamp': 'Waktu Permintaan',
+                'Nama Lengkap': 'Nama Peminta',
+                'nama_lengkap': 'Nama Peminta',
+                'Nama': 'Nama Peminta',
+                'nama': 'Nama Peminta',
+                'Pilih Permintaan': 'Jenis Permintaan',
+                'pilih_permintaan': 'Jenis Permintaan',
+                'Jenis Permintaan': 'Jenis Permintaan',
+                'jenis_permintaan': 'Jenis Permintaan'
+            };
+            
+            // Get all keys and filter excluded fields
+            const keys = Object.keys(rowData).filter(key => {
+                // Check exact match in excludeFields
+                if (excludeFields.includes(key)) return false;
+                
+                // Check pattern match
+                const keyLower = key.toLowerCase().trim();
+                return !excludeFieldPatterns.some(pattern => pattern.test(keyLower));
+            });
             
             // Sort keys: put important fields first, then alphabetical
-            const priorityFields = ['Timestamp', 'Nama Lengkap', 'Nama', 'Pilih Permintaan', 'Jenis Permintaan', 
-                                   'Alasan Permintaan', 'Email', 'Status', 'Flag', 'Petugas', 'Waktu Selesai', 
-                                   'Keterangan', 'Persetujuan'];
+            // Order: Waktu Permintaan, Nama Peminta, NPK, Unit Kerja, Jenis Permintaan, then others
+            const priorityFields = ['Timestamp', 'Waktu Permintaan', 'Nama Lengkap', 'Nama', 'NPK', 'Unit Kerja', 
+                                   'Pilih Permintaan', 'Jenis Permintaan', 'Alasan Permintaan', 'Email', 'Status', 
+                                   'Flag', 'Petugas', 'Waktu Selesai', 'Keterangan', 'Persetujuan'];
             
             keys.sort((a, b) => {
                 const aIndex = priorityFields.findIndex(f => a.toLowerCase().includes(f.toLowerCase()));
@@ -964,6 +1071,9 @@
                 if (value !== null && value !== undefined && value !== '') {
                     const formattedValue = formatValueForDisplay(value, key);
                     const keyLower = key.toLowerCase();
+                    
+                    // Get display label (use mapped label if available, otherwise use original key)
+                    const displayLabel = fieldLabelMap[key] || fieldLabelMap[keyLower] || key;
                     
                     // Check if this is Status or Flag field for badge styling
                     let valueHtml = formattedValue;
@@ -993,7 +1103,7 @@
                     
                     html += `
                         <div class="detail-item">
-                            <label>${escapeHtml(key)}</label>
+                            <label>${escapeHtml(displayLabel)}</label>
                             <div class="value">${valueHtml}</div>
                         </div>
                     `;
@@ -1880,8 +1990,20 @@
                 
                 const persetujuan = (rowData.Persetujuan || rowData.persetujuan || '').trim();
                 if (persetujuan) {
+                    // Get waktu selesai (tanggal persetujuan)
+                    const waktuSelesai = rowData['Waktu Selesai'] || rowData['waktu_selesai'] || rowData['WaktuSelesai'] || '';
+                    let tanggalPersetujuan = '';
+                    
+                    if (waktuSelesai) {
+                        tanggalPersetujuan = formatTimestamp(waktuSelesai);
+                    }
+                    
                     if (persetujuan.toLowerCase().includes('disetujui') || persetujuan.toLowerCase().includes('approved')) {
-                        showStatus('Permintaan ini sudah disetujui sebelumnya.', 'success');
+                        let message = 'Permintaan Sudah Disetujui';
+                        if (tanggalPersetujuan) {
+                            message += `<br><span style="font-size: 0.9em; opacity: 0.9;">Tanggal Persetujuan: ${escapeHtml(tanggalPersetujuan)}</span>`;
+                        }
+                        showStatus(message, 'success');
                         showDetailInfo(rowData);
                         document.getElementById('actionButtons').style.display = 'none';
                         document.getElementById('editSection').style.display = 'none';
@@ -1889,7 +2011,11 @@
                         setupHubungiPetugasButton();
                         return;
                     } else if (persetujuan.toLowerCase().includes('ditolak') || persetujuan.toLowerCase().includes('rejected')) {
-                        showStatus('Permintaan ini sudah ditolak sebelumnya.', 'error');
+                        let message = 'Permintaan Sudah Ditolak';
+                        if (tanggalPersetujuan) {
+                            message += `<br><span style="font-size: 0.9em; opacity: 0.9;">Tanggal Penolakan: ${escapeHtml(tanggalPersetujuan)}</span>`;
+                        }
+                        showStatus(message, 'error');
                         showDetailInfo(rowData);
                         document.getElementById('actionButtons').style.display = 'none';
                         document.getElementById('editSection').style.display = 'none';
