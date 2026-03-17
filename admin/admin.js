@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindPasswordToggles();
     bindRefreshButtons();
     bindConfirmToggleUserStatusModal();
+    bindUnitKerjaWarningModal();
     bindGenericConfirmModal();
     bindRegistrations();
     bindPinApproval();
@@ -100,6 +101,28 @@ function renderCurrentUser() {
 function bindRefreshButtons() {
     document.getElementById('refreshUsersBtn')?.addEventListener('click', loadUsers);
     document.getElementById('refreshPinBtn')?.addEventListener('click', loadApprovalPin);
+    
+    // Bind search input untuk User Management
+    const usersSearchInput = document.getElementById('usersSearchInput');
+    if (usersSearchInput) {
+        // Pencarian saat mengetik (dengan debounce)
+        let searchTimeout;
+        usersSearchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                filterUsers(e.target.value);
+            }, 300); // Debounce 300ms
+        });
+        
+        // Pencarian saat Enter ditekan
+        usersSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(searchTimeout);
+                filterUsers(e.target.value);
+            }
+        });
+    }
 }
 
 function bindRegistrations() {
@@ -184,7 +207,8 @@ function bindEditUserModal() {
         const email = document.getElementById('editEmail')?.value?.trim() || '';
         const npk = document.getElementById('editNpk')?.value?.trim() || '';
         const nomorTelepon = document.getElementById('editNomorTelepon')?.value?.trim() || '';
-        const unitKerja = document.getElementById('editUnitKerja')?.value?.trim() || '';
+        const unitKerjaIdRaw = document.getElementById('editUnitKerja')?.value?.trim() || '';
+        const unitKerjaId = unitKerjaIdRaw !== '' ? parseInt(unitKerjaIdRaw, 10) : null;
         const status = document.getElementById('editUserStatus')?.value || '1';
 
         if (!name) {
@@ -211,7 +235,10 @@ function bindEditUserModal() {
             if (email) updateData.email = email;
             if (npk) updateData.npk = npk;
             if (nomorTelepon) updateData.nomor_telepon = nomorTelepon;
-            if (unitKerja) updateData.unit_kerja = unitKerja;
+            // Simpan menggunakan foreign key
+            if (unitKerjaIdRaw !== '' && !Number.isNaN(unitKerjaId)) {
+                updateData.unit_kerja_id = unitKerjaId;
+            }
 
             await apiPost('updateUser', updateData);
             close();
@@ -240,6 +267,7 @@ function clearEditUserError() {
 
 // Simpan data users untuk realtime update
 let usersData = [];
+let usersOriginalData = []; // Simpan data asli sebelum difilter
 
 async function loadUsers() {
     const tbody = document.getElementById('usersTbody');
@@ -249,6 +277,13 @@ async function loadUsers() {
     try {
         const users = await apiGet('listUsers');
         usersData = users; // Simpan data users untuk realtime update
+        usersOriginalData = users; // Simpan data asli untuk pencarian
+        
+        // Reset search input
+        const searchInput = document.getElementById('usersSearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
         
         // Store all data and reset to page 1
         paginationState.users.allData = users;
@@ -270,6 +305,46 @@ async function loadUsers() {
             cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${escapeHtml(e.message)}</div>`;
         }
     }
+}
+
+function filterUsers(searchTerm) {
+    if (!searchTerm || searchTerm.trim() === '') {
+        // Jika pencarian kosong, kembalikan semua data
+        paginationState.users.allData = usersOriginalData;
+        paginationState.users.totalItems = usersOriginalData.length;
+        paginationState.users.currentPage = 1;
+        renderUsersTable();
+        setupPagination('users');
+        return;
+    }
+    
+    const term = searchTerm.toLowerCase().trim();
+    const filtered = usersOriginalData.filter(user => {
+        const name = (user.name || '').toLowerCase();
+        const username = (user.username || '').toLowerCase();
+        const email = (user.email || `${user.username}@company.com`).toLowerCase();
+        const unitKerja = (user.unitKerja || user.unit_kerja || '').toLowerCase();
+        const role = (user.role || '').toLowerCase();
+        
+        // Map role untuk pencarian
+        let roleDisplay = role;
+        if (role === 'super_admin') roleDisplay = 'admin';
+        else if (role === 'admin') roleDisplay = 'petugas';
+        
+        return name.includes(term) ||
+               username.includes(term) ||
+               email.includes(term) ||
+               unitKerja.includes(term) ||
+               roleDisplay.includes(term);
+    });
+    
+    // Update pagination state dengan data yang sudah difilter
+    paginationState.users.allData = filtered;
+    paginationState.users.totalItems = filtered.length;
+    paginationState.users.currentPage = 1;
+    
+    renderUsersTable();
+    setupPagination('users');
 }
 
 function renderUsersTable() {
@@ -572,7 +647,28 @@ async function editUserFlow(tr, userId) {
         document.getElementById('editEmail').value = user.email || '';
         document.getElementById('editNpk').value = user.npk || '';
         document.getElementById('editNomorTelepon').value = user.nomorTelepon || '';
-        document.getElementById('editUnitKerja').value = user.unitKerja || user.unit_kerja || '';
+        // Prefer FK if available; otherwise try match by name
+        const unitKerjaSelect = document.getElementById('editUnitKerja');
+        if (unitKerjaSelect) {
+            const unitKerjaId = user.unitKerjaId ?? user.unit_kerja_id ?? null;
+            if (unitKerjaId !== null && unitKerjaId !== undefined && unitKerjaId !== '') {
+                unitKerjaSelect.value = String(unitKerjaId);
+            } else {
+                const unitKerjaName = (user.unitKerja || user.unit_kerja || '').toString().trim();
+                if (unitKerjaName) {
+                    for (let i = 0; i < unitKerjaSelect.options.length; i++) {
+                        const opt = unitKerjaSelect.options[i];
+                        const optNama = (opt.getAttribute('data-nama') || opt.textContent || '').toString().trim();
+                        if (optNama === unitKerjaName) {
+                            unitKerjaSelect.value = opt.value;
+                            break;
+                        }
+                    }
+                } else {
+                    unitKerjaSelect.value = '';
+                }
+            }
+        }
         document.getElementById('editUserStatus').value = user.isActive !== false ? '1' : '0';
 
         // Show modal
@@ -589,6 +685,8 @@ async function editUserFlow(tr, userId) {
 
 let currentToggleUserStatusId = null;
 let currentToggleUserStatusAction = null;
+let currentUnitKerjaWarningUserId = null;
+let currentUnitKerjaWarningData = null;
 
 function bindConfirmToggleUserStatusModal() {
     const modal = document.getElementById('confirmToggleUserStatusModal');
@@ -692,6 +790,200 @@ function showConfirmToggleUserStatus(userId, activate) {
     document.body.style.overflow = 'hidden';
 }
 
+// Helper function untuk membuka modal edit user
+async function openEditUserModal(userId) {
+    try {
+        // Langsung panggil editUserFlow dengan userId, tidak perlu tr element
+        // editUserFlow akan mencari user dari API
+        const tr = document.querySelector(`tr[data-user-id="${userId}"]`) || 
+                   document.querySelector(`.admin-card[data-user-id="${userId}"]`) ||
+                   null; // Bisa null, editUserFlow akan handle
+        await editUserFlow(tr, userId);
+    } catch (error) {
+        console.error('Error opening edit user modal:', error);
+        await showAlert('Error: ' + error.message, 'Error', 'error');
+    }
+}
+
+function bindUnitKerjaWarningModal() {
+    const modal = document.getElementById('unitKerjaWarningModal');
+    const closeBtn = document.getElementById('closeUnitKerjaWarningModal');
+    const cancelBtn = document.getElementById('cancelUnitKerjaWarningBtn');
+    const changeUnitKerjaBtn = document.getElementById('changeUnitKerjaBtn');
+    const activateUnitKerjaBtn = document.getElementById('activateUnitKerjaBtn');
+
+    if (!modal) return;
+
+    const close = () => {
+        if (modal) {
+            modal.classList.remove('show');
+        }
+        document.body.style.overflow = 'auto';
+        currentUnitKerjaWarningUserId = null;
+        currentUnitKerjaWarningData = null;
+    };
+
+    closeBtn?.addEventListener('click', close);
+    cancelBtn?.addEventListener('click', close);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('show')) close();
+    });
+
+    changeUnitKerjaBtn?.addEventListener('click', async () => {
+        if (!currentUnitKerjaWarningUserId) return;
+        
+        const userId = currentUnitKerjaWarningUserId;
+        let user = currentUnitKerjaWarningData?.user;
+        
+        // Close warning modal first
+        close();
+        
+        try {
+            // Jika user data tidak ada, cari dari API
+            if (!user) {
+                const users = await apiGet('listUsers');
+                user = users.find(u => u.id === userId);
+            }
+            
+            if (!user) {
+                await showAlert('User tidak ditemukan. Silakan refresh halaman dan coba lagi.', 'Error', 'error');
+                return;
+            }
+
+            // Set current edit user ID
+            currentEditUserId = userId;
+
+            // Load unit kerja options
+            await loadUnitKerjaForUserEdit();
+            
+            // Fill form with current user data
+            const editName = document.getElementById('editName');
+            const editUsername = document.getElementById('editUsername');
+            const editRole = document.getElementById('editRole');
+            const editEmail = document.getElementById('editEmail');
+            const editNpk = document.getElementById('editNpk');
+            const editNomorTelepon = document.getElementById('editNomorTelepon');
+            const editUnitKerja = document.getElementById('editUnitKerja');
+            const editUserStatus = document.getElementById('editUserStatus');
+            
+            if (editName) editName.value = user.name || '';
+            if (editUsername) editUsername.value = user.username || '';
+            if (editRole) editRole.value = user.role || 'user';
+            if (editEmail) editEmail.value = user.email || '';
+            if (editNpk) editNpk.value = user.npk || '';
+            if (editNomorTelepon) editNomorTelepon.value = user.nomorTelepon || '';
+            if (editUnitKerja) editUnitKerja.value = user.unitKerja || user.unit_kerja || '';
+            if (editUserStatus) editUserStatus.value = user.isActive !== false ? '1' : '0';
+
+            // Show modal
+            const editUserModal = document.getElementById('editUserModal');
+            if (editUserModal) {
+                editUserModal.classList.add('show');
+                document.body.style.overflow = 'hidden';
+                if (editName) editName.focus();
+            } else {
+                throw new Error('Modal edit user tidak ditemukan');
+            }
+        } catch (error) {
+            console.error('Error opening edit user modal:', error);
+            await showAlert('Error: ' + error.message, 'Error', 'error');
+        }
+    });
+
+    activateUnitKerjaBtn?.addEventListener('click', async () => {
+        if (!currentUnitKerjaWarningUserId || !currentUnitKerjaWarningData) return;
+        
+        activateUnitKerjaBtn.disabled = true;
+        activateUnitKerjaBtn.textContent = 'Memproses...';
+        
+        try {
+            // Get unit kerja dari user data atau dari currentUnitKerjaWarningData
+            const user = currentUnitKerjaWarningData.user;
+            const unitKerja = user.unitKerja || user.unit_kerja || currentUnitKerjaWarningData.unitKerja?.nama_unit || currentUnitKerjaWarningData.unitKerja?.nama;
+            
+            if (!unitKerja) {
+                throw new Error('Unit kerja tidak ditemukan pada data user');
+            }
+            
+            const unitKerjaList = await apiGet('getAllUnitKerja');
+            const unitKerjaData = unitKerjaList.find(uk => 
+                uk.nama_unit === unitKerja || uk.nama === unitKerja
+            );
+            
+            if (unitKerjaData) {
+                const token = getAuthToken();
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const url = new URL(`${fullUrl}?action=updateUnitKerja`);
+                url.searchParams.append('id', unitKerjaData.id);
+                url.searchParams.append('nama', unitKerjaData.nama_unit || unitKerjaData.nama);
+                url.searchParams.append('is_active', 1);
+                url.searchParams.append('activate_users', 1);
+                
+                const response = await fetch(url.toString(), {
+                    headers: { 'X-Auth-Token': token || '' }
+                });
+                
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Gagal mengaktifkan unit kerja');
+                }
+                
+                await apiPost('updateUser', { 
+                    id: currentUnitKerjaWarningUserId, 
+                    isActive: 1 
+                });
+                
+                // Close modal
+                if (modal) {
+                    modal.classList.remove('show');
+                }
+                document.body.style.overflow = 'auto';
+                currentUnitKerjaWarningUserId = null;
+                currentUnitKerjaWarningData = null;
+                
+                showSuccessMessage('Unit kerja berhasil diaktifkan dan user telah diaktifkan.');
+                await loadUsers();
+                loadUnitKerja();
+            } else {
+                throw new Error('Unit kerja tidak ditemukan');
+            }
+        } catch (error) {
+            await showAlert('Error: ' + error.message, 'Error', 'error');
+        } finally {
+            activateUnitKerjaBtn.disabled = false;
+            activateUnitKerjaBtn.textContent = 'Aktifkan Unit Kerja';
+        }
+    });
+}
+
+async function showUnitKerjaWarningModal(userId, user, unitKerja) {
+    currentUnitKerjaWarningUserId = userId;
+    // Simpan user dan unitKerja dengan struktur yang benar
+    currentUnitKerjaWarningData = { 
+        user: user, 
+        unitKerja: unitKerja 
+    };
+    
+    const modal = document.getElementById('unitKerjaWarningModal');
+    const message = document.getElementById('unitKerjaWarningMessage');
+    const description = document.getElementById('unitKerjaWarningDescription');
+    
+    if (!modal) return;
+    
+    const unitKerjaName = user.unitKerja || user.unit_kerja || '';
+    message.textContent = `Unit Kerja "${unitKerjaName}" Tidak Aktif`;
+    description.textContent = `User "${user.name}" memiliki unit kerja "${unitKerjaName}" yang saat ini tidak aktif. Untuk mengaktifkan user ini, Anda perlu mengganti unit kerja atau mengaktifkan unit kerja tersebut terlebih dahulu.`;
+    
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
 function showSuccessMessage(message) {
     // Create a temporary success notification
     const notification = document.createElement('div');
@@ -723,6 +1015,33 @@ function showSuccessMessage(message) {
 }
 
 async function toggleUserStatus(userId, activate) {
+    // Jika mengaktifkan user, cek dulu apakah unit_kerja user aktif
+    if (activate) {
+        try {
+            // Get user data untuk cek unit_kerja
+            const users = await apiGet('listUsers');
+            const user = users.find(u => u.id === userId);
+            
+            if (user && user.unitKerja) {
+                // Cek apakah unit_kerja aktif
+                const unitKerjaList = await apiGet('getAllUnitKerja');
+                const unitKerja = unitKerjaList.find(uk => 
+                    uk.nama_unit === user.unitKerja || uk.nama === user.unitKerja
+                );
+                
+                // Jika unit_kerja tidak aktif, tampilkan warning
+                if (unitKerja && !unitKerja.is_active) {
+                    await showUnitKerjaWarningModal(userId, user, unitKerja);
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Error checking unit kerja:', error);
+            // Jika error, lanjutkan dengan konfirmasi normal
+        }
+    }
+    
+    // Jika tidak ada masalah atau menonaktifkan, tampilkan konfirmasi normal
     showConfirmToggleUserStatus(userId, activate);
 }
 
@@ -1500,7 +1819,20 @@ function bindDetailModal() {
         
         // Generate WhatsApp message
         const message = generateWhatsAppMessage(currentDetailRegistration);
-        const whatsappUrl = `https://wa.me/${currentDetailRegistration.nomorTelepon.replace(/^0/, '62')}?text=${encodeURIComponent(message)}`;
+        // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+        let cleanPhone = currentDetailRegistration.nomorTelepon.replace(/\D/g, ''); // Hapus semua non-digit
+        if (cleanPhone.startsWith('62')) {
+            // Sudah dalam format internasional
+        } else if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        } else if (cleanPhone.startsWith('8')) {
+            // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+            cleanPhone = '62' + cleanPhone;
+        } else {
+            // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
+            cleanPhone = '62' + cleanPhone;
+        }
+        const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
     });
 }
@@ -1559,8 +1891,19 @@ async function sendWhatsAppNotification(registrationId) {
         message += "Terima kasih.";
 
         // Generate WhatsApp URL
-        // Remove leading 0 and add country code 62
-        const cleanPhone = registration.nomorTelepon.replace(/^0/, '62');
+        // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+        let cleanPhone = registration.nomorTelepon.replace(/\D/g, ''); // Hapus semua non-digit
+        if (cleanPhone.startsWith('62')) {
+            // Sudah dalam format internasional
+        } else if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        } else if (cleanPhone.startsWith('8')) {
+            // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+            cleanPhone = '62' + cleanPhone;
+        } else {
+            // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
+            cleanPhone = '62' + cleanPhone;
+        }
         const encodedMessage = encodeURIComponent(message);
         const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 
@@ -2181,8 +2524,10 @@ async function loadUnitKerjaForUserEdit() {
             
             result.data.forEach(unit => {
                 const option = document.createElement('option');
-                option.value = unit.nama_unit || unit.nama || unit.id;
-                option.textContent = unit.nama_unit || unit.nama || unit.id;
+                // Gunakan FK: value = unit_kerja.id, text = nama_unit
+                option.value = String(unit.id);
+                option.textContent = unit.nama_unit || unit.nama || String(unit.id);
+                option.setAttribute('data-nama', unit.nama_unit || unit.nama || '');
                 select.appendChild(option);
             });
         }
@@ -3105,15 +3450,39 @@ async function toggleUnitKerjaStatus(id, activate) {
     
     const action = activate ? 'mengaktifkan' : 'menonaktifkan';
     const title = activate ? 'Aktifkan Unit Kerja' : 'Nonaktifkan Unit Kerja';
-    const description = activate 
+    let description = activate 
         ? 'Unit kerja akan dapat digunakan dan muncul di dropdown setelah diaktifkan.'
-        : 'Unit kerja tidak akan dapat digunakan dan tidak muncul di dropdown setelah dinonaktifkan.';
-    const confirmed = await showConfirm(
-        `${activate ? 'Aktifkan' : 'Nonaktifkan'} unit kerja ini?`,
-        title,
-        description
-    );
-    if (!confirmed) return;
+        : 'Unit kerja tidak akan dapat digunakan dan tidak muncul di dropdown setelah dinonaktifkan. Semua akun dengan unit kerja ini akan dinonaktifkan.';
+    
+    // Jika mengaktifkan, tanyakan apakah ingin mengaktifkan users juga
+    let activateUsers = false;
+    if (activate) {
+        description += '\n\nApakah Anda juga ingin mengaktifkan kembali semua akun yang memiliki unit kerja ini?';
+        activateUsers = await showConfirm(
+            'Aktifkan unit kerja ini?',
+            title,
+            description
+        );
+        if (!activateUsers) {
+            // User membatalkan, tanyakan lagi apakah tetap ingin mengaktifkan unit kerja tanpa users
+            const confirmActivate = await showConfirm(
+                'Aktifkan unit kerja tanpa mengaktifkan akun?',
+                'Konfirmasi',
+                'Unit kerja akan diaktifkan, tetapi akun dengan unit kerja ini tetap tidak aktif. Anda dapat mengaktifkan akun secara manual nanti.'
+            );
+            if (!confirmActivate) {
+                return; // User membatalkan semua
+            }
+        }
+    } else {
+        // Jika menonaktifkan, konfirmasi langsung
+        const confirmed = await showConfirm(
+            `Nonaktifkan unit kerja ini?`,
+            title,
+            description
+        );
+        if (!confirmed) return;
+    }
     
     try {
         const token = getAuthToken();
@@ -3125,6 +3494,11 @@ async function toggleUnitKerjaStatus(id, activate) {
         url.searchParams.append('nama', nama);
         url.searchParams.append('is_active', activate ? 1 : 0);
         
+        // Jika mengaktifkan dan user memilih untuk mengaktifkan users juga
+        if (activate && activateUsers) {
+            url.searchParams.append('activate_users', 1);
+        }
+        
         const response = await fetch(url.toString(), {
             headers: { 'X-Auth-Token': token || '' }
         });
@@ -3134,7 +3508,16 @@ async function toggleUnitKerjaStatus(id, activate) {
             throw new Error(result.error || `Gagal ${action} unit kerja`);
         }
         
-        showSuccessMessage(`Unit kerja berhasil ${activate ? 'diaktifkan' : 'dinonaktifkan'}`);
+        let successMessage = `Unit kerja berhasil ${activate ? 'diaktifkan' : 'dinonaktifkan'}`;
+        if (activate && activateUsers) {
+            successMessage += '. Semua akun dengan unit kerja ini telah diaktifkan kembali.';
+        } else if (activate && !activateUsers) {
+            successMessage += '. Akun dengan unit kerja ini tetap tidak aktif.';
+        } else {
+            successMessage += '. Semua akun dengan unit kerja ini telah dinonaktifkan.';
+        }
+        
+        showSuccessMessage(successMessage);
         loadUnitKerja();
         // Reload unit kerja dropdowns
         loadUnitKerjaForApprover();

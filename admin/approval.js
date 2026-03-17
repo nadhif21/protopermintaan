@@ -291,8 +291,19 @@ async function sendWhatsAppNotification(registrationId) {
         message += "Terima kasih.";
 
         // Generate WhatsApp URL
-        // Remove leading 0 and add country code 62
-        const cleanPhone = registration.nomorTelepon.replace(/^0/, '62');
+        // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+        let cleanPhone = registration.nomorTelepon.replace(/\D/g, ''); // Hapus semua non-digit
+        if (cleanPhone.startsWith('62')) {
+            // Sudah dalam format internasional
+        } else if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        } else if (cleanPhone.startsWith('8')) {
+            // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+            cleanPhone = '62' + cleanPhone;
+        } else {
+            // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
+            cleanPhone = '62' + cleanPhone;
+        }
         const encodedMessage = encodeURIComponent(message);
         const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 
@@ -872,8 +883,19 @@ function openWhatsAppForUser(user) {
     message += `Sangat disarankan untuk mengubah password setelah login pertama kali.\n\n`;
     message += `Terima kasih.`;
 
-    let cleanPhone = user.nomorTelepon.replace(/^0/, '62');
-    cleanPhone = cleanPhone.replace(/\D/g, '');
+    // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+    let cleanPhone = user.nomorTelepon.replace(/\D/g, ''); // Hapus semua non-digit
+    if (cleanPhone.startsWith('62')) {
+        // Sudah dalam format internasional
+    } else if (cleanPhone.startsWith('0')) {
+        cleanPhone = '62' + cleanPhone.substring(1);
+    } else if (cleanPhone.startsWith('8')) {
+        // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+        cleanPhone = '62' + cleanPhone;
+    } else {
+        // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
+        cleanPhone = '62' + cleanPhone;
+    }
     
     const encodedMessage = encodeURIComponent(message);
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;

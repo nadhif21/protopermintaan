@@ -1,0 +1,330 @@
+id;username;name;npk;nomor_telepon;email;unit_kerja;role;password_hash;password;is_active;created_at;updated_at
+1;admin;Administrator;NULL;NULL;NULL;NULL;super_admin;admin123;SuperAdmin@2027!;1;06/03/2026 09:22;15/03/2026 15:40
+2;petugas;Petugas;NULL;NULL;NULL;NULL;admin;petugas123;admin123;1;06/03/2026 09:24;15/03/2026 07:19
+3;k1111;Doel Doel;K1111;81367312885;doel@noreply.com;Dep. Administrasi Korporat;user;1111;NULL;1;09/03/2026 21:19;14/03/2026 04:47
+4;2257051003;Muhammad Nadhif Nanditama;2257051003;82154549026;nadhif21april@gmail.com;Dep. IT Service Business Partner;user;1234;NULL;1;14/03/2026 23:30;15/03/2026 06:01
+5;2217051018;nadhif;2217051018;82154549026;nadhif@gmail.com;Dep. IT Service Business Partner;user;adhit2104;NULL;1;15/03/2026 08:34;15/03/2026 08:34
+6;K225731;Abdillah Mursyid Ainur Rohman;K225731;85859991005;abdillah.200597@gmail.com;Dep. Keuangan;user;K225731;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+7;4033501;Abdul Rahim;4033501;81255009696;abdulrahim14014@gmail.com;Dep Pelayanan Umum;user;4033501;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+8;K257851;Abdul Rouf M;K257851;85718141400;khi.pupukkaltim@gmail.com;NULL;user;K257851;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+9;KNEB22680;Achmad;KNEB22680;8115493002;achmadbtg65@gmail.com;NULL;user;KNEB22680;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+10;KNEB221138;ACHMAD ADIES SAPUTRA;KNEB221138;81341838292;madisa359@gmail.com;Dep. Pengadaan Barang;user;KNEB221138;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+11;K236370;Ade Ravita Sari;K236370;82153939296;aderavitas@gmail.com;Dep. Inspeksi Teknik 2;user;K236370;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+12;K236732;Adhewara Ar Yupa;K236732;81346385944;adhewaraaryupa@gmail.com;Dep. Pengadaan Barang;user;K236732;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+13;K257745;AGNES;K257745;82251375219;vbeeagnes@gmail.com;Dep. Sistem Manajemen Terpadu & Inovasi;user;K257745;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+14;4244764;Agnes Regina Gracia Sianipar;4244764;8117708300;agnesreginagss@gmail.com;Dep. Lingkungan Hidup;user;4244764;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+15;KNEB231221;Agung Febrianto;KNEB231221;81802274784;febriantoagung27@gmail.com;Dep. Pengadaan Jasa;user;KNEB231221;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+16;K257861;Ahmad Minsar;K257861;8115914455;minzar89@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;K257861;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+17;K11082;Ahmad Rofiq;K11082;82157082522;opick.alfaiz@gmail.com;NULL;user;K11082;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+18;4164508;Ahmad Rofiq Nurhadi;4164508;85292055508;ahmad.rofiq08@gmail.com;Dep. Pengembangan Korporat;user;4164508;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+19;K257457;Ahmad Subur;K257457;85861401092;ahmadsubur06@gmail.com;Departemen TJSL;user;K257457;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+20;4234726;Aisyah Putri Rachmadani;4234726;85731337088;putri.aisyah177@gmail.com;Dep. Portofolio Bisnis;user;4234726;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+21;K257859;ALDILLAH;K257859;81348307524;aldi151195@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;K257859;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+22;KNEB231213;Alfiana Miranda Nur Afifah;KNEB231213;85250687128;alfianamirandsanurafifah@gmail.com;NULL;user;KNEB231213;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+23;4244769;Alif Pradana Hakim;4244769;81521772268;hakim.alifpradana@gmail.com;NULL;user;4244769;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+24;K257453;Alim Bachri;K257453;8125526854;alimbachri1@gmail.com;Departemen TJSL;user;K257453;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+25;4234740;Aliya Fadillah Rozali;4234740;81231894318;penagihanpkt@gmail.com;Dep. Keuangan;user;4234740;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+26;KNEB251608;Alya Fauziyah;KNEB251608;85245508548;alyafauzyh@gmail.com;Dep. Keselamatan & Kesehatan Kerja;user;KNEB251608;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+27;K257272;Amala Saksinaring Dwijaya;K257272;82257466612;amaladwijaya@gmail.com;NULL;user;K257272;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+28;KNEB21561;Amalina Rizki Nur Shabrina;KNEB21561;85750306961;hubind.pupukkaltim@gmail.com;NULL;user;KNEB21561;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+29;4244771;Amirah  Meutia Noorfadila;4244771;8,12525E+12;amirahmeutia@gmail.com;Dep. Pengadaan Jasa;user;4244771;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+30;K215112;Ana Noor Hayati;K215112;82293689116;anahayatinoor@gmail.com;Dep. Lingkungan Hidup;user;K215112;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+31;4164423;Andi Aulia Nurmita Widyatri;4164423;81253851555;andiaulianurmita@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;4164423;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+32;K257927;Andrian Rama Putra;K257927;82254548644;myandrian17@gmail.com;Dep. Manajemen & Pengembangan SDM;user;K257927;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+33;K257725;Anggara Dwicahya Alamsyah;K257725;82139298245;anggafs177@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;K257725;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+34;4164509;Anggi Annisa Febriati;4164509;8115986968;anggiannisaf@gmail.com;NULL;user;4164509;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+35;K11096;Anggia Lachisda;K11096;82154101600;alachisda@gmail.com;NULL;user;K11096;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+36;4083813;Anggik Noor Fahrudin;4083813;85226373165;gudangpenerimaanbahanbaku@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;4083813;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+37;KNEB221137;Anggit Dwi Yanti;KNEB221137;85332299399;anggitdwiyanti@gmail.com;Dep. Inspeksi Teknik 2;user;KNEB221137;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+38;4254835;Aniesa Nur Mahmuda;4254835;82251109082;penagihanpkt@gmail.com;Dep. Keuangan;user;4254835;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+39;KNEB221059;Anita rosilawati;KNEB221059;81282948304;anitarosilawati649@gmail.com;NULL;user;KNEB221059;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+40;KNEB251529;Annisa Arum Wahyujati;KNEB251529;81327466754;arumarchitecture17@gmail.com;Dep. Rekayasa & Konstruksi;user;KNEB-251529;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+41;K193163;Anton Sugiarto;K193163;81347406607;antonsugiarto20@gmail.com;Dep. Rekayasa & Konstruksi;user;K193163;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+42;4154400;Aqida Ayu;4154400;81251555596;nindianingrum@gmail.com;Dep. Perencanaan & Pengendalian TA;user;4154400;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+43;4033508;Ardani;4033508;8125316089;daninh3@gmail.com;NULL;user;4033508;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+44;4083692;Ardianus Tandi Salu;4083692;82157333435;ardieyupi@gmail.com;Dep. Keselamatan & Kesehatan Kerja;user;4083692;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+45;KNEB251821;ARDRA ABIRAMA PUTRA;KNEB251821;8,82008E+11;ramaholdenpurwokerto@gmail.com;PROYEK SODA ASH;user;KNEB251821;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+46;4872884;Arif Hariyono;4872884;8125523200;fxarifhariyono@gmail.com;NULL;user;4872884;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+47;K215012;Arum Puspo Resmi;K215012;81346339330;arumresmi@gmail.com;NULL;user;K215012;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+48;4124110;Arya Pratama Putra;4124110;0811 5412 508;uchiha.arya@gmail.com;Dep. Pengadaan Jasa;user;4124110;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+49;K193700;Astri Ivo;K193700;8115808333;astriivorais22@gmail.com;Dep. Strategic Delivery Unit;user;K193700;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+50;4144363;Atik Dwi Purwandari;4144363;81333163453;agatigik@gmail.com;NULL;user;4144363;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+51;4244776;Atirah Surayya;4244776;82223233446;atirahsurayya2908@gmail.com;Dep. Lingkungan Hidup;user;4244776;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+52;KNEB241338;Aulia Pandu Nagari;KNEB241338;89690466049;auliapnd@gmail.com;NULL;user;KNEB241338;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+53;K236360;Aulia Rahmah;K236360;85812996594;auliarhmhr@gmail.com;Dep. Lingkungan Hidup;user;K236360;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+54;K236661;Ayu Nurmala Aisyah;K236661;81343634889;perwakilansmd@gmail.com;Dep Pelayanan Umum;user;K236661;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+55;4254872;Ayu Permatasari;4254872;81250507470;ayu.prmt@gmail.com;Dep. Pengadaan Jasa;user;4254872;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+56;4254957;Bagus Ekaprastya Wibowo;4254957;85707661858;bagusekaprastya@gmail.com;Dep. Operasi Pabrik 5;user;4254957;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+57;K257456;Bagus Praditya;K257456;82223206499;baguspradityasn@gmail.com;Departemen TJSL;user;K257456;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+58;KNEB251514;Bayu Aji Kusuma;KNEB251514;82219421949;bayu.pupukkaltim@gmail.com;NULL;user;KNEB251514;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+59;K214807;Berliana Astagina;K214807;82352315519;berlianaleni99@gmail.com;Dep Pelayanan Umum;user;K214807;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+60;K236746;Bhagas Yanuar Rona Wijaya;K236746;85346929206;bhagasy@gmail.com;NULL;user;K236746;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+61;4124096;Brian Salviantono;4124096;85246861045;briansalviantono@gmail.com;NULL;user;4124096;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+62;KNEB221008;Camelya Dian T;KNEB221008;82148677369;semox29@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;KNEB221008;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+63;KNEB221171;Chairunisa Khusnul Khotimah;KNEB221171;87770889221;chrunisakk18@gmail.com;Dep. Pengadaan Jasa;user;KNEB221171;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+64;DB2500902;Choirul anwar;DB2500902;83140337484;anwariko145@gmail.com;NULL;user;DB2500902;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+65;4124200;choirul firmansyah;4124200;85250668609;chairul023@gmail.com;Dep. Perencanaan & Pengendalian Har.;user;4124200;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+66;4234742;Christa Litani Ayuningtyas;4234742;81211044288;christa.litani.a@gmail.com;NULL;user;4234742;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+67;K246911;Crysanda Faza Kinanti;K246911;82189619042;crysnfaza@gmail.com;Dep Manajemen Aset;user;K246911;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+68;4063644;Darwanto;4063644;81350987256;zoomspace66@gmail.com;Dep. Bengkel;user;4063644;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+69;K236750;Denis Mahendra Putra;K236750;87861700395;denismahendraputra@gmail.com;NULL;user;K236750;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+70;4083685;Denny burhanudin;4083685;82251037466;smuled88@gmail.com;NULL;user;4083685;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+71;4254838;Denny Randiana Firda Saputra;4254838;81254004501;dennyrfs@gmail.com;NULL;user;4254838;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+72;KNEB251580;Dessy Mustianur;KNEB251580;82255436523;dessymustianur@gmail.com;Dep. Pengelolaan Pelanggan;user;KNEB251580;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+73;KNEB241343;Desty Hani Aulia;KNEB241343;81257792191;adesty.hani@gmail.com;Dep. Pengadaan Barang;user;KNEB241343;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+74;4244781;Devid Irawan;4244781;82300125204;devid.expo10@gmail.com;Dep. Pengadaan Jasa;user;4244781;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+75;K13286;Devita Wulandari;K13286;85246995095;devitawulandari2108@gmail.com;Dep. Strategic Delivery Unit;user;K13286;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+76;KNEB231254;Dewi Anggraeni;KNEB231254;87721789648;123dewianggraeniii@gmail.com;Departemen TJSL;user;KNEB231254;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+77;K215192;Dewi Ratna Kemala;K215192;82158244823;dewiratnakemala93@gmail.com;NULL;user;K215192;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+78;K214889;Dharmawan;K214889;85247344601;wawandharmawan11@gmail.com;Dep. Sistem Manajemen Terpadu & Inovasi;user;K214889;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+79;K255523;Dhita Sri Wahyuni;K255523;85298284125;dhitasriw@gmail.com;NULL;user;K255523;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+80;4144323;Diah Rachmi Damarasri;4144323;82131613336;diahrachmi@gmail.com;NULL;user;4144323;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+81;K214932;Dian agus prio utomo;K214932;85849816470;dianagusprioutomo313@gmail.com;Dep. Keuangan;user;K214932;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+82;KNEB22938;Dian Kodriani;KNEB22938;8125821142;dianfaizma@gmail.com;Dep Pelayanan Umum;user;KNE B22938;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+83;4114017;Dian Wahyu Pratama;4114017;8115812027;dianwahyusbc@gmail.com;NULL;user;4114017;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+84;4083723;Diana;4083723;85250669798;diana.wela.kt1339dg@gmail.com;NULL;user;4083723;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+85;KNEB251422;DIANA AMALIA P.;KNEB251422;82233008638;dianadidiy@gmail.com;Dep. Pengadaan Jasa;user;KNEB251422;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+86;KNEB251481;Dicky Suherman;KNEB251481;85245404896;pembangunanekonomi89@gmail.com;Departemen TJSL;user;KNEB251481;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+87;K236412;Diera Paranita;K236412;82155071990;investasipemeliharaan@gmail.com;Dep. Perencanaan & Pengendalian TA;user;K236412;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+88;4254890;Diki triwahyudi;4254890;81351944732;dickytriwahyudi48@gmail.com;Dep. Pemeliharaan Mekanik;user;4254890;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+89;4164514;Dina Novita Sari;4164514;82121432880;dinaaa77@gmail.com;Dep. Administrasi Korporat;user;4164514;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+90;K257266;Dinda Nurlail;K257266;82260991066;nurlaildinda@gmail.com;Dep. Strategic Delivery Unit;user;K257266;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+91;KJS150071;Dini Juwita Hidayat;KJS150071;81347683400;dinijuwitahidayatt@gmail.com;NULL;user;KJS150071;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+92;4063641;Doddy herry setiawan;4063641;85787710155;dod3641@gmail.com;Dep. Pengadaan Barang;user;4063641;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+93;4083804;Dodik Kurniawan;4083804;82150922928;dodik.bagins87@gmail.com;Dep. Perencanaan & Pengendalian Har.;user;4083804;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+94;k246937;Donny kharysman;k246937;85254652044;kharysmandonny@gmail.com;Dep. Administrasi Korporat;user;k246937;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+95;4073666;Ekajati Winarmo;4073666;81346264777;e.winarmo@gmail.com;Komp. Transformasi Bisnis;user;4073666;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+96;K257450;Eko Condro Mulyono;K257450;85246477088;ekojibbon77@gmail.com;Departemen TJSL;user;K257450;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+97;KNEB22995;ELIANA;KNEB22995;82165999941;eliana1312cc@gmail.com;Dep. Pengadaan Barang;user;KNEB22995;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+98;KNEB221061;Endah Andayani;KNEB221061;81253771741;endahan1620@gmail.com;NULL;user;KNEB221061;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+99;KNEB22806;Endang Dri Handayani;KNEB22806;8125835022;sekretarispkt2@gmail.com;Dep. Operasi Pabrik 2;user;KNEB22806;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+100;k247035;Ependi;k247035;85248148478;ependihmp@gmail.com;Dep. Keselamatan & Kesehatan Kerja;user;k247035;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+101;DB24-00830;Erdita Aprilia Yuga Pamujo;DB24-00830;82250415596;erditapriliayp@gmail.com;NULL;user;DB24-00830;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+102;KNEB241133;Erick Yan Raggo Sabosya;KNEB241133;82251566637;ericksabosya@gmail.com;Dep. Sistem Manajemen Terpadu & Inovasi;user;KNEB241133;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+103;K246987;ETLI ANANDA YUNITA;K246987;82256074606;etli.pac9@gmail.com;Dep. Operasional SDM;user;K246987;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+104;KNEB251502;Evi Nur Ramadhani;KNEB251502;85350163212;evirmdh@gmail.com;Dep. IT Service Business Partner;user;KNEB251502;NULL;1;15/03/2026 09:22;15/03/2026 09:35
+105;K236297;Evi Yuliani Iskandar;K236297;8111122207;eviyuliska@gmail.com;NULL;user;K236297;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+106;4214642;Fahrur Rozi;4214642;81347447131;fahrur263@gmail.com;Dep. Keuangan;user;4214642;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+107;K257843;Faishal Fikri;K257843;82264895266;shalfikri@gmail.com;Dep. Manajemen & Pengembangan SDM;user;K257843;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+108;KNEB241351;Faizal Randy Putra;KNEB241351;85246864818;faizalrandy.lsai@gmail.com;Dep. Pengadaan Barang;user;KNEB241351;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+109;K225714;Fajar Fuadi;K225714;82358838849;fajarfuadi284@gmail.com;NULL;user;K225714;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+110;4204630;Fajar Mei Haryadi;4204630;82124379490;fajarmei1605@gmail.com;Dep. Riset;user;4204630;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+111;KNEB231268;Fakhruddin;KNEB231268;85775376587;odhyfakhruddin@gmail.com;Dep. Pengadaan Jasa;user;KNEB231268;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+112;K225439;Faridah Rachmawati Nadhirah;K225439;82352681422;khi.pupukkaltim@gmail.com;Dep. Operasional SDM;user;K225439;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+113;K257445;M. Nur Fauzi;K257445;4777;mnurfauzii@gmail.com;NULL;user;k257445;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+114;K25933;Fauzia Rakhman;K25933;82112408521;fauziarachman7@gmail.com;NULL;user;K25933;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+115;4144353;Ferdi Ramantiya;4144353;85250718211;02ramant@gmail.com;NULL;user;4144353;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+116;K236532;Ferdian Indra Pradana;K236532;85250770640;ferdianotot86@gmail.com;Dep. Hukum;user;K236532;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+117;4134238;Ferdy;4134238;85246967599;komjasmaker@gmail.com;Dep. Operasional SDM;user;4134238;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+118;4254840;Fibry Dil Adha N;4254840;82354877994;fibrydiladhaningrat@gmail.com;NULL;user;4254840;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+119;K226145;Fieshischa Putri Fenadilla;K226145;82298486399;fieshischaputri99@gmail.com;NULL;user;K226145;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+120;KNEB231249;Firda Firanida;KNEB231249;81254279586;firdaf281@gmail.com;NULL;user;KNEB231249;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+121;K236748;Firda Zalfa;K236748;8122981681;firdazalfa18@gmail.com;NULL;user;K236748;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+122;4224695;Firdaus Fajar Kurniawan;4224695;81250082465;firdaus.f2k@gmail.com;Dep. Rekayasa & Konstruksi;user;4224695;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+123;4144359;Firman Jafar;4144359;81346315021;firman.jafar88@gmail.com;Dep. Keuangan;user;4144359;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+124;4144340;Fitri susanti;4144340;82237970150;fitsus11@gmail.com;Dep Manajemen Aset;user;4144340;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+125;K257744;Fitria Nur Hariami;K257744;82153925877;fitriamiolshop@gmail.com;Dep. Sistem Manajemen Terpadu & Inovasi;user;K257744;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+126;K161406;Fitriani Rahman Diny;K161406;82154762736;fitri.diny@gmail.com;Dep. Pengadaan Jasa;user;K161406;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+127;4244789;Fuad Nurtsani Afifudin;4244789;89686591219;nurtsanifuad@gmail.com;Dep. Pengembangan Korporat;user;4244789;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+128;4244790;Gartika Citra Nugrahing Widi;4244790;89686911433;gartikacitra.nugrahingwidi@gmail.com;Dep. Lingkungan Hidup;user;4244790;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+129;K257454;Gatot Supriyo;K257454;81258443123;mas.gatot04@gmail.com;Departemen TJSL;user;K257454;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+130;K236411;GEA INDAH WULANDARI;K236411;87787776952;gheawlndr@gmail.com;Dep Pelayanan Umum;user;K236411;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+131;K246867;Georldby;K246867;81231830554;georldbys@gmail.com;NULL;user;K246867;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+132;4023477;Geovanni Lumika;4023477;81350998588;geovannilumika8@gmail.com;NULL;user;4023477;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+133;KNEB231272;Ghina Sindi Hibatulkhulaidah;KNEB231272;8,1251E+11;sindighina@gmail.com;NULL;user;KNEB231272;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+134;K11071;Githa A;K11071;82210009019;githapktseksai@gmail.com;NULL;user;K11071;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+135;Kneb21402;Guntur ari pratama;Kneb21402;81349849568;gunturari03agust@gmail.com;Dep Manajemen Aset;user;Kneb21402;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+136;K14627;Gurniansyah Anwar;K14627;85349414510;gurniansyahanwar@gmail.com;Dep. Bengkel;user;K-14627;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+137;KNEB251586;Habil Pambudi;KNEB251586;82245482098;habilpambudi@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;KNEB251586;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+138;4114046;Hamidahtur Rahmi;4114046;85750356634;hd.rahmi03@gmail.com;Dep. Keuangan;user;4114046;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+139;KNEB251820;Hanifa Agustyaningrum;KNEB251820;81251317406;hanifaagustya.work@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;KNEB251820;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+140;4144311;hardiyah priska;4144311;81335867397;hardiyah.priska@gmail.com;Dep. Strategic Delivery Unit;user;4144311;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+141;4154379;Haris Orizadi;4154379;8118821724;haris.orizadi@gmail.com;NULL;user;4154379;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+142;K14492;Haslimin;K14492;81350375609;haslimin.sh@gmail.com;Dep. Pengadaan Jasa;user;K14492;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+143;k12188;Hayun pratiwi;k12188;85250888805;hayunpratiwi188@gmail.com;Dep. Hukum;user;k12188;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+144;4204625;Hendi Aviano Prasetyo;4204625;85714085357;hendiaviano@gmail.com;NULL;user;4204625;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+145;K247195;Hendra Setiawan Ritonga;K247195;85171695950;hongstar0595@gmail.com;NULL;user;K247195;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+146;K257448;Hengky Pardomuan;K257448;82151510639;banghengky26@gmail.com;Departemen TJSL;user;K257448;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+147;K11036;Heni Trisatya;K11036;85246963738;henitrisatya.p@gmail.com;Dep. Hukum;user;K11036;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+148;4164500;Herrina Leilatul Husna Sogara;4164500;8115988803;herrina.pkt@gmail.com;NULL;user;4164500;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+149;KNEB251512;HERUL SODIK;KNEB251512;81254574771;mbpretail2021@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;KNEB251512;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+150;K257574;Hikmatiar Ibrahim;K257574;87770885412;baim171299@gmail.com;Dep. Laboratorium;user;K257574;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+151;4254874;Hishban Shidqi Awantoro;4254874;81218182535;h.s.awantoro@gmail.com;Dep. Keandalan Pabrik;user;4254874;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+152;K257538;Husnul Hatima;K257538;82251373872;husnulhatima06@gmail.com;NULL;user;k257538;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+153;K214581;Ibnu Sina Al Barry;K214581;82150070144;ibnusina1506@gmail.com;Dep. Bengkel;user;K214581;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+154;4154394;Ichsan Al Islami;4154394;81258889131;ichsanrendal2@gmail.com;Dep. Perencanaan & Pengendalian Har.;user;4154394;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+155;K214654;Ilham Asri Romadhon;K214654;8125391976;ilhamxasri@gmail.com;NULL;user;K214654;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+156;4244795;Ilham Primahendra;4244795;81393617469;ilham.primahendra@gmail.com;Dep. Perencanaan & Pengendalian Har.;user;4244795;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+157;KNEB251908;Injilia M Lumowa;KNEB251908;85394048024;injilialumowa12@gmail.com;Dep. Pelaporan Manajemen;user;KNEB251908;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+158;K236277;INTAN PRAHASTIWI;K236277;89677836948;intanprahastiwi07@gmail.com;NULL;user;K236277;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+159;kneb251900;Irma Mayang Sari;kneb251900;82149488255;irmamayangs05@gmail.com;Departemen TJSL;user;kneb251900;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+160;K236308;Jesika Yohana Tamba;K236308;82350721998;jesikaytamba21@gmail.com;Dep. Pengembangan Korporat;user;K236308;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+161;4234746;Jihad Hutomo Mukti;4234746;6,28571E+12;jihadhmukti@gmail.com;NULL;user;4234746;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+162;4993424;Joko Sudarto;4993424;85959323000;fazahusna@gmail.com;NULL;user;4993424;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+163;K257730;Karina Achmad;K257730;85226093303;karinachmadd@gmail.com;Dep. Pengadaan Jasa;user;K257730;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+164;KNEB251518;Kartini E S;KNEB251518;81347578171;bukutarendalta@gmail.com;Dep. Perencanaan & Pengendalian TA;user;KNEB251518;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+165;K257444;Khadijah;K257444;82350273723;khadijahpandang24@gmail.com;Dep. Administrasi Korporat;user;K257444;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+166;4234747;Kharisma Ayuning Putri;4234747;89521125733;ayuningputri642@gmail.com;NULL;user;4234747;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+167;4254875;khoirul anam;4254875;82247342886;anam77697@gmail.com;Dep. Lingkungan Hidup;user;4254875;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+168;4154368;Khukuh Franjaya;4154368;81241971343;kukuhfranjaya@gmail.com;NULL;user;4154368;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+169;4234728;Khurotul A'yunin;4234728;81238325238;khurotulayunin05@gmail.com;Dep. Pengembangan Korporat;user;4234728;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+170;4164419;Kikin Hermanto;4164419;82151059959;kikinhermanto@gmail.com;Dep. Inspeksi Teknik 2;user;4164419;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+171;KNEB22686;Krisna Indarwati;KNEB22686;82152261443;riggynaufan@gmail.com;Dep. IT Service Business Partner;user;KNEB22686;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+172;KNEB251607;Kukuh Zamrozi;KNEB251607;85390210644;amrozi52@gmail.com;Dep. Keselamatan & Kesehatan Kerja;user;KNEB251607;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+173;K236291;Laila Nur Khalimah;K236291;82252875522;lailanur.kh12@gmail.com;NULL;user;K236291;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+174;K12156;LEGITO;K12156;82255662889;legito.rendalhar1@gmail.com;Dep. Perencanaan & Pengendalian Har.;user;K12156;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+175;KNEB251597;Leonardus N.R Solosiga;KNEB251597;82158870330;leosolosig4@gmail.com;Dep. Inspeksi Teknik 1;user;KNEB251597;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+176;4164504;Levi Rachmadian saputra;4164504;82135261044;cumalevi@gmail.com;NULL;user;4164504;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+177;4204631;Litaskunu Mahligai Denasa;4204631;81998063280;pkt.perbendaharaan@gmail.com;Dep. Keuangan;user;4204631;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+178;4134241;Lukmanu Nurchakim;4134241;85290095913;lukman.101088@gmail.com;Dep. Manajemen & Pengembangan SDM;user;4134241;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+179;k214998;Luthfi Rachmawati;k214998;85247930899;expeditingpupukkaltim@gmail.com;Dep. Pengadaan Barang;user;k214998;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+180;4255017;M Iqbal;4255017;82235297113;iqbaldhana15@gmail.com;Dep. Operasi Pabrik 1A;user;4255017;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+181;K246869;Mardiana Lestari Tandi;K246869;82149251227;mardianatandi12@gmail.com;NULL;user;K246869;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+182;K13458;Marina Khalish;K13458;82351007518;khalish.marina20@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;K13458;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+183;4124126;Martonius Epta Sidabtuar;4124126;85250222516;d3athnotez@gmail.com;Dep. Manajemen & Pengembangan SDM;user;4124126;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+184;KNB22651;Matius;KNB22651;82354050646;matius2372@gmail.com;Dep. Bengkel;user;KNB22651;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+185;KNEB251392;Maymunah;KNEB251392;81351834544;brownie.imay@gmail.com;Dep. Pengadaan Jasa;user;KNEB251392;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+186;K214961;Maysita Lutfiana Corry;K214961;8,95707E+11;maysita6501@gmail.com;NULL;user;K214961;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+187;K236379;Meilisa Dwi Cahyani;K236379;85641752006;meilisadwicahyani2@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;K236379;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+188;4254876;Meitha Eky Hidayah;4254876;82192555440;meithaekyh@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;4254876;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+189;4154380;MHN Hidayat;4154380;8115448834;mhn.hidayat@gmail.com;NULL;user;4154380;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+190;4093860;Mono Barawan;4093860;85246685248;monobarawan1990@gmail.com;NULL;user;4093860;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+191;4174566;Muchammad Andry Suryanata;4174566;82228005490;andrysuryanata@gmail.com;Dep. Pengadaan Jasa;user;4174566;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+192;KNEB231225;Muchammad Dio Indranata;KNEB231225;85755493293;muchammad.id@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;KNEB231225;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+193;KNEB241320;Muhammad Abiyyan Zaki;KNEB241320;85250281605;abiyyan.zaki747@gmail.com;Dep. Pengembangan Korporat;user;KNEB241320;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+194;4254877;Muhammad Danaya Saputra;4254877;81346596965;muhammad.danaya15@gmail.com;Dep. Administrasi Korporat;user;4254877;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+195;KNEB21489;Muhammad Dwiky Syahputra;KNEB21489;81290970909;syahputradwiky18@gmail.com;Dep. Pengadaan Barang;user;KNEB21489;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+196;4244809;Muhammad Fadhlirrahman Hidayat;4244809;81238657469;fadhli.rahman.hidayat@gmail.com;NULL;user;4244809;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+197;257459;Muhammad Faizal Muttaqin;257459;81216758609;muhammadfaizal1700@gmail.com;Departemen TJSL;user;257459;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+198;K225694;Muhammad Ibnu Nurrojabin;K225694;82254529901;mhmmadibn11@gmail.com;NULL;user;K225694;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+199;4254939;Muhammad Iqbal;4254939;81346234657;iqqbalmuhammad96@gmail.com;NULL;user;4254939;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+200;KNEB221161;Muhammad Luthfi Zain Hafizh;KNEB221161;85195221975;luthfizain133@gmail.com;NULL;user;KNEB221161;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+201;K246971;Muhammad Nashih Ulwan;K246971;81345058209;surveycom19@gmail.com;NULL;user;K246971;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+202;K257732;Muhammad Rafif Andrianto;K257732;81226195572;maandrianto@gmail.com;Dep. Pengadaan Jasa;user;K257732;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+203;K257853;Muhammad Ramadhani;K257853;82154719584;penagihanpkt@gmail.com;Dep. Keuangan;user;K257853;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+204;KNEB231185;Muhammad Ridhol Am;KNEB231185;82187672002;ridholmuhammad10@gmail.com;Dep. Administrasi Korporat;user;KNEB231185;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+205;KNEB251498;Muhammad Rizki Ramadhan;KNEB251498;85332502951;mrizkiramadhan7198@gmail.com;Dep. Laboratorium;user;KNEB251498;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+206;K214956;MUhammad Rizqi Pratama;K214956;85242865010;muhammadrp04@gmail.com;NULL;user;K214956;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+207;K236729;Muhammad Safrian Ahsan;K236729;81255801235;frian.pktdocs@gmail.com;Dep. Pengadaan Barang;user;K236729;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+208;4234749;Muhammad Syauqi;4234749;85779470693;af23838@gmail.com;NULL;user;4234749;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+209;K214937;Mujoko;K214937;85246554063;joko.daan@gmail.com;Dep. Pengadaan Barang;user;K214937;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+210;K257857;Nabila Hasba Qolyubi;K257857;82253062838;nabilahasba@gmail.com;Dep. Keuangan;user;K257857;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+211;KNEB221169;Nabila Hasba Qolyubi;KNEB221169;82253062838;pkt.perbendaharaan@gmail.com;Dep. Keuangan;user;KNEB221169;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+212;4254848;Nada Mahaditra Soeharto;4254848;85386779900;nadamahaditra@gmail.com;NULL;user;4254848;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+213;Kneb231207;Nadya Raufia Safitri;Kneb231207;85248496858;nadyaraufiasftr@gmail.com;NULL;user;Kneb231207;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+214;K257864;Nia Afliani;K257864;82152673882;fliyfliyaniaaa16@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;K257864;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+215;4254850;Nieko Haryo Pradhito;4254850;82131613337;nieko.haryo.pradhito@gmail.com;Dep. Manajemen & Pengembangan SDM;user;4254850;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+216;4113962;Nikita Adriyani;4113962;8115808053;adriyaninikita@gmail.com;Dep. Keuangan;user;4113962;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+217;KNEB231573;Nindy Rendina;KNEB231573;82251880013;rendinanindy@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;KNEB231573;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+218;K193156;Nindya Praheswara;K193156;82153213408;nindyapraheswara@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;K193156;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+219;4114022;Nita Rahmawaty;4114022;8138987533;nita.r46@gmail.com;Proyek soda ash;user;4114022;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+220;KNEB25-1584;Nobel Perdana Prayoga Manawan;KNEB25-1584;82221876738;nobelperdanaprayoga@gmail.com;Dep. Rekayasa & Konstruksi;user;KNEB25-1584;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+221;K193146;Nofiqo Hidayati;K193146;85392027358;mbpr.pkt@gmail.com;NULL;user;K193146;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+222;4204639;Norman Ismoyo;4204639;82114139900;norman.ismoyo@gmail.com;NULL;user;4204639;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+223;K257838;Novia Dian Larasati;K257838;81350348384;mansetmilenial20@gmail.com;Dep Manajemen Aset;user;K257838;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+224;KNEB251574;Novita Sari;KNEB251574;8115818286;novitasari611994@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;KNEB251574;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+225;4154405;Novy Elshaday;4154405;85250228199;novelshaday@gmail.com;Dep. Administrasi Korporat;user;4154405;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+226;KNEB20039;Nunik Setyawati;KNEB20039;85387697728;winieichen@gmail.com;NULL;user;KNEB20039;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+227;K257728;Nur Aisyah;K257728;82157234665;icha.nuraisyah1617@gmail.com;Dep. Pengadaan Jasa;user;K257728;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+228;4154402;Nur Suci Larasati;4154402;81351682571;tylaras90@gmail.com;Dep. Lingkungan Hidup;user;4154402;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+229;KNEB251471;Nurichsan Usman;KNEB251471;82278881700;nurichsan.usb@gmail.com;Dep. Lingkungan Hidup;user;KNEB251471;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+230;K257469;Nurmaya;K257469;89677076175;mayanurmaya151@gmail.com;NULL;user;K257469;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+231;4244814;Nyoman Dennis Yngwie Darmawan;4244814;82210050074;dennisdarmawanwork@gmail.com;Dep. Lingkungan Hidup;user;4244814;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+232;4083794;Oki Sendi Threeya;4083794;81314925527;okisendithreeya@gmail.com;Dep. Administrasi Korporat;user;4083794;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+233;4164426;Oktanto Darma S;4164426;85252075257;darmaputr@gmail.com;Dep. Perencanaan & Pengendalian Har.;user;4164426;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+234;k13445;oktaviani;k13445;85248508071;oktavianirifani92@gmail.com;NULL;user;k13445;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+235;KNE B221151;Padliansyah;KNE B221151;81241186483;padliansyah0701@gmail.com;NULL;user;KNE B221151;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+236;KNEB221013;Patiyas Winanrni;KNEB221013;8125509411;patiyaswinarni@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;KNEB221013;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+237;4063652;PIRMAN;4063652;81350466321;abb.sbu21@gmail.com;Dep. Bengkel;user;4063652;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+238;K257718;Puguh Werdi Wicaksono;K257718;8112692696;puguhwerdiw@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;K257718;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+239;K214951;Putri pamuji;K214951;82148788791;pamujiputri96@gmail.com;NULL;user;K214951;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+240;KNEB251791;Raditheo Zeo Starzona;KNEB251791;81228724815;documentcontroltimb@gmail.com;NULL;user;KNEB251791;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+241;K182538;RAGIL GUNTUR;K182538;8,21411E+11;ragilguntur455@gmail.com;Dep. Pengadaan Jasa;user;K182538;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+242;KNEB231234;Rahmana Mufti Shidiq;KNEB231234;82128622102;rahmanamuftis@gmail.com;Dep. Pengadaan Jasa;user;KNEB231234;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+243;K257455;Rahmawati Ananda;K257455;87810114873;rahma.nanda05@gmail.com;NULL;user;K257455;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+244;KNEB251533;Rama Previanto;KNEB251533;85348895015;renvalpkt@gmail.com;NULL;user;KNEB251533;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+245;K236741;Randi Nasrullah;K236741;81336861695;nasrullahrandi@gmail.com;NULL;user;K236741;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+246;KNEB221071;Rania Riessa Abdul Rahman;KNEB221071;81288636356;raniarachman8@gmail.com;Dep. Strategic Delivery Unit;user;KNEB221071;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+247;KNEB 221121;Ranti Ananda Fabian;KNEB 221121;82351959910;rantiaf.98@gmail.com;Dep Pelayanan Umum;user;KNEB 221121;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+248;K12192;Ratih Ayu P;K12192;85316728888;ratih.ayupuspita80@gmail.com;NULL;user;K12192;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+249;K257860;REISNA PUJIANTIKA;K257860;8128428248;rpujiantika4@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;K257860;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+250;K258182;Rendy Saputra;K258182;85822330723;rendysaptra5@gmail.com;Proyek Soda Ash;user;K258182;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+251;K-14473;RENI PUJI RAHAYU;K-14473;81347539090;renie.pujirahayu@gmail.com;Dep. Operasi Pabrik 5;user;K-14473;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+252;4224698;Revin Setiawan;4224698;81256507570;csr.pkt@gmail.com;Departemen TJSL;user;4224698;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+253;4083795;Revita Pratiwi;4083795;8124154839;revitapratiwi06@gmail.com;NULL;user;4083795;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+254;K11097;Revita Sari Puput Damayanti;K11097;85251615113;revitasaripuputdamayanti@gmail.com;NULL;user;K11097;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+255;KNEB24.1324;Ricky Janeca Ajie;KNEB24.1324;8217399936;janecaajie@gmail.com;Dep. Keuangan;user;KNEB24.1324;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+256;4124136;Ridho Muchari;4124136;85349595315;ridho.pkt@gmail.com;Dep. Keselamatan & Kesehatan Kerja;user;4124136;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+257;K257929;RIFA NADIAH RAHMAIDAR PURBA;K257929;82155215652;p.rifanadiah@gmail.com;NULL;user;K257929;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+258;4083766;Rifki Adi N;4083766;8125322286;febrifki@gmail.com;Proyek soda ash;user;4083766;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+259;4144312;Rifqah Vyatriningrum;4144312;81322405740;rifqah92@gmail.com;Komp. Sekretaris Perusahaan;user;4144312;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+260;4083803;Riki Mareta Adi;4083803;81254445125;maretariki@gmail.com;Dep. Perencanaan & Pengendalian Har.;user;4083803;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+261;KNEB251371;Rina Aprilianti;KNEB251371;85391190192;apriliantirina22@gmail.com;Dep. Sistem Manajemen Terpadu & Inovasi;user;KNEB251371;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+262;KNEB251486;Rising Singgih Wicaksono;KNEB251486;82158326925;risingsw@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;KNEB251486;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+263;KNEB251409;Risky Putranto;KNEB251409;81361182332;atok.djati@gmail.com;Dep. Pengadaan Jasa;user;KNEB251409;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+264;KNE251409;Risky Putranto;KNE251409;81361182332;kibboll@gmail.com;Dep. Pengadaan Jasa;user;KNE251409;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+265;K257566;Risky ripandi;K257566;85651922985;fandinike303@gmail.com;NULL;user;K257566;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+266;K236653;Riza Varilda Ariani;K236653;8972382518;rizavarildaa25@gmail.com;Dep. Keuangan;user;k236653;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+267;KNEB221140;Rizal Febriansyah;KNEB221140;8,95707E+11;laswelder0@gmail.com;NULL;user;KNEB221140;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+268;KNEB251494;RIZKI ARDITA;KNEB251494;82340532884;rizkiarditabtg91@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;KNEB251494;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+269;KNEB241307;RIZKY AMELIA;KNEB241307;89614025887;rizkyameliawork@gmail.com;Dep. Strategic Delivery Unit;user;KNEB241307;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+270;K181655;Robasana;K181655;85248998344;pkt.pemeliharaan@gmail.com;NULL;user;K181655;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+271;4124209;Robi Riana Putra;4124209;85247997381;robeebenmohammad@gmail.com;NULL;user;4124209;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+272;4174564;Rofia Yuniarti;4174564;81285039194;rofia.yuniarti@gmail.com;NULL;user;4174564;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+273;4093881;Rondi Riski Ikmal;4093881;85246774943;randyikmal@gmail.com;Dep. Bengkel;user;4093881;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+274;KNEB22681;Rosalia Ridho;KNEB22681;85246947992;rosaliaridho@gmail.com;Departemen TJSL;user;KNEB22681;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+275;KNEB22634;Sisi Kamsiah;KNEB22634;811588455;sisi.kam01@gmail.com;NULL;user;Kneb22634;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+276;KNEB22682;Salmah;KNEB22682;82154741787;almahcheche@gmail.com;Departemen TJSL;user;KNEB22682;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+277;KNE22702;Sanawati;KNE22702;81258811401;laboratoriumpkt2023@gmail.com;NULL;user;KNE22702;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+278;4114056;Sandra Flaudita;4114056;85251612987;sansan.flaudita@gmail.com;Dep. Perencanaan & Monitoring;user;4114056;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+279;4144305;Sandy Rizka Olvia;4144305;82256698202;srolvia@gmail.com;NULL;user;4144305;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+280;K257458;Sania Thoyibah Sti Syahana;K257458;89698391984;saniasyahana8@gmail.com;Departemen TJSL;user;K257458;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+281;K246988;Sarah;K246988;82255320369;fazilasarah06@gmail.com;NULL;user;K246988;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+282;K214898;Sarah Ayu Pradita;K214898;82158010113;chaelfpradita@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;K214898;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+283;K236382;Sarah P. Marbun;K236382;82255483484;sarahmarbun2097@gmail.com;NULL;user;K236382;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+284;K21 3806;Sari Dayanti;K21 3806;81254234006;saridayanti2@gmail.com;NULL;user;K21 3806;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+285;KNEB22698;Sasmiati;KNEB22698;8115992600;sasmi47@gmail.com;NULL;user;KNEB22698;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+286;KNEB20228;Shadrina Zata Qisthiarifah;KNEB20228;81346670067;zatashadrinaa@gmail.com;Dep. Pengadaan Jasa;user;KNEB20228;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+287;K11110;Shalahuddin Ahmad;K11110;82143434310;shalahuddinahmad2185@gmail.com;NULL;user;K11110;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+288;4083798;Sigit Pribadi;4083798;81294053029;sgtprbd@gmail.com;NULL;user;4083798;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+289;K225726;Siti Nuru Fikriyah;K225726;81347559932;sitinurulfikriyah19@gmail.com;NULL;user;K225726;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+290;4154375;Siti Saudah;4154375;82335361233;sitisaudah91@gmail.com;Dep. Riset;user;4154375;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+291;K182734;Siti Yuanisah;K182734;82250096231;pjpbbpupukkaltim@gmail.com;Dep. Pengadaan Jasa;user;K182734;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+292;K257435;SITTI HABIBAH;K257435;85348985110;sittihabibah58@gmail.com;NULL;user;K257435;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+293;4124099;Sofyan;4124099;8115402792;viantanalis@gmail.com;NULL;user;4124099;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+294;KNEB22705;Sri Lestari;KNEB22705;82159685568;srilestari1808@gmail.com;Dep. Lingkungan Hidup;user;KNEB22705;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+295;4083777;Sri Wahyuningsih;4083777;81357229504;85wahyuningsih@gmail.com;NULL;user;4083777;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+296;K257746;Sulastri Handayani;K257746;85245403819;handayanisulastri8@gmail.com;Dep. Riset;user;K257746;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+297;KNEB22997;Sumiyati;KNEB22997;81254111330;sumiyatidaan@gmail.com;Dep. Pengadaan Barang;user;KNEB.22997;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+298;KNEB221143;Syahrul Amal Romadhon;KNEB221143;85345506860;syahrulamalr@gmail.com;Dep. Lingkungan Hidup;user;KNEB221143;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+299;KNEB241365;tiara mahdya r;KNEB241365;8,957E+11;tiaramahdyahr@gmail.com;Dep. Administrasi Pemasaran & Penjualan;user;KNEB241365;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+300;K257443;Tiara Nur Hikmaulida;K257443;85247744448;tiara.nhikmaulida@gmail.com;Dep. Administrasi Korporat;user;K257443;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+301;KNEB22683;Tri asuhartiningsih;KNEB22683;8115811218;tri.suhartiningsih1275@gmail.com;Dep. Sistem Manajemen Terpadu & Inovasi;user;KNEB22683;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+302;4114086;Tri tunggal hardiyanto;114086;81253012301;tri.tunggal31@gmail.com;NULL;user;114086;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+303;K257712;TRI WAHYU OKTALIA AGUNG WIYONO;K257712;81139008113;wahyuagungwiyono@gmail.com;Dep. Perencanaan Penerimaan& Pergudangan;user;K257712;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+304;4154407;Umi Nurul Khasanah;4154407;8115990333;mychikamaruu@gmail.com;NULL;user;4154407;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+305;B21413;Uswatun Hasanah;B21413;8125577549;uswa3001@gmail.com;NULL;user;B21413;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+306;K257798;Uun Evasari;K257798;82232479383;sariuuneva@gmail.com;Dep Pelayanan Umum;user;K257798;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+307;4244825;Venezia Preesin;4244825;0812-5523-3272;rhinaqalbie22@gmail.com;Dep. Pengadaan Barang;user;4244825;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+308;KNEB221100;Vickry Gurino;KNEB221100;82252215997;vickrygurino@gmail.com;Dep. Pengadaan Jasa;user;KNEB221100;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+309;K225558;Vilayati Al Fitri;K225558;8115942503;namakuvilayati@gmail.com;NULL;user;K225558;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+310;K12216;Vinky ardianti;K12216;81230003375;vinkynadia@gmail.com;Komp. Sekretaris Perusahaan;user;K12216;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+311;K257834;Wahyu Setyawab;K257834;85388772853;wahyusetia1617@gmail.com;Dep Manajemen Aset;user;K257834;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+312;K13280;WHINDY WILUJENG;K13280;8115302334;operasipabrik5@gmail.com;Dep. Operasi Pabrik 5;user;K13280;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+313;KNEB221136;Widya Wira U S;KNEB221136;85156093779;widya.sarwono@gmail.com;Dep. Rekayasa & Konstruksi;user;KNEB221136;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+314;KNEB251391;William Siahaan;KNEB251391;81346219426;siahaanwilliam929@gmail.com;Dep. Pengadaan Jasa;user;KNEB251391;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+315;KNE-B-25.1892;Yakutta Borneowanda;KNE-B-25.1892;82254490916;yakuttabw@gmail.com;NULL;user;KNE-B-25.1892;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+316;4083828;Yasin Zainal Abidin;4083828;85246866867;yasin.za7@gmail.com;NULL;user;4083828;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+317;KNEB22697;Yayuk Karyawati;KNEB22697;81347690516;yayukkariawati@gmail.com;Dep. Keuangan;user;KNEB22697;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+318;K214899;Yeanne D.Apriana Sari;K214899;81254710075;jeanesari1212@gmail.com;NULL;user;K214899;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+319;KNEB20011;Yeni ayu satiti;KNEB20011;82255935828;almeiraaretha@gmail.com;NULL;user;KNEB20011;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+320;K257602;Yoga Irawan;K257602;85753584251;yirawan1812@gmail.com;Dep. Lingkungan Hidup;user;K257602;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+321;K257731;Yufli Nur Fatimah Choirunissa;K257731;82155211863;yufli.choirunissa@gmail.com;Dep. Pengadaan Jasa;user;K257731;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+322;KNEB221025;Yuli Suprianto;KNEB221025;8125367742;yulisuprianto75@gmail.com;NULL;user;KNEB221025;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+323;KNEB221021;Yulie Novita;KNEB221021;81351057779;yulienovita4@gmail.com;NULL;user;KNEB221021;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+324;K257485;Yuni Kartika;K257485;85248334468;y.kartika2105@gmail.com;NULL;user;K257485;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+325;KNE251478;Yusnita Prima;KNE251478;81346249132;primayusnita@gmail.com;Dep Manajemen Aset;user;KNE251478;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+326;4113970;Zainal Arifin;4113970;8115815757;zainalarifin.simple@gmail.com;NULL;user;4113970;NULL;0;15/03/2026 09:22;15/03/2026 09:22
+327;K246944;Zaki;K246944;85246922188;zakiaoq@gmail.com;Dep. Pengadaan Jasa;user;K246944;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+328;K247231;Zaky Fathurrahman;K247231;81252973409;fzakyr170499@gmail.com;Proyek Soda Ash;user;K247231;NULL;1;15/03/2026 09:22;15/03/2026 09:22
+329;4254856;Zonaldo Aditya Irandra;4254856;85250793070;zonaldoaditya@gmail.com;NULL;user;4254856;NULL;0;15/03/2026 09:22;15/03/2026 09:22

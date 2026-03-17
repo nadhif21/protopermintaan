@@ -55,30 +55,60 @@ function setupLogout() {
 }
 
 function setupEventListeners() {
+    const editProfileBtn = document.getElementById('editProfileBtn');
+    if (editProfileBtn) {
+        editProfileBtn.addEventListener('click', openEditProfileModal);
+    }
+
     const changePasswordBtn = document.getElementById('changePasswordBtn');
     if (changePasswordBtn) {
         changePasswordBtn.addEventListener('click', openPasswordModal);
     }
 
-    // Close modal
-    const modal = document.getElementById('passwordModal');
-    const closeBtn = document.querySelector('.modal-close');
-    const cancelBtn = document.getElementById('cancelPasswordBtn');
-
-    if (closeBtn) {
-        closeBtn.addEventListener('click', closePasswordModal);
-    }
-
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', closePasswordModal);
-    }
-
-    if (modal) {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
+    // Close modals
+    const closeButtons = document.querySelectorAll('.modal-close');
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modalId = this.getAttribute('data-modal');
+            if (modalId === 'editProfileModal') {
+                closeEditProfileModal();
+            } else if (modalId === 'passwordModal') {
                 closePasswordModal();
             }
         });
+    });
+
+    const cancelEditBtn = document.getElementById('cancelEditProfileBtn');
+    if (cancelEditBtn) {
+        cancelEditBtn.addEventListener('click', closeEditProfileModal);
+    }
+
+    const cancelPasswordBtn = document.getElementById('cancelPasswordBtn');
+    if (cancelPasswordBtn) {
+        cancelPasswordBtn.addEventListener('click', closePasswordModal);
+    }
+
+    const editProfileModal = document.getElementById('editProfileModal');
+    if (editProfileModal) {
+        editProfileModal.addEventListener('click', (e) => {
+            if (e.target === editProfileModal) {
+                closeEditProfileModal();
+            }
+        });
+    }
+
+    const passwordModal = document.getElementById('passwordModal');
+    if (passwordModal) {
+        passwordModal.addEventListener('click', (e) => {
+            if (e.target === passwordModal) {
+                closePasswordModal();
+            }
+        });
+    }
+
+    const editProfileForm = document.getElementById('editProfileForm');
+    if (editProfileForm) {
+        editProfileForm.addEventListener('submit', handleProfileUpdate);
     }
 
     const passwordForm = document.getElementById('passwordForm');
@@ -155,6 +185,254 @@ function displayProfile(user) {
     document.getElementById('profileEmail').textContent = user.email || '-';
     document.getElementById('profilePhone').textContent = user.nomorTelepon || '-';
     document.getElementById('profileUnitKerja').textContent = user.unitKerja || '-';
+    
+    // Hide Edit Profile button for users with role 'user'
+    const editProfileBtn = document.getElementById('editProfileBtn');
+    if (editProfileBtn) {
+        if (user.role === 'user') {
+            editProfileBtn.style.display = 'none';
+        } else {
+            editProfileBtn.style.display = 'block';
+        }
+    }
+}
+
+async function openEditProfileModal() {
+    if (!currentUser) {
+        alert('Data user belum dimuat. Silakan refresh halaman.');
+        return;
+    }
+
+    const modal = document.getElementById('editProfileModal');
+    if (modal) {
+        // Populate form with current user data
+        document.getElementById('editName').value = currentUser.name || '';
+        document.getElementById('editEmail').value = currentUser.email || '';
+        document.getElementById('editPhone').value = currentUser.nomorTelepon || '';
+
+        // Load unit kerja options
+        await loadUnitKerjaOptions();
+
+        // Set current unit kerja value
+        const unitKerjaSelect = document.getElementById('editUnitKerja');
+        if (unitKerjaSelect && currentUser.unitKerja) {
+            // Try to find matching option by value (which is nama_unit)
+            const currentUnitKerja = currentUser.unitKerja.trim();
+            let found = false;
+            
+            // First, try to match by value
+            if (unitKerjaSelect.value !== '' && unitKerjaSelect.value === currentUnitKerja) {
+                found = true;
+            } else {
+                // Try to find by text content
+                const options = unitKerjaSelect.options;
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].value === currentUnitKerja || options[i].textContent === currentUnitKerja) {
+                        unitKerjaSelect.value = options[i].value;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            
+            // If not found in active list, add it as an option (might be inactive or deleted)
+            if (!found && currentUnitKerja) {
+                const option = document.createElement('option');
+                option.value = currentUnitKerja;
+                option.textContent = currentUnitKerja + ' (Tidak aktif)';
+                option.selected = true;
+                unitKerjaSelect.appendChild(option);
+            }
+        }
+
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        
+        hideEditProfileMessages();
+        
+        setTimeout(() => {
+            const nameInput = document.getElementById('editName');
+            if (nameInput) {
+                nameInput.focus();
+            }
+        }, 100);
+    }
+}
+
+async function loadUnitKerjaOptions() {
+    try {
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getUnitKerja`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        const unitKerjaSelect = document.getElementById('editUnitKerja');
+        
+        if (!unitKerjaSelect) {
+            return;
+        }
+        
+        // Clear existing options except the first one (placeholder)
+        while (unitKerjaSelect.options.length > 1) {
+            unitKerjaSelect.remove(1);
+        }
+        
+        if (result.success && result.data) {
+            // Handle nested data structure (backward compatibility)
+            const dataArray = Array.isArray(result.data) ? result.data : (result.data.data || []);
+            
+            if (Array.isArray(dataArray) && dataArray.length > 0) {
+                dataArray.forEach(unit => {
+                    const option = document.createElement('option');
+                    option.value = unit.nama_unit; // Store nama_unit as value
+                    option.textContent = unit.nama_unit;
+                    unitKerjaSelect.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error loading unit kerja options:', error);
+        // Don't show error to user, just log it
+        // The dropdown will just have the placeholder option
+    }
+}
+
+function closeEditProfileModal() {
+    const modal = document.getElementById('editProfileModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = 'auto';
+        
+        const form = document.getElementById('editProfileForm');
+        if (form) {
+            form.reset();
+        }
+
+        hideEditProfileMessages();
+    }
+}
+
+function hideEditProfileMessages() {
+    const errorMsg = document.getElementById('editProfileError');
+    const successMsg = document.getElementById('editProfileSuccess');
+    if (errorMsg) errorMsg.style.display = 'none';
+    if (successMsg) successMsg.style.display = 'none';
+}
+
+function showEditProfileError(message) {
+    const errorMsg = document.getElementById('editProfileError');
+    if (errorMsg) {
+        errorMsg.textContent = message;
+        errorMsg.style.display = 'block';
+    }
+    
+    const successMsg = document.getElementById('editProfileSuccess');
+    if (successMsg) successMsg.style.display = 'none';
+}
+
+function showEditProfileSuccess(message) {
+    const successMsg = document.getElementById('editProfileSuccess');
+    if (successMsg) {
+        successMsg.textContent = message;
+        successMsg.style.display = 'block';
+    }
+    
+    const errorMsg = document.getElementById('editProfileError');
+    if (errorMsg) errorMsg.style.display = 'none';
+}
+
+async function handleProfileUpdate(e) {
+    e.preventDefault();
+    
+    hideEditProfileMessages();
+    
+    const name = document.getElementById('editName').value.trim();
+    const email = document.getElementById('editEmail').value.trim();
+    const nomorTelepon = document.getElementById('editPhone').value.trim();
+    const unitKerja = document.getElementById('editUnitKerja').value.trim();
+    const submitBtn = document.getElementById('submitEditProfileBtn');
+    
+    // Validate phone number format if provided
+    if (nomorTelepon && !/^08\d{8,11}$/.test(nomorTelepon)) {
+        showEditProfileError('Format nomor telepon tidak valid. Gunakan format: 08xxxxxxxxxx');
+        return;
+    }
+    
+    // Validate email format if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showEditProfileError('Format email tidak valid.');
+        return;
+    }
+    
+    // At least one field must be filled
+    if (!name && !email && !nomorTelepon && !unitKerja) {
+        showEditProfileError('Minimal satu field harus diisi.');
+        return;
+    }
+    
+    try {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.querySelector('span').textContent = 'Menyimpan...';
+        }
+        
+        const token = getAuthToken();
+        if (!token) {
+            throw new Error('Token tidak ditemukan');
+        }
+        
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        
+        const formData = new URLSearchParams();
+        formData.append('action', 'updateProfile');
+        if (name) formData.append('name', name);
+        if (email) formData.append('email', email);
+        if (nomorTelepon) formData.append('nomor_telepon', nomorTelepon);
+        if (unitKerja) formData.append('unit_kerja', unitKerja);
+        
+        const response = await fetch(fullUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Auth-Token': token
+            },
+            body: formData.toString()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Gagal mengupdate profile');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showEditProfileSuccess('Profile berhasil diupdate!');
+            
+            // Reload profile data
+            await loadUserProfile();
+            
+            setTimeout(() => {
+                closeEditProfileModal();
+            }, 1500);
+        } else {
+            throw new Error(result.error || 'Gagal mengupdate profile');
+        }
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        showEditProfileError(error.message || 'Terjadi kesalahan saat mengupdate profile');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.querySelector('span').textContent = 'Simpan Perubahan';
+        }
+    }
 }
 
 function openPasswordModal() {

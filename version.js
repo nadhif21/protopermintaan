@@ -4,7 +4,7 @@
     }
     window.__VERSION_JS_LOADED__ = true;
     
-    const APP_VERSION = '202503151300';
+    const APP_VERSION = '202603171600';
     
     const STORAGE_KEY = '__APP_VERSION__';
     const lastVersion = localStorage.getItem(STORAGE_KEY);

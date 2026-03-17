@@ -231,6 +231,10 @@ try {
             handleChangePassword($conn);
             break;
             
+        case 'updateProfile':
+            handleUpdateProfile($conn);
+            break;
+            
         case 'submitPermintaan':
             handleSubmitPermintaan($conn);
             break;
@@ -683,6 +687,98 @@ function handleChangePassword($conn) {
     sendJSONResponse(true, ['message' => 'Password berhasil diubah']);
 }
 
+function handleUpdateProfile($conn) {
+    $session = requireAuth($conn);
+    
+    $userId = intval($session['user_id']);
+    $name = trim(getRequestParam('name', ''));
+    $email = trim(getRequestParam('email', ''));
+    $nomorTelepon = trim(getRequestParam('nomor_telepon', ''));
+    $unitKerja = trim(getRequestParam('unit_kerja', ''));
+    
+    $updates = [];
+    $params = [];
+    $types = '';
+    
+    // Update name if provided
+    if ($name !== '') {
+        if (strlen($name) < 2 || strlen($name) > 100) {
+            throw new Exception("Nama harus 2-100 karakter.");
+        }
+        $updates[] = "`name` = ?";
+        $params[] = $name;
+        $types .= 's';
+    }
+    
+    // Check if email column exists and update if provided
+    $checkEmailColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
+    $hasEmailColumn = $checkEmailColumn && $checkEmailColumn->num_rows > 0;
+    if ($hasEmailColumn && $email !== '') {
+        // Validate email format
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception("Format email tidak valid.");
+        }
+        // Check if email already exists for another user
+        $checkEmail = $conn->prepare("SELECT `id` FROM `users` WHERE `email` = ? AND `id` != ? LIMIT 1");
+        if ($checkEmail) {
+            $checkEmail->bind_param('si', $email, $userId);
+            $checkEmail->execute();
+            $result = $checkEmail->get_result();
+            if ($result && $result->num_rows > 0) {
+                $checkEmail->close();
+                throw new Exception("Email sudah digunakan oleh user lain.");
+            }
+            $checkEmail->close();
+        }
+        $updates[] = "`email` = ?";
+        $params[] = $email;
+        $types .= 's';
+    }
+    
+    // Check if nomor_telepon column exists and update if provided
+    $checkTelColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
+    $hasTelColumn = $checkTelColumn && $checkTelColumn->num_rows > 0;
+    if ($hasTelColumn && $nomorTelepon !== '') {
+        // Validate phone number format
+        if (!preg_match('/^08\d{8,11}$/', $nomorTelepon)) {
+            throw new Exception("Format nomor telepon tidak valid. Gunakan format: 08xxxxxxxxxx");
+        }
+        $updates[] = "`nomor_telepon` = ?";
+        $params[] = $nomorTelepon;
+        $types .= 's';
+    }
+    
+    // Check if unit_kerja column exists and update if provided
+    $checkUnitColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
+    $hasUnitColumn = $checkUnitColumn && $checkUnitColumn->num_rows > 0;
+    if ($hasUnitColumn && $unitKerja !== '') {
+        $updates[] = "`unit_kerja` = ?";
+        $params[] = $unitKerja;
+        $types .= 's';
+    }
+    
+    if (empty($updates)) {
+        throw new Exception("Tidak ada field untuk diupdate.");
+    }
+    
+    $params[] = $userId;
+    $types .= 'i';
+    
+    $sql = "UPDATE `users` SET " . implode(', ', $updates) . " WHERE `id` = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param($types, ...$params);
+    if (!$stmt->execute()) {
+        throw new Exception("Execute error: " . $stmt->error);
+    }
+    $stmt->close();
+    
+    auditLog($conn, $userId, 'update_profile', 'user', ['success' => true]);
+    sendJSONResponse(true, ['message' => 'Profile berhasil diupdate']);
+}
+
 function handleListUsers($conn) {
     $session = requireAdminOrSuperAdmin($conn);
 
@@ -694,6 +790,7 @@ function handleListUsers($conn) {
     $checkEmail = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
     $checkTel = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
     $checkUnit = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
+    $checkUnitId = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja_id'");
     $checkLastLogin = $conn->query("SHOW COLUMNS FROM `users` LIKE 'last_login'");
     
     if ($checkNpk && $checkNpk->num_rows > 0) {
@@ -708,11 +805,27 @@ function handleListUsers($conn) {
     if ($checkUnit && $checkUnit->num_rows > 0) {
         $selectColumns .= ",`unit_kerja`";
     }
+    $hasUnitKerjaId = $checkUnitId && $checkUnitId->num_rows > 0;
+    if ($hasUnitKerjaId) {
+        $selectColumns .= ",`unit_kerja_id`";
+    }
     if ($checkLastLogin && $checkLastLogin->num_rows > 0) {
         $selectColumns .= ",`last_login`";
     }
-    
-    $result = $conn->query("SELECT " . $selectColumns . " FROM `users` ORDER BY `role` ASC, `username` ASC");
+
+    // Jika memakai FK, join untuk ambil nama_unit dan status unit kerja
+    if ($hasUnitKerjaId) {
+        // Prefix semua kolom users dengan alias `u.` agar tidak ambiguous saat JOIN
+        $selectColumnsAliased = preg_replace('/`([a-zA-Z0-9_]+)`/', 'u.`$1`', $selectColumns);
+        $result = $conn->query(
+            "SELECT " . $selectColumnsAliased . ", uk.`nama_unit` AS `unit_kerja_name`, uk.`is_active` AS `unit_kerja_is_active` " .
+            "FROM `users` u " .
+            "LEFT JOIN `unit_kerja` uk ON uk.`id` = u.`unit_kerja_id` " .
+            "ORDER BY u.`role` ASC, u.`username` ASC"
+        );
+    } else {
+        $result = $conn->query("SELECT " . $selectColumns . " FROM `users` ORDER BY `role` ASC, `username` ASC");
+    }
     if (!$result) {
         throw new Exception("Query error: " . $conn->error);
     }
@@ -745,7 +858,14 @@ function handleListUsers($conn) {
         if (isset($row['nomor_telepon'])) {
             $userData['nomorTelepon'] = $row['nomor_telepon'];
         }
-        if (isset($row['unit_kerja'])) {
+        // Unit kerja: prefer nama dari join jika ada
+        if (isset($row['unit_kerja_id'])) {
+            $userData['unitKerjaId'] = $row['unit_kerja_id'] !== null ? intval($row['unit_kerja_id']) : null;
+        }
+        if (isset($row['unit_kerja_name']) && $row['unit_kerja_name'] !== null && $row['unit_kerja_name'] !== '') {
+            $userData['unitKerja'] = $row['unit_kerja_name'];
+            $userData['unitKerjaActive'] = isset($row['unit_kerja_is_active']) ? (intval($row['unit_kerja_is_active']) === 1) : null;
+        } else if (isset($row['unit_kerja'])) {
             $userData['unitKerja'] = $row['unit_kerja'];
         }
         // Add password (stored as plain text in password_hash column)
@@ -810,6 +930,7 @@ function handleUpdateUser($conn) {
     $npk = trim(getRequestParam('npk', ''));
     $nomorTelepon = trim(getRequestParam('nomor_telepon', ''));
     $unitKerja = trim(getRequestParam('unit_kerja', ''));
+    $unitKerjaIdParam = getRequestParam('unit_kerja_id', null);
 
     if ($id <= 0) {
         throw new Exception("ID user tidak valid.");
@@ -930,10 +1051,70 @@ function handleUpdateUser($conn) {
     // Check if unit_kerja column exists and update if provided
     $checkUnitColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
     $hasUnitColumn = $checkUnitColumn && $checkUnitColumn->num_rows > 0;
-    if ($hasUnitColumn && $unitKerja !== '') {
+
+    // Check if unit_kerja_id column exists (foreign key)
+    $checkUnitIdColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja_id'");
+    $hasUnitIdColumn = $checkUnitIdColumn && $checkUnitIdColumn->num_rows > 0;
+
+    // Jika pakai FK dan ada unit_kerja_id dikirim, validasi dan set unit_kerja_id + unit_kerja (nama) untuk kompatibilitas
+    if ($hasUnitIdColumn && $unitKerjaIdParam !== null && $unitKerjaIdParam !== '') {
+        $unitKerjaId = intval($unitKerjaIdParam);
+        if ($unitKerjaId <= 0) {
+            throw new Exception("Unit kerja tidak valid.");
+        }
+        $ukStmt = $conn->prepare("SELECT `id`, `nama_unit`, `is_active` FROM `unit_kerja` WHERE `id` = ? LIMIT 1");
+        if (!$ukStmt) {
+            throw new Exception("Prepare error: " . $conn->error);
+        }
+        $ukStmt->bind_param('i', $unitKerjaId);
+        $ukStmt->execute();
+        $ukResult = $ukStmt->get_result();
+        $ukRow = $ukResult ? $ukResult->fetch_assoc() : null;
+        $ukStmt->close();
+
+        if (!$ukRow) {
+            throw new Exception("Unit kerja tidak ditemukan.");
+        }
+        if (intval($ukRow['is_active']) !== 1) {
+            throw new Exception("Unit kerja tidak aktif. Aktifkan unit kerja atau pilih unit kerja lain.");
+        }
+
+        $updates[] = "`unit_kerja_id` = ?";
+        $params[] = $unitKerjaId;
+        $types .= 'i';
+
+        if ($hasUnitColumn) {
+            $updates[] = "`unit_kerja` = ?";
+            $params[] = $ukRow['nama_unit'];
+            $types .= 's';
+        }
+    } else if ($hasUnitColumn && $unitKerja !== '') {
+        // Metode lama: simpan teks. Jika kolom unit_kerja_id ada, coba mapping ke id (case-insensitive)
+        $unitKerjaUpdateIndex = count($updates);
         $updates[] = "`unit_kerja` = ?";
         $params[] = $unitKerja;
         $types .= 's';
+
+        if ($hasUnitIdColumn) {
+            $ukStmt = $conn->prepare("SELECT `id`, `nama_unit`, `is_active` FROM `unit_kerja` WHERE LOWER(TRIM(`nama_unit`)) = LOWER(TRIM(?)) LIMIT 1");
+            if ($ukStmt) {
+                $ukStmt->bind_param('s', $unitKerja);
+                $ukStmt->execute();
+                $ukResult = $ukStmt->get_result();
+                $ukRow = $ukResult ? $ukResult->fetch_assoc() : null;
+                $ukStmt->close();
+                if ($ukRow) {
+                    if (intval($ukRow['is_active']) !== 1) {
+                        throw new Exception("Unit kerja tidak aktif. Aktifkan unit kerja atau pilih unit kerja lain.");
+                    }
+                    $updates[] = "`unit_kerja_id` = ?";
+                    $params[] = intval($ukRow['id']);
+                    $types .= 'i';
+                    // Normalize text as well (replace the previously added unit_kerja value)
+                    $params[$unitKerjaUpdateIndex] = $ukRow['nama_unit'];
+                }
+            }
+        }
     }
 
     if (empty($updates)) {
@@ -1512,8 +1693,23 @@ function generateApprovalMessage($registration, $username, $password) {
 }
 
 function generateWhatsAppUrl($phoneNumber, $message) {
-    // Remove leading 0 and add country code 62
-    $cleanPhone = preg_replace('/^0/', '62', $phoneNumber);
+    // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+    // Hapus semua non-digit
+    $cleanPhone = preg_replace('/\D/', '', $phoneNumber);
+    
+    // Format nomor telepon
+    if (strpos($cleanPhone, '62') === 0) {
+        // Sudah dalam format internasional
+    } else if (strpos($cleanPhone, '0') === 0) {
+        $cleanPhone = '62' . substr($cleanPhone, 1);
+    } else if (strpos($cleanPhone, '8') === 0) {
+        // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+        $cleanPhone = '62' . $cleanPhone;
+    } else {
+        // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
+        $cleanPhone = '62' . $cleanPhone;
+    }
+    
     $encodedMessage = urlencode($message);
     return "https://wa.me/{$cleanPhone}?text={$encodedMessage}";
 }
@@ -2557,8 +2753,8 @@ function handleUpdateUnitKerja($conn) {
         throw new Exception("Nama unit kerja wajib diisi.");
     }
     
-    // Get old nama_unit before update
-    $getOld = $conn->prepare("SELECT `nama_unit` FROM `unit_kerja` WHERE `id` = ? LIMIT 1");
+    // Get old data before update (nama_unit and is_active)
+    $getOld = $conn->prepare("SELECT `nama_unit`, `is_active` FROM `unit_kerja` WHERE `id` = ? LIMIT 1");
     if (!$getOld) {
         throw new Exception("Prepare error: " . $conn->error);
     }
@@ -2571,6 +2767,7 @@ function handleUpdateUnitKerja($conn) {
     }
     $oldRow = $oldResult->fetch_assoc();
     $oldNama = $oldRow['nama_unit'];
+    $oldIsActive = intval($oldRow['is_active']);
     $getOld->close();
     
     // Check if new nama already exists (for different id)
@@ -2615,6 +2812,68 @@ function handleUpdateUnitKerja($conn) {
             throw new Exception("Gagal update unit kerja: " . $err);
         }
         $stmt->close();
+        
+        // Handle user activation/deactivation based on unit_kerja status
+        $affectedUsers = 0;
+        if ($isActive !== null) {
+            $newIsActive = intval($isActive);
+            
+            // Check if unit_kerja_id column exists in users table
+            $checkUnitKerjaIdColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja_id'");
+            $hasUnitKerjaIdColumn = $checkUnitKerjaIdColumn && $checkUnitKerjaIdColumn->num_rows > 0;
+            
+            if ($hasUnitKerjaIdColumn) {
+                // Using foreign key (unit_kerja_id)
+                if ($oldIsActive == 1 && $newIsActive == 0) {
+                    // Unit kerja dinonaktifkan: nonaktifkan semua users dengan unit_kerja_id ini
+                    $deactivateUsers = $conn->prepare("UPDATE `users` SET `is_active` = 0 WHERE `unit_kerja_id` = ? AND `is_active` = 1");
+                    if ($deactivateUsers) {
+                        $deactivateUsers->bind_param('i', $id);
+                        $deactivateUsers->execute();
+                        $affectedUsers = $deactivateUsers->affected_rows;
+                        $deactivateUsers->close();
+                    }
+                } elseif ($oldIsActive == 0 && $newIsActive == 1) {
+                    // Unit kerja diaktifkan: tanyakan apakah ingin mengaktifkan users
+                    $activateUsers = getRequestParam('activate_users', null);
+                    if ($activateUsers !== null && (intval($activateUsers) == 1 || $activateUsers === 'true' || $activateUsers === true)) {
+                        // Aktifkan kembali users dengan unit_kerja_id ini
+                        $activateUsersQuery = $conn->prepare("UPDATE `users` SET `is_active` = 1 WHERE `unit_kerja_id` = ? AND `is_active` = 0");
+                        if ($activateUsersQuery) {
+                            $activateUsersQuery->bind_param('i', $id);
+                            $activateUsersQuery->execute();
+                            $affectedUsers = $activateUsersQuery->affected_rows;
+                            $activateUsersQuery->close();
+                        }
+                    }
+                }
+            } else {
+                // Using old method (unit_kerja VARCHAR)
+                if ($oldIsActive == 1 && $newIsActive == 0) {
+                    // Unit kerja dinonaktifkan: nonaktifkan semua users dengan unit_kerja ini
+                    $deactivateUsers = $conn->prepare("UPDATE `users` SET `is_active` = 0 WHERE `unit_kerja` = ? AND `is_active` = 1");
+                    if ($deactivateUsers) {
+                        $deactivateUsers->bind_param('s', $oldNama);
+                        $deactivateUsers->execute();
+                        $affectedUsers = $deactivateUsers->affected_rows;
+                        $deactivateUsers->close();
+                    }
+                } elseif ($oldIsActive == 0 && $newIsActive == 1) {
+                    // Unit kerja diaktifkan: tanyakan apakah ingin mengaktifkan users
+                    $activateUsers = getRequestParam('activate_users', null);
+                    if ($activateUsers !== null && (intval($activateUsers) == 1 || $activateUsers === 'true' || $activateUsers === true)) {
+                        // Aktifkan kembali users dengan unit_kerja ini
+                        $activateUsersQuery = $conn->prepare("UPDATE `users` SET `is_active` = 1 WHERE `unit_kerja` = ? AND `is_active` = 0");
+                        if ($activateUsersQuery) {
+                            $activateUsersQuery->bind_param('s', $nama);
+                            $activateUsersQuery->execute();
+                            $affectedUsers = $activateUsersQuery->affected_rows;
+                            $activateUsersQuery->close();
+                        }
+                    }
+                }
+            }
+        }
         
         // Update all references in users table
         $checkUsersColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
@@ -2686,8 +2945,34 @@ function handleUpdateUnitKerja($conn) {
         // Commit transaction
         $conn->commit();
         
-        auditLog($conn, $session['user_id'], 'update_unit_kerja', 'unit_kerja', ['updatedUnitKerjaId' => $id, 'oldNama' => $oldNama, 'newNama' => $nama]);
-        sendJSONResponse(true, ['message' => 'Unit kerja berhasil diupdate dan semua referensi telah diperbarui']);
+        // Prepare response message
+        $responseMessage = 'Unit kerja berhasil diupdate dan semua referensi telah diperbarui';
+        $responseData = [
+            'message' => $responseMessage,
+            'unit_kerja_id' => $id,
+            'old_nama' => $oldNama,
+            'new_nama' => $nama
+        ];
+        
+        // Add info about user activation/deactivation if is_active changed
+        if ($isActive !== null) {
+            $newIsActive = intval($isActive);
+            if ($oldIsActive == 1 && $newIsActive == 0) {
+                $responseData['users_deactivated'] = $affectedUsers;
+                $responseData['message'] = 'Unit kerja berhasil dinonaktifkan.' . ($affectedUsers > 0 ? ' ' . $affectedUsers . ' akun telah dinonaktifkan.' : '');
+            } elseif ($oldIsActive == 0 && $newIsActive == 1) {
+                $activateUsers = getRequestParam('activate_users', null);
+                if ($activateUsers !== null && (intval($activateUsers) == 1 || $activateUsers === 'true' || $activateUsers === true)) {
+                    $responseData['users_activated'] = $affectedUsers;
+                    $responseData['message'] = 'Unit kerja berhasil diaktifkan.' . ($affectedUsers > 0 ? ' ' . $affectedUsers . ' akun telah diaktifkan kembali.' : '');
+                } else {
+                    $responseData['message'] = 'Unit kerja berhasil diaktifkan. Akun dengan unit kerja ini tetap tidak aktif.';
+                }
+            }
+        }
+        
+        auditLog($conn, $session['user_id'], 'update_unit_kerja', 'unit_kerja', ['updatedUnitKerjaId' => $id, 'oldNama' => $oldNama, 'newNama' => $nama, 'oldIsActive' => $oldIsActive, 'newIsActive' => isset($isActive) ? intval($isActive) : null]);
+        sendJSONResponse(true, $responseData);
         
     } catch (Exception $e) {
         // Rollback on error

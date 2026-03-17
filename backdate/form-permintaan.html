@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Form Permintaan Pembukaan Backdate</title>
-    <script src="../version.js?v=202503151300"></script>
-    <link rel="stylesheet" href="../layout.css?v=202503151300">
-    <link rel="stylesheet" href="../form-permintaan.css?v=202503151300">
-    <link rel="stylesheet" href="../icons.css?v=202503151300">
+    <script src="../version.js?v=202603171600"></script>
+    <link rel="stylesheet" href="../layout.css?v=202603171600">
+    <link rel="stylesheet" href="../form-permintaan.css?v=202603171600">
+    <link rel="stylesheet" href="../icons.css?v=202603171600">
     <style>
         /* Override form-permintaan.css untuk form backdate */
         #permintaanBackdateForm {
@@ -721,8 +721,8 @@
         </div>
     </div>
 
-    <script src="../auth.js?v=202503151300"></script>
-    <script src="../sidebar.js?v=202503151300"></script>
+    <script src="../auth.js?v=202603171600"></script>
+    <script src="../sidebar.js?v=202603171600"></script>
     <script>
         // Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
         function getApiUrl() {
@@ -791,12 +791,18 @@
         // Format nomor WhatsApp
         function formatWhatsAppNumber(phone) {
             if (!phone) return '';
-            // Remove non-digit
+            // Hapus semua non-digit
             let cleaned = phone.replace(/\D/g, '');
-            // Convert to international format
-            if (cleaned.startsWith('0')) {
+            // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+            if (cleaned.startsWith('62')) {
+                // Sudah dalam format internasional
+            } else if (cleaned.startsWith('0')) {
                 cleaned = '62' + cleaned.substring(1);
-            } else if (!cleaned.startsWith('62')) {
+            } else if (cleaned.startsWith('8')) {
+                // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+                cleaned = '62' + cleaned;
+            } else {
+                // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
                 cleaned = '62' + cleaned;
             }
             return cleaned;
@@ -1006,11 +1012,17 @@ Terima kasih.`;
                 message += `Terima kasih.`;
             }
             
-            // Format nomor WhatsApp (remove non-digit, add 62 if starts with 0)
-            let cleanPhone = contactNoWa.replace(/\D/g, '');
-            if (cleanPhone.startsWith('0')) {
+            // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+            let cleanPhone = contactNoWa.replace(/\D/g, ''); // Hapus semua non-digit
+            if (cleanPhone.startsWith('62')) {
+                // Sudah dalam format internasional
+            } else if (cleanPhone.startsWith('0')) {
                 cleanPhone = '62' + cleanPhone.substring(1);
-            } else if (!cleanPhone.startsWith('62')) {
+            } else if (cleanPhone.startsWith('8')) {
+                // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+                cleanPhone = '62' + cleanPhone;
+            } else {
+                // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
                 cleanPhone = '62' + cleanPhone;
             }
             

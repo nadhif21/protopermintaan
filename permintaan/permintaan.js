@@ -2168,11 +2168,17 @@ async function showDetail(rowId) {
         message += `${approvalUrl}\n\n`;
         message += `Klik link di atas untuk menyetujui atau menolak permintaan ini.`;
         
-            // Format nomor WhatsApp (remove non-digit, add 62 if starts with 0)
-            let cleanPhone = approverNoWa.replace(/\D/g, '');
-            if (cleanPhone.startsWith('0')) {
+            // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+            let cleanPhone = approverNoWa.replace(/\D/g, ''); // Hapus semua non-digit
+            if (cleanPhone.startsWith('62')) {
+                // Sudah dalam format internasional
+            } else if (cleanPhone.startsWith('0')) {
                 cleanPhone = '62' + cleanPhone.substring(1);
-            } else if (!cleanPhone.startsWith('62')) {
+            } else if (cleanPhone.startsWith('8')) {
+                // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+                cleanPhone = '62' + cleanPhone;
+            } else {
+                // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
                 cleanPhone = '62' + cleanPhone;
             }
             
@@ -3053,11 +3059,17 @@ function setupHubungiUserButton(row, originalRow, currentStatus, currentFlag, cu
         
         message += `\nTerima kasih.`;
         
-        // Format nomor telepon (remove non-digit, add 62 if starts with 0)
-        let cleanPhone = noTelepon.replace(/\D/g, '');
-        if (cleanPhone.startsWith('0')) {
+        // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+        let cleanPhone = noTelepon.replace(/\D/g, ''); // Hapus semua non-digit
+        if (cleanPhone.startsWith('62')) {
+            // Sudah dalam format internasional
+        } else if (cleanPhone.startsWith('0')) {
             cleanPhone = '62' + cleanPhone.substring(1);
-        } else if (!cleanPhone.startsWith('62')) {
+        } else if (cleanPhone.startsWith('8')) {
+            // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+            cleanPhone = '62' + cleanPhone;
+        } else {
+            // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
             cleanPhone = '62' + cleanPhone;
         }
         
@@ -3323,9 +3335,19 @@ function setupHubungiPetugasButton(row, currentPetugas, dataName, chatUlangBtn, 
         
         message += `\nMohon informasi progress terbaru. Terima kasih.`;
         
-        // Clean phone number (remove leading 0, add country code 62)
-        let cleanPhone = targetNoWa.replace(/^0/, '62');
-        cleanPhone = cleanPhone.replace(/\D/g, ''); // Remove non-digits
+        // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+        let cleanPhone = targetNoWa.replace(/\D/g, ''); // Hapus semua non-digit
+        if (cleanPhone.startsWith('62')) {
+            // Sudah dalam format internasional
+        } else if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        } else if (cleanPhone.startsWith('8')) {
+            // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+            cleanPhone = '62' + cleanPhone;
+        } else {
+            // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
+            cleanPhone = '62' + cleanPhone;
+        }
         
         const encodedMessage = encodeURIComponent(message);
         const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;

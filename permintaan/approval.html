@@ -7,8 +7,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Persetujuan Permintaan</title>
-    <script src="../version.js?v=202503151300"></script>
-    <link rel="stylesheet" href="../layout.css?v=202503151300">
+    <script src="../version.js?v=202603171600"></script>
+    <link rel="stylesheet" href="../layout.css?v=202603171600">
     <style>
         body {
             background: #f5f7fa;
@@ -832,9 +832,6 @@
                                 <option value="">Pilih Petugas</option>
                             </select>
                         </div>
-                        <button id="saveEditBtn" class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s;">
-                            Simpan Perubahan
-                        </button>
                     </div>
                 </div>
             </div>
@@ -1356,7 +1353,19 @@
                 return;
             }
             
-            const formattedNo = noWa.replace(/^0/, '62');
+            // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+            let formattedNo = noWa.replace(/\D/g, ''); // Hapus semua non-digit
+            if (formattedNo.startsWith('62')) {
+                // Sudah dalam format internasional
+            } else if (formattedNo.startsWith('0')) {
+                formattedNo = '62' + formattedNo.substring(1);
+            } else if (formattedNo.startsWith('8')) {
+                // Nomor Indonesia yang dimulai dengan 8 (tanpa 0)
+                formattedNo = '62' + formattedNo;
+            } else {
+                // Jika tidak dimulai dengan 62, 0, atau 8, tambahkan 62
+                formattedNo = '62' + formattedNo;
+            }
             let message = '';
             
             if (isForPin) {
@@ -1374,6 +1383,7 @@
                 const flag = (rowData.Flag || rowData.flag || '').trim();
                 const namaLengkap = (rowData['Nama Lengkap'] || rowData['Nama'] || rowData.nama_lengkap || rowData.nama || '').trim();
                 const jenisPermintaan = (rowData['Pilih Permintaan'] || rowData['Jenis Permintaan'] || rowData.pilih_permintaan || rowData.jenis_permintaan || '').trim();
+                const idPermintaan = (rowData['ID PERMINTAAN'] || rowData['Id Permintaan'] || rowData['ID Permintaan'] || rowData.id_permintaan || rowData.id || rowNumber || '').toString().trim();
                 
                 message = `*Konfirmasi Persetujuan Permintaan*\n\n`;
                 message += `Halo ${petugasName},\n\n`;
@@ -1386,12 +1396,13 @@
                     message += `Saya telah memproses permintaan berikut:\n\n`;
                 }
                 
+                if (idPermintaan) message += `ID Permintaan: ${idPermintaan}\n`;
                 if (namaLengkap) message += `Nama: ${namaLengkap}\n`;
                 if (jenisPermintaan) message += `Jenis Permintaan: ${jenisPermintaan}\n`;
                 if (flag) message += `Flag: ${flag}\n`;
                 if (petugasName) message += `Petugas: ${petugasName}\n`;
                 
-                message += `\nSilakan ditindaklanjuti sesuai dengan flag yang telah ditetapkan.`;
+                message += `\nSilakan ditindaklanjuti sesuai dengan Permintaan yg diajukan.`;
             }
             
             const whatsappUrl = `https://wa.me/${formattedNo}?text=${encodeURIComponent(message)}`;
@@ -1465,7 +1476,7 @@
             
             if (action === 'approve') {
                 if (title) title.textContent = 'Konfirmasi Persetujuan';
-                if (message) message.textContent = 'Apakah Anda yakin ingin menyetujui permintaan ini?';
+                if (message) message.textContent = 'Yakin untuk Setuju?';
                 if (icon) {
                     icon.className = 'confirm-icon approve';
                     icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
@@ -1476,7 +1487,7 @@
                 }
             } else if (action === 'reject') {
                 if (title) title.textContent = 'Konfirmasi Penolakan';
-                if (message) message.textContent = 'Apakah Anda yakin ingin menolak permintaan ini?';
+                if (message) message.textContent = 'Yakin untuk Tolak?';
                 if (icon) {
                     icon.className = 'confirm-icon reject';
                     icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
@@ -1641,6 +1652,9 @@
             }
             
             try {
+                // Auto-save flag/petugas jika berubah (sebelum reject)
+                await saveFlagAndPetugasIfChanged();
+
                 // Disable buttons
                 if (approveBtn) approveBtn.disabled = true;
                 if (rejectBtn) rejectBtn.disabled = true;
@@ -1800,6 +1814,9 @@
             }
             
             try {
+                // Auto-save flag/petugas jika berubah (sebelum approve)
+                await saveFlagAndPetugasIfChanged();
+
                 // Disable buttons
                 if (approveBtn) approveBtn.disabled = true;
                 if (rejectBtn) rejectBtn.disabled = true;
@@ -2115,9 +2132,8 @@
             const editSection = document.getElementById('editSection');
             const flagSelect = document.getElementById('editFlagSelect');
             const petugasSelect = document.getElementById('editPetugasSelect');
-            const saveEditBtn = document.getElementById('saveEditBtn');
             
-            if (!editSection || !flagSelect || !petugasSelect || !saveEditBtn) {
+            if (!editSection || !flagSelect || !petugasSelect) {
                 return;
             }
             
@@ -2145,11 +2161,6 @@
             
             // Show edit section
             editSection.style.display = 'block';
-            
-            // Setup save button
-            saveEditBtn.onclick = async () => {
-                await saveFlagAndPetugas();
-            };
         }
         
         // Setup button hubungi petugas
@@ -2195,14 +2206,12 @@
             hubungiPetugasSection.style.display = 'flex';
         }
         
-        // Save flag and petugas
-        async function saveFlagAndPetugas() {
+        // Auto-save flag & petugas hanya jika berubah (dipanggil saat approve/reject)
+        async function saveFlagAndPetugasIfChanged() {
             const flagSelect = document.getElementById('editFlagSelect');
             const petugasSelect = document.getElementById('editPetugasSelect');
-            const saveEditBtn = document.getElementById('saveEditBtn');
             
-            if (!flagSelect || !petugasSelect || !saveEditBtn || !rowNumber) {
-                showError('Data tidak lengkap');
+            if (!flagSelect || !petugasSelect || !rowNumber || !rowData) {
                 return;
             }
             
@@ -2212,15 +2221,18 @@
             const selectedPetugasNama = selectedPetugasOption ? selectedPetugasOption.getAttribute('data-nama') : '';
             const selectedPetugasNoWa = selectedPetugasOption ? selectedPetugasOption.getAttribute('data-no-wa') : '';
             
-            if (!selectedFlag && !selectedPetugasId) {
-                showError('Pilih flag atau petugas untuk disimpan');
+            const currentFlag = (rowData.Flag || rowData.flag || '').trim();
+            const currentPetugas = (rowData.Petugas || rowData.petugas || '').trim();
+            
+            // Hanya update kalau user memilih value non-empty dan memang berbeda
+            const flagChanged = selectedFlag && selectedFlag !== currentFlag;
+            const petugasChanged = selectedPetugasId && selectedPetugasNama && selectedPetugasNama !== currentPetugas;
+            
+            if (!flagChanged && !petugasChanged) {
                 return;
             }
             
             try {
-                saveEditBtn.disabled = true;
-                saveEditBtn.textContent = 'Menyimpan...';
-                
                 const apiUrl = getApiUrl();
                 const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
                 const fullUrl = window.location.origin + path;
@@ -2229,11 +2241,11 @@
                 url.searchParams.append('table', 'permintaan');
                 url.searchParams.append('rowNumber', rowNumber);
                 
-                if (selectedFlag) {
+                if (flagChanged) {
                     url.searchParams.append('flag', selectedFlag);
                 }
                 
-                if (selectedPetugasId && selectedPetugasNama) {
+                if (petugasChanged) {
                     url.searchParams.append('petugas', selectedPetugasNama);
                 }
                 
@@ -2254,12 +2266,12 @@
                 }
                 
                 // Update local data
-                if (selectedFlag) {
+                if (flagChanged) {
                     rowData.Flag = selectedFlag;
                     rowData.flag = selectedFlag;
                 }
                 
-                if (selectedPetugasNama) {
+                if (petugasChanged) {
                     rowData.Petugas = selectedPetugasNama;
                     rowData.petugas = selectedPetugasNama;
                     
@@ -2293,18 +2305,11 @@
                         }
                     }
                 }
-                
-                // Reload and show updated data
-                await loadAndShowData();
-                
-                showStatus('Flag dan Petugas berhasil diperbarui!', 'success');
+                // Tidak perlu reload full. Detail akan direfresh setelah approve/reject.
                 
             } catch (error) {
                 console.error('Error saving flag and petugas:', error);
-                showError('Gagal menyimpan perubahan: ' + error.message);
-            } finally {
-                saveEditBtn.disabled = false;
-                saveEditBtn.textContent = 'Simpan Perubahan';
+                throw new Error('Gagal menyimpan perubahan Flag/Petugas: ' + error.message);
             }
         }
     </script>

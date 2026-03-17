@@ -23,6 +23,23 @@ function getApiUrl() {
     
     return basePath + 'api.php';
 }
+
+// Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
+function formatWhatsAppNumber(phone) {
+    if (!phone) return '';
+    let cleaned = String(phone).replace(/\D/g, ''); // Hapus semua non-digit
+    if (!cleaned) return '';
+    if (cleaned.startsWith('62')) {
+        return cleaned;
+    }
+    if (cleaned.startsWith('0')) {
+        return '62' + cleaned.substring(1);
+    }
+    if (cleaned.startsWith('8')) {
+        return '62' + cleaned;
+    }
+    return '62' + cleaned;
+}
 let currentSection = 1;
 let selectedPilihPermintaan = '';
 let customOptions = [];
@@ -53,28 +70,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     const unitKerjaSelect = document.getElementById('unit_kerja');
     if (unitKerjaSelect && window.currentUserUnitKerja && !unitKerjaSelect.value) {
         console.log('Retrying unit kerja selection...');
+        const userUnitKerjaTrimmed = (window.currentUserUnitKerja || '').trim();
+        const userUnitKerjaLower = userUnitKerjaTrimmed.toLowerCase();
+        let found = false;
+        
         for (let i = 0; i < unitKerjaSelect.options.length; i++) {
             const opt = unitKerjaSelect.options[i];
             const optText = opt.text.toLowerCase().trim();
-            const userUnitKerjaLower = (window.currentUserUnitKerja || '').toLowerCase().trim();
-            if (optText === userUnitKerjaLower || opt.value === window.currentUserUnitKerja) {
+            if (optText === userUnitKerjaLower || opt.value === userUnitKerjaTrimmed) {
                 unitKerjaSelect.value = opt.value;
-                const existingHidden = document.getElementById('unit_kerja_hidden');
-                if (existingHidden) existingHidden.remove();
-                const hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.name = 'unit_kerja';
-                hiddenInput.id = 'unit_kerja_hidden';
-                hiddenInput.value = opt.value;
-                unitKerjaSelect.parentNode.insertBefore(hiddenInput, unitKerjaSelect.nextSibling);
-                unitKerjaSelect.disabled = true;
-                unitKerjaSelect.style.backgroundColor = '#e9ecef';
-                unitKerjaSelect.style.cursor = 'not-allowed';
-                unitKerjaSelect.style.color = '#6c757d';
-                unitKerjaSelect.removeAttribute('name');
-                console.log('Unit kerja matched on retry:', opt.value);
+                found = true;
                 break;
             }
+        }
+        
+        // If not found, add as new option
+        if (!found && userUnitKerjaTrimmed) {
+            console.log('Unit kerja not found in retry, adding as new option:', userUnitKerjaTrimmed);
+            const newOption = document.createElement('option');
+            newOption.value = userUnitKerjaTrimmed;
+            newOption.textContent = userUnitKerjaTrimmed;
+            unitKerjaSelect.appendChild(newOption);
+            unitKerjaSelect.value = userUnitKerjaTrimmed;
+            found = true;
+        }
+        
+        if (found) {
+            const existingHidden = document.getElementById('unit_kerja_hidden');
+            if (existingHidden) existingHidden.remove();
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'unit_kerja';
+            hiddenInput.id = 'unit_kerja_hidden';
+            hiddenInput.value = unitKerjaSelect.value;
+            unitKerjaSelect.parentNode.insertBefore(hiddenInput, unitKerjaSelect.nextSibling);
+            unitKerjaSelect.disabled = true;
+            unitKerjaSelect.style.backgroundColor = '#e9ecef';
+            unitKerjaSelect.style.cursor = 'not-allowed';
+            unitKerjaSelect.style.color = '#6c757d';
+            unitKerjaSelect.removeAttribute('name');
+            console.log('Unit kerja matched on retry:', unitKerjaSelect.value);
         }
     }
     
@@ -386,12 +421,18 @@ async function loadUnitKerja() {
                     option.textContent = unit.nama_unit;
                     select.appendChild(option);
                     
-                    // Check if this matches user's unit kerja
-                    if (window.currentUserUnitKerja && 
-                        (unit.nama_unit === window.currentUserUnitKerja || 
-                         unit.id.toString() === window.currentUserUnitKerja)) {
-                        select.value = unit.id;
-                        userUnitKerjaFound = true;
+                    // Check if this matches user's unit kerja (exact match only)
+                    if (window.currentUserUnitKerja) {
+                        const userUnitKerjaTrimmed = (window.currentUserUnitKerja || '').trim();
+                        const unitNamaTrimmed = (unit.nama_unit || '').trim();
+                        
+                        // Exact match (case-sensitive and case-insensitive)
+                        if (unitNamaTrimmed === userUnitKerjaTrimmed || 
+                            unitNamaTrimmed.toLowerCase() === userUnitKerjaTrimmed.toLowerCase() ||
+                            unit.id.toString() === userUnitKerjaTrimmed) {
+                            select.value = unit.id;
+                            userUnitKerjaFound = true;
+                        }
                     }
                 });
                 
@@ -420,21 +461,63 @@ async function loadUnitKerja() {
                 } else if (window.currentUserUnitKerja) {
                     console.warn('User unit kerja not found in options:', window.currentUserUnitKerja);
                     console.log('Available options:', Array.from(select.options).map(opt => ({ value: opt.value, text: opt.text })));
-                    // Try flexible matching (case-insensitive, partial match)
+                    // Try flexible matching (case-insensitive, but more strict)
                     const userUnitKerjaLower = (window.currentUserUnitKerja || '').toLowerCase().trim();
                     let foundFlexible = false;
                     let matchedOption = null;
                     
+                    // First pass: Try exact match (case-insensitive)
                     for (let i = 0; i < select.options.length; i++) {
                         const opt = select.options[i];
                         const optText = opt.text.toLowerCase().trim();
-                        // Try exact match, partial match, or contains
-                        if (optText === userUnitKerjaLower || 
-                            optText.includes(userUnitKerjaLower) || 
-                            userUnitKerjaLower.includes(optText)) {
+                        if (optText === userUnitKerjaLower) {
                             matchedOption = opt;
                             foundFlexible = true;
                             break;
+                        }
+                    }
+                    
+                    // Second pass: Only if exact match not found, try smarter matching
+                    if (!foundFlexible) {
+                        let bestMatch = null;
+                        let bestMatchScore = Infinity; // Lower score is better
+                        
+                        for (let i = 0; i < select.options.length; i++) {
+                            const opt = select.options[i];
+                            const optText = opt.text.toLowerCase().trim();
+                            
+                            // Calculate length difference
+                            const lengthDiff = Math.abs(optText.length - userUnitKerjaLower.length);
+                            
+                            // Check if user unit kerja is exact prefix of option text (word boundary)
+                            if (optText.startsWith(userUnitKerjaLower)) {
+                                const nextChar = optText[userUnitKerjaLower.length];
+                                // Must be followed by space, dash, or end of string (word boundary)
+                                if (!nextChar || nextChar === ' ' || nextChar === '-') {
+                                    // Prefer matches with smaller length difference
+                                    if (!bestMatch || lengthDiff < bestMatchScore) {
+                                        bestMatch = opt;
+                                        bestMatchScore = lengthDiff;
+                                    }
+                                }
+                            }
+                            // Check if option text is exact prefix of user unit kerja (word boundary)
+                            else if (userUnitKerjaLower.startsWith(optText)) {
+                                const nextChar = userUnitKerjaLower[optText.length];
+                                // Must be followed by space, dash, or end of string (word boundary)
+                                if (!nextChar || nextChar === ' ' || nextChar === '-') {
+                                    // Prefer matches with smaller length difference
+                                    if (!bestMatch || lengthDiff < bestMatchScore) {
+                                        bestMatch = opt;
+                                        bestMatchScore = lengthDiff;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (bestMatch) {
+                            matchedOption = bestMatch;
+                            foundFlexible = true;
                         }
                     }
                     
@@ -460,7 +543,49 @@ async function loadUnitKerja() {
                         select.removeAttribute('name');
                         console.log('Unit kerja found with flexible matching:', select.value, 'Text:', matchedOption.text);
                     } else {
-                        console.warn('Unit kerja not found even with flexible matching. User unit kerja:', window.currentUserUnitKerja);
+                        // Fallback: Add user's unit kerja as a new option if not found
+                        console.warn('Unit kerja not found in options. Adding as new option:', window.currentUserUnitKerja);
+                        const userUnitKerjaTrimmed = (window.currentUserUnitKerja || '').trim();
+                        if (userUnitKerjaTrimmed) {
+                            // Check if option already exists (case-insensitive)
+                            let optionExists = false;
+                            for (let i = 0; i < select.options.length; i++) {
+                                if (select.options[i].text.toLowerCase().trim() === userUnitKerjaTrimmed.toLowerCase()) {
+                                    optionExists = true;
+                                    select.value = select.options[i].value;
+                                    break;
+                                }
+                            }
+                            
+                            if (!optionExists) {
+                                // Add new option with unit kerja name as value (since we don't have ID)
+                                const newOption = document.createElement('option');
+                                newOption.value = userUnitKerjaTrimmed; // Use nama as value
+                                newOption.textContent = userUnitKerjaTrimmed;
+                                select.appendChild(newOption);
+                                select.value = userUnitKerjaTrimmed;
+                                console.log('Added user unit kerja as new option:', userUnitKerjaTrimmed);
+                            }
+                            
+                            // Add hidden input
+                            const existingHidden = document.getElementById('unit_kerja_hidden');
+                            if (existingHidden) {
+                                existingHidden.remove();
+                            }
+                            const hiddenInput = document.createElement('input');
+                            hiddenInput.type = 'hidden';
+                            hiddenInput.name = 'unit_kerja';
+                            hiddenInput.id = 'unit_kerja_hidden';
+                            hiddenInput.value = select.value;
+                            select.parentNode.insertBefore(hiddenInput, select.nextSibling);
+                            
+                            // Disable the select
+                            select.disabled = true;
+                            select.style.backgroundColor = '#e9ecef';
+                            select.style.cursor = 'not-allowed';
+                            select.style.color = '#6c757d';
+                            select.removeAttribute('name');
+                        }
                     }
                 } else {
                     console.warn('No unit kerja data for user. User data:', window.currentUserData);
@@ -1390,7 +1515,12 @@ function openWhatsApp() {
         `Terima kasih.`
     );
     
-    const waUrl = `https://wa.me/${selectedPetugas.no_wa}?text=${message}`;
+    const waNumber = formatWhatsAppNumber(selectedPetugas?.no_wa);
+    if (!waNumber) {
+        alert('Nomor WhatsApp petugas tidak tersedia atau tidak valid.');
+        return;
+    }
+    const waUrl = `https://wa.me/${waNumber}?text=${message}`;
     window.open(waUrl, '_blank');
 }
 
