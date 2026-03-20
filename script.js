@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const role = getUserRole();
     const isAdmin = role === 'admin' || role === 'super_admin';
-    const isApprover = role === 'approver';
+    const isApprover = role === 'approver' || role === 'manager';
     const isPetugas = role === 'petugas';
     const isUser = role === 'user';
     
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const quickAccessApprovalBackdate = document.getElementById('quickAccessApprovalBackdate');
     if (quickAccessApprovalBackdate) {
-        quickAccessApprovalBackdate.style.display = (isApprover || isAdmin) ? 'flex' : 'none';
+        quickAccessApprovalBackdate.style.display = isAdmin ? 'flex' : 'none';
     }
     
     const quickAccessTugasBackdate = document.getElementById('quickAccessTugasBackdate');

@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Dashboard Approver - Permintaan Backdate</title>
-    <script src="../version.js?v=202603171600"></script>
-    <link rel="stylesheet" href="../layout.css?v=202603171600">
-    <link rel="stylesheet" href="backdate.css?v=202603171600">
-    <link rel="stylesheet" href="../icons.css?v=202603171600">
+    <script src="../version.js?v=202603201615"></script>
+    <link rel="stylesheet" href="../layout.css?v=202603201615">
+    <link rel="stylesheet" href="backdate.css?v=202603201615">
+    <link rel="stylesheet" href="../icons.css?v=202603201615">
     <style>
         .dashboard-container {
             padding: 20px;
@@ -822,8 +822,8 @@
         </div>
     </div>
 
-    <script src="../auth.js?v=202603171600"></script>
-    <script src="../sidebar.js?v=202603171600"></script>
+    <script src="../auth.js?v=202603201615"></script>
+    <script src="../sidebar.js?v=202603201615"></script>
     <script>
         // Fungsi untuk mendapatkan API URL yang benar berdasarkan path saat ini
         function getApiUrl() {
@@ -1021,7 +1021,7 @@
             
             tbody.innerHTML = paginatedRequests.map((req, index) => {
                 const globalIndex = startIndex + index;
-                const date = new Date(req.created_at);
+                const date = parseServerDate(req.created_at) || new Date(0);
                 const dateStr = date.toLocaleDateString('id-ID');
                 
                 const currentStatus = (req.status || '').trim();
@@ -1082,7 +1082,7 @@
             if (cardsContainer) {
                 cardsContainer.innerHTML = paginatedRequests.map((req, index) => {
                     const globalIndex = startIndex + index;
-                    const date = new Date(req.created_at);
+                    const date = parseServerDate(req.created_at) || new Date(0);
                     const dateStr = date.toLocaleDateString('id-ID');
                     
                     const currentStatus = (req.status || '').trim();
@@ -1306,6 +1306,14 @@
             
             content.innerHTML = `
                 <div class="detail-item">
+                    <label>ID:</label>
+                    <div class="value">${req.id}</div>
+                </div>
+                <div class="detail-item">
+                    <label>Tanggal Permintaan:</label>
+                    <div class="value">${formatServerDateTime(req.created_at)}</div>
+                </div>
+                <div class="detail-item">
                     <label>Alasan Permintaan:</label>
                     <div class="value">${escapeHtml(req.alasan || req.alasan_permintaan || 'N/A')}</div>
                 </div>
@@ -1316,6 +1324,10 @@
                 <div class="detail-item">
                     <label>NPK:</label>
                     <div class="value">${escapeHtml(req.npk_pegawai_backdate || req.npk || 'N/A')}</div>
+                </div>
+                <div class="detail-item">
+                    <label>Nomor Surat Permintaan:</label>
+                    <div class="value">${escapeHtml(req.nomor_surat_permintaan || 'N/A')}</div>
                 </div>
                 <div class="detail-item">
                     <label>Jumlah Surat:</label>
@@ -1455,7 +1467,7 @@
                 
                 const template = getWhatsAppTemplate();
                 
-                const date = new Date(req.created_at);
+                const date = parseServerDate(req.created_at) || new Date(0);
                 const dateStr = date.toLocaleDateString('id-ID');
                 
                 // Pastikan detailUrl yang akan digunakan sudah benar
@@ -1682,6 +1694,14 @@
             
             content.innerHTML = `
                 <div class="detail-item">
+                    <label>ID:</label>
+                    <div class="value">${req.id}</div>
+                </div>
+                <div class="detail-item">
+                    <label>Tanggal Permintaan:</label>
+                    <div class="value">${formatServerDateTime(req.created_at)}</div>
+                </div>
+                <div class="detail-item">
                     <label>Alasan Permintaan:</label>
                     <div class="value">${escapeHtml(req.alasan || req.alasan_permintaan || 'N/A')}</div>
                 </div>
@@ -1692,6 +1712,10 @@
                 <div class="detail-item">
                     <label>NPK:</label>
                     <div class="value">${escapeHtml(req.npk_pegawai_backdate || req.npk || 'N/A')}</div>
+                </div>
+                <div class="detail-item">
+                    <label>Nomor Surat Permintaan:</label>
+                    <div class="value">${escapeHtml(req.nomor_surat_permintaan || 'N/A')}</div>
                 </div>
                 <div class="detail-item">
                     <label>Jumlah Surat:</label>
@@ -1720,10 +1744,6 @@
                     <div class="value">${escapeHtml(req.keterangan_petugas || req.catatan_pelaksanaan || 'N/A')}</div>
                 </div>
                 ` : ''}
-                <div class="detail-item">
-                    <label>Tanggal Dibuat:</label>
-                    <div class="value">${new Date(req.created_at).toLocaleString('id-ID')}</div>
-                </div>
             `;
             
             modal.classList.add('show');
@@ -1787,7 +1807,7 @@
                                         <td style="padding: 10px;">${escapeHtml(surat.unit_kerja || 'N/A')}</td>
                                         <td style="padding: 10px;">${escapeHtml(surat.nomor_surat || 'N/A')}</td>
                                         <td style="padding: 10px;">${escapeHtml(surat.perihal || 'N/A')}</td>
-                                        <td style="padding: 10px;">${new Date(surat.created_at).toLocaleString('id-ID')}</td>
+                                        <td style="padding: 10px;">${formatServerDateTime(surat.created_at)}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -1814,6 +1834,20 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function parseServerDate(input) {
+            if (!input) return null;
+            let normalized = String(input).trim().replace(' ', 'T');
+            if (!/(Z|[+-]\d{2}:\d{2})$/.test(normalized)) normalized += 'Z';
+            const d = new Date(normalized);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        function formatServerDateTime(input) {
+            const d = parseServerDate(input);
+            if (!d) return '-';
+            return d.toLocaleString('id-ID');
         }
         
         function showAlert(message, type = 'info', title = null) {
@@ -1945,3 +1979,4 @@
     </script>
 </body>
 </html>
+

@@ -142,7 +142,9 @@ function normalizeToStringValues(obj) {
 
 function formatDateTime(input) {
     if (!input) return '-';
-    const d = new Date(input);
+    let normalized = String(input).trim().replace(' ', 'T');
+    if (!/(Z|[+-]\d{2}:\d{2})$/.test(normalized)) normalized += 'Z';
+    const d = new Date(normalized);
     if (isNaN(d.getTime())) return input;
     const pad = (n) => String(n).padStart(2, '0');
     return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;

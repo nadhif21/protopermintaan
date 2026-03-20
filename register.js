@@ -1,27 +1,11 @@
 function getApiUrl() {
+    if (typeof getApiUrlSafe === 'function') {
+        return getApiUrlSafe();
+    }
     const currentPath = window.location.pathname;
-    let basePath = '';
-    
-    if (currentPath.includes('/permintaan/')) {
-        basePath = currentPath.substring(0, currentPath.indexOf('/permintaan/'));
-    } else if (currentPath.includes('/backdate/')) {
-        basePath = currentPath.substring(0, currentPath.indexOf('/backdate/'));
-    } else if (currentPath.includes('/admin/')) {
-        basePath = currentPath.substring(0, currentPath.indexOf('/admin/'));
-    } else {
-        const lastSlash = currentPath.lastIndexOf('/');
-        basePath = currentPath.substring(0, lastSlash + 1);
-    }
-    
-    if (basePath && !basePath.endsWith('/')) {
-        basePath += '/';
-    }
-    
-    if (!basePath || basePath === '/') {
-        return '/api.php';
-    }
-    
-    return basePath + 'api.php';
+    const lastSlash = currentPath.lastIndexOf('/');
+    const basePath = currentPath.substring(0, lastSlash + 1);
+    return (basePath || '/') + 'api.php';
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -33,143 +17,252 @@ document.addEventListener('DOMContentLoaded', function() {
     loadUnitKerja();
     setupPasswordToggle();
 
-    const registerForm = document.getElementById('registerForm');
-    const errorMessage = document.getElementById('errorMessage');
-    const successMessage = document.getElementById('successMessage');
-    const submitBtn = document.getElementById('submitBtn');
+    const emailInput = document.getElementById('email');
+    const unitKerjaSelect = document.getElementById('unit_kerja');
+    const requestOtpBtn = document.getElementById('requestOtpBtn');
+    const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+    const resendOtpBtn = document.getElementById('resendOtpBtn');
+    const backToFormBtn = document.getElementById('backToFormBtn');
+    const contactAdminBtn = document.getElementById('contactAdminBtn');
+    const backLoginBtn = document.getElementById('backLoginBtn');
+    const toastContainer = document.getElementById('toastContainer');
+    const otpInputs = Array.from(document.querySelectorAll('.otp-input'));
+    const stepperItems = Array.from(document.querySelectorAll('.step-item'));
+    const stepForm = document.getElementById('stepForm');
+    const stepOtp = document.getElementById('stepOtp');
+    const stepDone = document.getElementById('stepDone');
 
-    registerForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        errorMessage.classList.remove('show');
-        successMessage.classList.remove('show');
-        errorMessage.textContent = '';
-        successMessage.textContent = '';
+    let verificationId = 0;
+    let cooldownTimer = null;
+    let cooldownLeft = 0;
 
+    function showToast(message, type = 'error') {
+        if (!toastContainer) return;
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-8px)';
+            setTimeout(() => toast.remove(), 220);
+        }, 3000);
+    }
+
+    function setStep(stepNumber) {
+        stepperItems.forEach((item) => {
+            item.classList.toggle('active', Number(item.dataset.step) === stepNumber);
+        });
+        stepForm.classList.toggle('active', stepNumber === 1);
+        stepOtp.classList.toggle('active', stepNumber === 2);
+        stepDone.classList.toggle('active', stepNumber === 3);
+    }
+
+    function getOtpValue() {
+        return otpInputs.map((el) => (el.value || '').trim()).join('');
+    }
+
+    function clearOtpInputs() {
+        otpInputs.forEach((el) => {
+            el.value = '';
+            el.classList.remove('filled');
+        });
+    }
+
+    function setupOtpInputs() {
+        if (!otpInputs.length) return;
+        otpInputs.forEach((input, index) => {
+            input.addEventListener('input', function() {
+                const digit = (input.value || '').replace(/\D/g, '');
+                input.value = digit ? digit.slice(-1) : '';
+                input.classList.toggle('filled', Boolean(input.value));
+                if (input.value && index < otpInputs.length - 1) {
+                    otpInputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' && !input.value && index > 0) otpInputs[index - 1].focus();
+            });
+        });
+        otpInputs[0].addEventListener('paste', function(e) {
+            const pasted = (e.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+            if (!pasted) return;
+            e.preventDefault();
+            otpInputs.forEach((el, i) => {
+                el.value = pasted[i] || '';
+                el.classList.toggle('filled', Boolean(el.value));
+            });
+            otpInputs[Math.min(pasted.length, 6) - 1]?.focus();
+        });
+    }
+
+    function setLoading(button, isLoading, loadingText = 'Memproses...') {
+        if (!button) return;
+        button.disabled = isLoading;
+        const span = button.querySelector('span');
+        if (span) {
+            if (isLoading) {
+                button.dataset.originalText = span.textContent;
+                span.textContent = loadingText;
+            } else {
+                span.textContent = button.dataset.originalText || span.textContent;
+            }
+        } else if (!isLoading) {
+            button.textContent = button.dataset.originalText || button.textContent;
+        } else {
+            button.dataset.originalText = button.textContent;
+            button.textContent = loadingText;
+        }
+    }
+
+    function validateForm() {
         const nama = document.getElementById('nama').value.trim();
         const npk = document.getElementById('npk').value.trim();
-        const nomor_telepon = document.getElementById('nomor_telepon').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const unitKerjaSelect = document.getElementById('unit_kerja');
+        const nomorTelepon = document.getElementById('nomor_telepon').value.trim();
+        const email = emailInput.value.trim().toLowerCase();
         const unitKerjaId = unitKerjaSelect.value;
         const unitKerjaText = unitKerjaSelect.options[unitKerjaSelect.selectedIndex]?.text || '';
         const password = document.getElementById('password').value;
         const passwordConfirm = document.getElementById('password_confirm').value;
 
-        if (!nama) {
-            showError('Nama lengkap wajib diisi.');
-            document.getElementById('nama').focus();
-            return;
-        }
+        if (!nama) return { ok: false, message: 'Nama lengkap wajib diisi.', focus: 'nama' };
+        if (!npk) return { ok: false, message: 'NPK wajib diisi.', focus: 'npk' };
+        if (!nomorTelepon) return { ok: false, message: 'Nomor telepon wajib diisi.', focus: 'nomor_telepon' };
+        if (!/^08\d{8,11}$/.test(nomorTelepon)) return { ok: false, message: 'Format nomor telepon tidak valid. Gunakan 08xxxxxxxxxx.', focus: 'nomor_telepon' };
+        if (!email) return { ok: false, message: 'Email wajib diisi.', focus: 'email' };
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, message: 'Format email tidak valid.', focus: 'email' };
+        if (!unitKerjaId) return { ok: false, message: 'Unit kerja wajib dipilih.', focus: 'unit_kerja' };
+        if (!password) return { ok: false, message: 'Password wajib diisi.', focus: 'password' };
+        if (password.length < 6) return { ok: false, message: 'Password minimal 6 karakter.', focus: 'password' };
+        if (password !== passwordConfirm) return { ok: false, message: 'Konfirmasi password tidak sesuai.', focus: 'password_confirm' };
 
-        if (!npk) {
-            showError('NPK wajib diisi.');
-            document.getElementById('npk').focus();
-            return;
-        }
-
-        if (!nomor_telepon) {
-            showError('Nomor telepon wajib diisi.');
-            document.getElementById('nomor_telepon').focus();
-            return;
-        }
-
-        const phoneRegex = /^08\d{8,11}$/;
-        if (!phoneRegex.test(nomor_telepon)) {
-            showError('Format nomor telepon tidak valid. Gunakan format: 08xxxxxxxxxx (10-13 digit)');
-            document.getElementById('nomor_telepon').focus();
-            return;
-        }
-
-        if (!email) {
-            showError('Email wajib diisi.');
-            document.getElementById('email').focus();
-            return;
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            showError('Format email tidak valid.');
-            document.getElementById('email').focus();
-            return;
-        }
-
-        if (!unitKerjaId || unitKerjaId === '') {
-            showError('Unit kerja wajib dipilih.');
-            unitKerjaSelect.focus();
-            return;
-        }
-
-        if (!password) {
-            showError('Password wajib diisi.');
-            document.getElementById('password').focus();
-            return;
-        }
-
-        if (password.length < 6) {
-            showError('Password minimal 6 karakter.');
-            document.getElementById('password').focus();
-            return;
-        }
-
-        if (password !== passwordConfirm) {
-            showError('Konfirmasi password tidak sesuai.');
-            document.getElementById('password_confirm').focus();
-            return;
-        }
-
-        try {
-            submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.8';
-            submitBtn.querySelector('span').textContent = 'Mendaftar...';
-
-            const formData = new URLSearchParams({
-                action: 'register',
-                nama: nama,
-                npk: npk,
-                nomor_telepon: nomor_telepon,
-                email: email,
+        return {
+            ok: true,
+            payload: {
+                nama,
+                npk,
+                nomor_telepon: nomorTelepon,
+                email,
                 unit_kerja: unitKerjaText,
-                password: password
-            });
-
-            const apiUrl = getApiUrl();
-            const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
-            const fullUrl = window.location.origin + path;
-            const response = await fetch(fullUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: formData.toString()
-            });
-
-            const result = await response.json().catch(() => null);
-            
-            if (!response.ok || !result) {
-                throw new Error('Gagal terhubung ke server.');
+                password
             }
+        };
+    }
 
-            if (!result.success) {
-            throw new Error(result.error || 'Pendaftaran gagal.');
+    async function callApi(action, payload) {
+        const res = await fetch(getApiUrl(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action, ...payload }).toString()
+        });
+        const result = await res.json().catch(() => null);
+        if (!res.ok || !result) throw new Error('Gagal terhubung ke server.');
+        if (!result.success) throw new Error(result.error || 'Permintaan gagal.');
+        return result.data || {};
+    }
+
+    function startCooldown(seconds) {
+        if (cooldownTimer) clearInterval(cooldownTimer);
+        cooldownLeft = Math.max(0, parseInt(seconds, 10) || 60);
+        resendOtpBtn.disabled = true;
+        resendOtpBtn.textContent = `Kirim Ulang (${cooldownLeft}s)`;
+        cooldownTimer = setInterval(() => {
+            cooldownLeft -= 1;
+            if (cooldownLeft <= 0) {
+                clearInterval(cooldownTimer);
+                cooldownTimer = null;
+                resendOtpBtn.disabled = false;
+                resendOtpBtn.textContent = 'Kirim Ulang OTP';
+                return;
+            }
+            resendOtpBtn.textContent = `Kirim Ulang (${cooldownLeft}s)`;
+        }, 1000);
+    }
+
+    async function sendRegisterOtp() {
+        const check = validateForm();
+        if (!check.ok) {
+            showToast(check.message, 'error');
+            document.getElementById(check.focus)?.focus();
+            return;
+        }
+        setLoading(requestOtpBtn, true, 'Mengirim OTP...');
+        verificationId = 0;
+        try {
+            const data = await callApi('requestRegisterOtp', { email: check.payload.email });
+            showToast(data.message || 'OTP berhasil dikirim.', 'success');
+            clearOtpInputs();
+            setStep(2);
+            otpInputs[0]?.focus();
+            startCooldown(data.cooldownSeconds || 60);
+        } catch (err) {
+            showToast(err.message || 'Gagal mengirim OTP.', 'error');
+        } finally {
+            setLoading(requestOtpBtn, false);
+        }
+    }
+
+    async function verifyAndSubmitRegister() {
+        const check = validateForm();
+        if (!check.ok) {
+            showToast(check.message, 'error');
+            setStep(1);
+            document.getElementById(check.focus)?.focus();
+            return;
+        }
+        const otp = getOtpValue();
+        if (otp.length !== 6) {
+            showToast('OTP harus 6 digit.', 'error');
+            return;
         }
 
-        showSuccess('Pendaftaran berhasil! Permintaan Anda sedang menunggu persetujuan admin. Anda akan menerima notifikasi via WhatsApp setelah disetujui.');
-        
-        registerForm.reset();
-        
-            setTimeout(() => {
-                window.location.href = getAppFullUrl('/login.html');
-            }, 3000);
+        setLoading(verifyOtpBtn, true, 'Memverifikasi...');
+        try {
+            const verifyData = await callApi('verifyRegisterOtp', { email: check.payload.email, otp });
+            verificationId = Number(verifyData.verificationId || 0);
+            if (!verificationId) throw new Error('Verifikasi gagal, coba ulangi OTP.');
 
-        } catch (error) {
-            showError(error.message || 'Terjadi kesalahan saat mendaftar.');
+            await callApi('register', { ...check.payload, register_otp_id: verificationId });
+            showToast('Pendaftaran berhasil. Menunggu persetujuan admin.', 'success');
+            setStep(3);
+        } catch (err) {
+            const msg = err?.message || 'Gagal memproses pendaftaran.';
+            if (msg.toLowerCase().includes('otp tidak valid') || msg.toLowerCase().includes('maksimal percobaan')) {
+                showToast('OTP salah / tidak valid. Jika kendala berlanjut, silakan hubungi admin.', 'error');
+            } else {
+                showToast(msg, 'error');
+            }
         } finally {
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = '1';
-            submitBtn.querySelector('span').textContent = 'Daftar';
+            setLoading(verifyOtpBtn, false);
+        }
+    }
+
+    requestOtpBtn?.addEventListener('click', sendRegisterOtp);
+    resendOtpBtn?.addEventListener('click', sendRegisterOtp);
+    verifyOtpBtn?.addEventListener('click', verifyAndSubmitRegister);
+    backToFormBtn?.addEventListener('click', () => setStep(1));
+    backLoginBtn?.addEventListener('click', () => {
+        window.location.href = getAppFullUrl('/login.html');
+    });
+    contactAdminBtn?.addEventListener('click', async () => {
+        try {
+            const admin = await callApi('getPublicAdminForWhatsApp', {});
+            const rawPhone = (admin.nomor_telepon || '').replace(/[^0-9]/g, '');
+            if (!rawPhone) {
+                showToast('Nomor admin belum tersedia. Silakan coba lagi nanti.', 'error');
+                return;
+            }
+            const waPhone = rawPhone.startsWith('0') ? ('62' + rawPhone.slice(1)) : rawPhone;
+            const name = document.getElementById('nama')?.value?.trim() || 'User';
+            const npk = document.getElementById('npk')?.value?.trim() || '-';
+            const email = document.getElementById('email')?.value?.trim() || '-';
+            const msg = `Saya telah melakukan pendaftaran akun di Permintaan DOF.\n\nDetail akun:\nNama : ${name}\nNPK : ${npk}\nEmail : ${email}\n\nMohon dibantu approval akun saya. Terima Kasih.`;
+            window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+        } catch (err) {
+            showToast(err?.message || 'Gagal membuka kontak admin.', 'error');
         }
     });
+    setupOtpInputs();
 });
 
 function setupPasswordToggle() {
@@ -211,18 +304,6 @@ function setupPasswordToggle() {
     }
 }
 
-function showError(message) {
-    const errorMessage = document.getElementById('errorMessage');
-    errorMessage.textContent = message;
-    errorMessage.classList.add('show');
-}
-
-function showSuccess(message) {
-    const successMessage = document.getElementById('successMessage');
-    successMessage.textContent = message;
-    successMessage.classList.add('show');
-}
-
 async function loadUnitKerja() {
     try {
         const apiUrl = getApiUrl();
@@ -249,10 +330,5 @@ async function loadUnitKerja() {
         }
     } catch (error) {
         console.error('Error loading unit kerja:', error);
-        const errorMessage = document.getElementById('errorMessage');
-        if (errorMessage) {
-            errorMessage.textContent = 'Gagal memuat daftar unit kerja. Silakan refresh halaman.';
-            errorMessage.classList.add('show');
-        }
     }
 }

@@ -152,13 +152,20 @@ async function loadUserDataForLabel() {
         }
         
         if (user) {
+            const role = (user.role || '').toLowerCase();
             const unitKerja = user.unitKerja || user.unit_kerja || '';
             const unitKerjaLabel = document.getElementById('unitKerjaLabel');
             if (unitKerjaLabel) {
-                if (unitKerja && unitKerja.trim() !== '') {
+                // Approver/Manager tidak perlu menampilkan unit kerja di header.
+                if (role === 'approver' || role === 'manager') {
+                    unitKerjaLabel.textContent = '';
+                    unitKerjaLabel.style.display = 'none';
+                } else if (unitKerja && unitKerja.trim() !== '') {
                     unitKerjaLabel.textContent = unitKerja;
+                    unitKerjaLabel.style.display = '';
                 } else {
                     unitKerjaLabel.textContent = '';
+                    unitKerjaLabel.style.display = '';
                 }
             }
         }
@@ -1028,77 +1035,66 @@ function displayTable() {
 
 function displayCards() {
     const cardsContainer = document.getElementById('cardsContainer');
-    const displayColumns = [0, 6, 2, 3, 5];
+    if (!cardsContainer) return;
     
     cardsContainer.innerHTML = paginatedData.map(row => {
-        const headers = spreadsheetHeaders;
+        // Samakan logika field dengan tampilan desktop (table)
+        const rowId = row.rowNumber || row.originalRowNumber || row.dbId || row.id || '-';
         
-        const idRow = `
-            <div class="card-row">
-                <div class="card-label">ID</div>
-                <div class="card-value">${escapeHtml(row.rowNumber || row.originalRowNumber || row.dbId || row.id || '-')}</div>
-            </div>
-        `;
+        const timestamp = row.timestamp || row.A || '';
+        const tanggalMinta = formatTanggalMinta(timestamp);
         
-        const cardRows = displayColumns.map(index => {
-            let headerName = headers[index] || `Kolom ${String.fromCharCode(65 + index)}`;
-            if (headerName === 'Pilih Permintaan') {
-                headerName = 'Jenis Permintaan';
-            }
-            if (headerName && headerName.toLowerCase().includes('timestamp')) {
-                headerName = 'Tanggal Minta';
-            }
-            const colLetter = String.fromCharCode(65 + index);
-            let value = row[colLetter] || '';
-            value = formatValueForDisplay(value, headerName);
-            return `
-                <div class="card-row">
-                    <div class="card-label">${escapeHtml(headerName)}</div>
-                    <div class="card-value">${highlightText(value)}</div>
-                </div>
-            `;
-        }).join('');
-
-        const petugasRow = `
-            <div class="card-row">
-                <div class="card-label">Petugas</div>
-                <div class="card-value">${highlightText(escapeHtml(row.petugas || '-'))}</div>
-            </div>
-        `;
-
-        const statusApproverRow = `
-            <div class="card-row">
-                <div class="card-label">Status Approver</div>
-                <div class="card-value">${formatStatusApprover(row.persetujuan)}</div>
-            </div>
-        `;
-
-        const statusRow = `
-            <div class="card-row">
-                <div class="card-label">Status</div>
-                <div class="card-value">${formatStatus(row.status)}</div>
-            </div>
-        `;
-
-        const flagRow = `
-            <div class="card-row">
-                <div class="card-label">Flag</div>
-                <div class="card-value">${formatFlag(row.flag)}</div>
-            </div>
-        `;
-
+        const jenisPermintaan = row.pilihPermintaan || row.G || '';
+        const namaLengkap = findColumnValueFromRow(row, 'Nama Lengkap') || row.C || '';
+        const noSurat = findColumnValueFromRow(row, 'No Surat') || findColumnValueFromRow(row, 'Nomor Surat') || '';
+        const petugas = row.petugas || '';
+        const statusApprover = formatStatusApprover(row.persetujuan);
+        const statusCell = formatStatus(row.status);
+        const flagCell = formatFlag(row.flag);
+        
         return `
             <div class="card" data-row-id="${row.id}">
-                ${idRow}
-                ${cardRows}
-                ${petugasRow}
-                ${statusApproverRow}
-                ${statusRow}
-                ${flagRow}
+                <div class="card-row">
+                    <div class="card-label">ID</div>
+                    <div class="card-value">${escapeHtml(rowId)}</div>
+                </div>
+                <div class="card-row">
+                    <div class="card-label">Tanggal Minta</div>
+                    <div class="card-value">${tanggalMinta}</div>
+                </div>
+                <div class="card-row">
+                    <div class="card-label">Jenis Permintaan</div>
+                    <div class="card-value">${highlightText(escapeHtml(jenisPermintaan || ''))}</div>
+                </div>
+                <div class="card-row">
+                    <div class="card-label">Nama Lengkap</div>
+                    <div class="card-value">${highlightText(escapeHtml(namaLengkap || ''))}</div>
+                </div>
+                <div class="card-row">
+                    <div class="card-label">No Surat</div>
+                    <div class="card-value">${highlightText(escapeHtml(noSurat || '-'))}</div>
+                </div>
+                <div class="card-row">
+                    <div class="card-label">Petugas</div>
+                    <div class="card-value">${highlightText(escapeHtml(petugas || '-'))}</div>
+                </div>
+                <div class="card-row">
+                    <div class="card-label">Status Approver</div>
+                    <div class="card-value">${statusApprover}</div>
+                </div>
+                <div class="card-row">
+                    <div class="card-label">Status</div>
+                    <div class="card-value">${statusCell}</div>
+                </div>
+                <div class="card-row">
+                    <div class="card-label">Flag</div>
+                    <div class="card-value">${flagCell}</div>
+                </div>
             </div>
         `;
     }).join('');
     
+    // Klik card => buka detail
     cardsContainer.querySelectorAll('.card').forEach(card => {
         card.style.cursor = 'pointer';
         const rowId = parseInt(card.getAttribute('data-row-id'));
@@ -1165,13 +1161,12 @@ function convertToLocalTime(utcTimestamp) {
         }
         
         // Jika format MySQL DATETIME (YYYY-MM-DD HH:mm:ss) tanpa timezone info,
-        // tambahkan 'Z' untuk menandakan UTC, atau tambahkan timezone offset
-        // Asumsikan waktu dari database adalah UTC
+        // asumsikan UTC agar display dikonversi benar ke lokal user.
         let timestampStr = utcTimestamp.toString().trim();
         
         // Jika format: YYYY-MM-DD HH:mm:ss atau YYYY-MM-DDTHH:mm:ss
         if (timestampStr.match(/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}$/)) {
-            // Ganti spasi dengan T dan tambahkan Z untuk UTC
+            // Ganti spasi dengan T dan tambahkan Z (UTC)
             timestampStr = timestampStr.replace(' ', 'T') + 'Z';
         }
         
@@ -1347,31 +1342,84 @@ async function showDetail(rowId) {
     // This is more reliable than using column letters (A, B, C, etc.)
     const originalRow = row._originalRow || {};
     
-    // Define the order of fields to display (excluding special fields)
+    // Define the order of fields to display (excluding special fields and primary summary fields)
     // Note: 'Status' and 'Status Surat' are different fields
     // - 'Status Surat' = status dokumen (Draft, Review, Approved, Rejected)
     // - 'Status' = status permintaan (Open, Closed, Cancelled)
     const fieldsToDisplay = [
-        'Timestamp',
+        'Timestamp', // akan ditampilkan di ringkasan utama (ID Permintaan/Tanggal Minta) → skip di loop
         'NPK',
         'Nama Lengkap',
         'Unit Kerja',
         'No Telepon (HP)',
-        'No Surat',
-        'Pilih Permintaan',
-        'Status Surat',  // Status dokumen (Draft, Review, Approved, Rejected) - akan diganti menjadi Posisi Surat
+        'No Surat', // akan ditampilkan di ringkasan utama → skip di loop
+        'Nomor Surat', // variasi header
+        'Pilih Permintaan', // akan ditampilkan di ringkasan utama (Jenis Permintaan) → skip di loop
+        'Status Surat',  // Status dokumen (Draft, Review, Approved, Rejected) - akan ditampilkan sebagai Posisi Surat (bukan di ringkasan)
         'Alasan Permintaan/Permintaan',
         'Email Address',
         'Jenis Surat',
         'Isi Penjelasan Singkat Permintaanya'
     ];
     
-    // Build detail HTML from original row data
-    let detailHtml = '';
-    fieldsToDisplay.forEach(fieldName => {
+    // Build primary summary (sesuai tampilan desktop/table)
+    const rowIdPrimary = row.rowNumber || row.originalRowNumber || row.dbId || row.id || '-';
+    const timestampPrimary = originalRow['Timestamp'] || row.timestamp || row.A || '';
+    const tanggalMintaPrimary = timestampPrimary ? formatTimestamp(timestampPrimary) : '-';
+    const jenisPermintaanPrimary = originalRow['Pilih Permintaan'] || row.pilihPermintaan || row.G || '-';
+    const namaLengkapPrimary = originalRow['Nama Lengkap'] || row.C || '-';
+    const noSuratPrimary = originalRow['No Surat'] || originalRow['Nomor Surat'] || '';
+    const petugasPrimary = currentPetugas || '-';
+    
+    let detailHtml = `
+        <div class="detail-item">
+            <label>ID</label>
+            <div class="value">${escapeHtml(String(rowIdPrimary))}</div>
+        </div>
+        <div class="detail-item">
+            <label>Tanggal Minta</label>
+            <div class="value">${tanggalMintaPrimary}</div>
+        </div>
+        <div class="detail-item">
+            <label>Jenis Permintaan</label>
+            <div class="value">${escapeHtml(String(jenisPermintaanPrimary))}</div>
+        </div>
+        <div class="detail-item">
+            <label>Nama Lengkap</label>
+            <div class="value">${escapeHtml(String(namaLengkapPrimary))}</div>
+        </div>
+        <div class="detail-item">
+            <label>No Surat</label>
+            <div class="value">${escapeHtml(String(noSuratPrimary || '-'))}</div>
+        </div>
+        <div class="detail-item">
+            <label>Petugas</label>
+            <div class="value">${escapeHtml(String(petugasPrimary))}</div>
+        </div>
+        <div class="detail-item">
+            <label>Status Approver</label>
+            <div class="value">${formatStatusApprover(currentPersetujuan)}</div>
+        </div>
+        <div class="detail-item">
+            <label>Status</label>
+            <div class="value">${formatStatus(currentStatus)}</div>
+        </div>
+        <div class="detail-item">
+            <label>Flag</label>
+            <div class="value">${formatFlag(currentFlag)}</div>
+        </div>
+    `;
+    
+    // Build sisanya dari original row data (dinonaktifkan agar urutan ringkasan mengikuti tampilan desktop)
+    // Jika suatu saat perlu menampilkan field tambahan, ubah kondisi di bawah menjadi true.
+    if (false) fieldsToDisplay.forEach(fieldName => {
         // Skip fields that will be shown separately
         if (fieldName === 'Status' || fieldName === 'Flag' || fieldName === 'Petugas' || 
             fieldName === 'Waktu Selesai' || fieldName === 'Keterangan' || fieldName === 'Persetujuan') {
+            return;
+        }
+        // Skip yang sudah ditampilkan di ringkasan utama
+        if (fieldName === 'Timestamp' || fieldName === 'Pilih Permintaan' || fieldName === 'No Surat' || fieldName === 'Nomor Surat') {
             return;
         }
         
@@ -1426,14 +1474,6 @@ async function showDetail(rowId) {
     const waktuSelesaiHeader = spreadsheetHeaders[waktuSelesaiColIndex] || 'Waktu Selesai';
     
     detailContent.innerHTML += `
-        <div class="detail-item">
-            <label>${escapeHtml(statusHeader)}</label>
-            <div class="value">${formatStatus(currentStatus)}</div>
-        </div>
-        <div class="detail-item">
-            <label>${escapeHtml(flagHeader)}</label>
-            <div class="value">${formatFlag(currentFlag)}</div>
-        </div>
         ${(() => {
             // Untuk flag kuning/merah, jangan tampilkan petugas
             const isKuningMerah = currentFlag && (currentFlag.toLowerCase() === 'kuning' || currentFlag.toLowerCase() === 'merah');
@@ -1509,10 +1549,22 @@ async function showDetail(rowId) {
     const chatUlangSection = document.getElementById('chatUlangSection');
     const hubungiUserBtn = document.getElementById('hubungiUserBtn');
     const hubungiUserSection = document.getElementById('hubungiUserSection');
+    const approvalActionSection = document.getElementById('approvalActionSection');
+    const openApprovalBtn = document.getElementById('openApprovalBtn');
     
     // Check user role - user hanya bisa melihat, tidak bisa aksi apapun
     const userRole = getUserRole();
     const isUser = userRole === 'user';
+    const isApproverRole = userRole === 'approver' || userRole === 'manager';
+    const isOpenStatus = currentStatus.toLowerCase() === 'open';
+    const isKuning = currentFlag.toLowerCase() === 'kuning';
+    const isMerah = currentFlag.toLowerCase() === 'merah';
+    const canOpenApproval =
+        isOpenStatus &&
+        (
+            (userRole === 'approver' && (isKuning || isMerah)) ||
+            (userRole === 'manager' && isMerah)
+        );
     
     // Sembunyikan semua aksi/edit untuk user di awal
     // Tapi tetap tampilkan button hubungi petugas jika status belum selesai
@@ -1538,10 +1590,40 @@ async function showDetail(rowId) {
         // Untuk admin, sembunyikan chat ulang (jika diperlukan)
         if (chatUlangSection) chatUlangSection.style.display = 'none';
     }
+
+    if (isApproverRole) {
+        if (flagSection) flagSection.style.display = 'none';
+        if (statusSection) statusSection.style.display = 'none';
+        if (petugasSection) petugasSection.style.display = 'none';
+        if (keteranganSection) keteranganSection.style.display = 'none';
+        if (whatsappSection) whatsappSection.style.display = 'none';
+        if (chatUlangSection) chatUlangSection.style.display = 'none';
+        if (hubungiUserSection) hubungiUserSection.style.display = 'none';
+        if (editModeBtn) editModeBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (saveFlagBtn) saveFlagBtn.style.display = 'none';
+
+        if (approvalActionSection && openApprovalBtn) {
+            approvalActionSection.style.display = canOpenApproval ? 'flex' : 'none';
+            openApprovalBtn.onclick = () => {
+                const rowNumber = row.originalRowNumber || row.rowNumber || rowId;
+                let baseUrl;
+                if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('protopermintaan.vercel.app')) {
+                    baseUrl = 'https://protopermintaan.vercel.app/permintaan/';
+                } else {
+                    baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+                }
+                const approvalUrl = `${baseUrl}approval.html?rowId=${encodeURIComponent(rowNumber)}`;
+                window.location.href = approvalUrl;
+            };
+        }
+    } else if (approvalActionSection) {
+        approvalActionSection.style.display = 'none';
+    }
     
     // Setup button hubungi user untuk admin/petugas ketika status sudah selesai
     const isStatusCompleted = currentStatus === 'Closed' || currentStatus === 'Cancelled';
-    if (!isUser && isStatusCompleted && hubungiUserBtn && hubungiUserSection) {
+    if (!isUser && !isApproverRole && isStatusCompleted && hubungiUserBtn && hubungiUserSection) {
         setupHubungiUserButton(row, originalRow, currentStatus, currentFlag, currentPetugas, currentKeterangan, currentWaktuSelesai, dataName);
     } else {
         if (hubungiUserSection) hubungiUserSection.style.display = 'none';
@@ -1643,7 +1725,7 @@ async function showDetail(rowId) {
     
     function toggleDropdowns() {
         // User hanya bisa melihat, tidak bisa edit apapun
-        if (isUser) {
+        if (isUser || isApproverRole) {
             return; // Jangan tampilkan apapun untuk user
         }
         
@@ -1989,7 +2071,7 @@ async function showDetail(rowId) {
         }
         
         try {
-            // Get approver phone number from API
+            // Get approver/manager phone number from API
             const token = getAuthToken();
             const apiUrl = getApiUrl();
             const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
@@ -1999,7 +2081,6 @@ async function showDetail(rowId) {
             });
             
             const result = await response.json();
-            console.log('getApprovers response:', result);
             
             if (!result.success || !result.data || result.data.length === 0) {
                 alert('Tidak ada approver yang tersedia. Silakan hubungi admin.');
@@ -2013,14 +2094,15 @@ async function showDetail(rowId) {
                 return;
             }
             
-            const approver = activeApprovers[0];
-            console.log('Selected approver:', approver);
+            // Alur tetap: petugas selalu mengirim ke approver.
+            // Manager dihubungi dari halaman approval saat flag merah.
+            const approver = activeApprovers.find(a => (a.approver_type || 'approver').toLowerCase() === 'approver')
+                || activeApprovers[0];
             
             const approverNoWa = approver.nomor_telepon || approver.no_wa || approver.phone;
-            console.log('Approver phone number:', approverNoWa);
             
             if (!approverNoWa || approverNoWa.trim() === '') {
-                alert(`Nomor WhatsApp approver tidak tersedia.\n\nApprover: ${approver.name || approver.username || 'Tidak diketahui'}\n\nSilakan hubungi admin untuk mengatur nomor telepon approver.`);
+                alert(`Nomor WhatsApp approver tidak tersedia.\n\nPIC: ${approver.name || approver.username || 'Tidak diketahui'}\n\nSilakan hubungi admin untuk mengatur nomor telepon.`);
                 return;
             }
             
@@ -2163,10 +2245,9 @@ async function showDetail(rowId) {
         
         message += `\n`;
         
-        // 8. Link Persetujuan
-        message += `*Link Persetujuan:*\n`;
-        message += `${approvalUrl}\n\n`;
-        message += `Klik link di atas untuk menyetujui atau menolak permintaan ini.`;
+        // 8. Link Persetujuan (format baru)
+        message += `*Klik link di bawah untuk menyetujui atau menolak permintaan ini:*\n`;
+        message += `${approvalUrl}\n`;
         
             // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
             let cleanPhone = approverNoWa.replace(/\D/g, ''); // Hapus semua non-digit
@@ -2286,7 +2367,7 @@ async function showDetail(rowId) {
                         updateData.waktuSelesai = '';
                     }
                 } else if (!currentWaktuSelesai) {
-                    // Auto set waktu selesai jika belum ada (dalam UTC)
+                    // Auto set waktu selesai dalam UTC
                     updateData.waktuSelesai = new Date().toISOString();
                 }
             } else {
@@ -2311,7 +2392,7 @@ async function showDetail(rowId) {
                     }
                     
                     if (!currentWaktuSelesai) {
-                        // Auto set waktu selesai jika belum ada (dalam UTC)
+                        // Auto set waktu selesai dalam UTC
                         updateData.waktuSelesai = new Date().toISOString();
                     }
                 }
@@ -2906,7 +2987,7 @@ async function showDetail(rowId) {
                         // Konversi ke UTC ISO string untuk disimpan ke database
                         const utcValue = convertToUTC(fieldValue);
                         if (utcValue) {
-                            // Kirim dalam format ISO 8601 (UTC) ke server
+                            // Kirim dalam format UTC ke server
                             updateParams[colName] = utcValue;
                         } else {
                             // Fallback: kirim as-is jika konversi gagal

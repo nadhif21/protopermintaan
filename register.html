@@ -7,10 +7,11 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Daftar Akun - Permintaan DOF</title>
-    <script src="version.js?v=202603171600"></script>
-    <link rel="stylesheet" href="register.css?v=202603171600">
+    <script src="version.js?v=202603201615"></script>
+    <link rel="stylesheet" href="register.css?v=202603201615">
 </head>
 <body>
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
     <div class="auth-wrapper">
         <div class="auth-container">
             <div class="auth-header">
@@ -23,65 +24,108 @@
                 <div class="auth-box-header">
                     <span class="auth-icon">📝</span>
                     <h1>Daftar Akun Baru</h1>
-                    <p>Isi formulir di bawah untuk mendaftar</p>
+                    <p>Isi data, verifikasi OTP email, lalu kirim pendaftaran</p>
                 </div>
                 
                 <form id="registerForm">
-                    <div class="input-group">
-                        <label for="nama">Nama Lengkap <span class="required">*</span></label>
-                        <input type="text" id="nama" placeholder="Masukkan nama lengkap" required autocomplete="name">
+                    <div class="stepper" id="stepper">
+                        <div class="step-item active" data-step="1">1. Form</div>
+                        <div class="step-item" data-step="2">2. OTP Email</div>
+                        <div class="step-item" data-step="3">3. Selesai</div>
                     </div>
 
-                    <div class="input-group">
-                        <label for="npk">NPK <span class="required">*</span></label>
-                        <input type="text" id="npk" placeholder="Masukkan NPK" required autocomplete="username">
-                    </div>
-
-                    <div class="input-group">
-                        <label for="nomor_telepon">Nomor Telepon <span class="required">*</span></label>
-                        <input type="tel" id="nomor_telepon" placeholder="08xxxxxxxxxx" required autocomplete="tel">
-                        <div class="form-hint">Format: 08xxxxxxxxxx (untuk notifikasi WhatsApp)</div>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="email">Email <span class="required">*</span></label>
-                        <input type="email" id="email" placeholder="nama@example.com" required autocomplete="email">
-                    </div>
-
-                    <div class="input-group">
-                        <label for="unit_kerja">Unit Kerja <span class="required">*</span></label>
-                        <select id="unit_kerja" required>
-                            <option value="">Pilih Unit Kerja</option>
-                        </select>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="password">Password <span class="required">*</span></label>
-                        <div class="password-wrapper">
-                            <input type="password" id="password" placeholder="Masukkan password" required autocomplete="new-password">
-                            <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">
-                                <span class="eye-icon">👁️</span>
-                            </button>
+                    <div class="step-content active" id="stepForm">
+                        <div class="input-group">
+                            <label for="nama">Nama Lengkap <span class="required">*</span></label>
+                            <input type="text" id="nama" placeholder="Masukkan nama lengkap" required autocomplete="name">
                         </div>
-                        <div class="form-hint">Minimal 6 karakter</div>
+
+                        <div class="input-group">
+                            <label for="npk">NPK <span class="required">*</span></label>
+                            <input type="text" id="npk" placeholder="Masukkan NPK" required autocomplete="username">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="nomor_telepon">Nomor Telepon <span class="required">*</span></label>
+                            <input type="tel" id="nomor_telepon" placeholder="08xxxxxxxxxx" required autocomplete="tel">
+                            <div class="form-hint">Format: 08xxxxxxxxxx (untuk notifikasi WhatsApp)</div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="email">Email <span class="required">*</span></label>
+                            <input type="email" id="email" placeholder="nama@example.com" required autocomplete="email">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="unit_kerja">Unit Kerja <span class="required">*</span></label>
+                            <select id="unit_kerja" required>
+                                <option value="">Pilih Unit Kerja</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="password">Password <span class="required">*</span></label>
+                            <div class="password-wrapper">
+                                <input type="password" id="password" placeholder="Masukkan password" required autocomplete="new-password">
+                                <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">
+                                    <span class="eye-icon">👁️</span>
+                                </button>
+                            </div>
+                            <div class="form-hint">Minimal 6 karakter</div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="password_confirm">Konfirmasi Password <span class="required">*</span></label>
+                            <div class="password-wrapper">
+                                <input type="password" id="password_confirm" placeholder="Masukkan ulang password" required autocomplete="new-password">
+                                <button type="button" class="toggle-password" id="togglePasswordConfirm" aria-label="Toggle password visibility">
+                                    <span class="eye-icon">👁️</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="button" class="auth-btn" id="requestOtpBtn">
+                            <span>Kirim OTP Verifikasi Email</span>
+                        </button>
                     </div>
 
-                    <div class="input-group">
-                        <label for="password_confirm">Konfirmasi Password <span class="required">*</span></label>
-                        <div class="password-wrapper">
-                            <input type="password" id="password_confirm" placeholder="Masukkan ulang password" required autocomplete="new-password">
-                            <button type="button" class="toggle-password" id="togglePasswordConfirm" aria-label="Toggle password visibility">
-                                <span class="eye-icon">👁️</span>
-                            </button>
+                    <div class="step-content" id="stepOtp">
+                        <div class="input-group">
+                            <label>Masukkan OTP (6 digit)</label>
+                            <div class="otp-input-group" id="otpInputGroup">
+                                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" placeholder="_" autocomplete="one-time-code" aria-label="Digit OTP 1">
+                                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit OTP 2">
+                                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit OTP 3">
+                                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit OTP 4">
+                                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit OTP 5">
+                                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit OTP 6">
+                            </div>
+                            <div class="form-hint">OTP berlaku 5 menit.</div>
+                        </div>
+                        <div class="action-row">
+                            <button type="button" class="secondary-btn" id="backToFormBtn">Kembali</button>
+                            <button type="button" class="secondary-btn" id="resendOtpBtn">Kirim Ulang OTP</button>
+                        </div>
+                        <button type="button" class="auth-btn" id="verifyOtpBtn">
+                            <span>Verifikasi OTP & Kirim Pendaftaran</span>
+                        </button>
+                    </div>
+
+                    <div class="step-content" id="stepDone">
+                        <div class="done-card">
+                            <div class="done-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 6L9 17l-5-5"></path>
+                                </svg>
+                            </div>
+                            <h3>Pendaftaran Berhasil</h3>
+                            <p>Akun Anda masuk ke <strong>Pending Registrations</strong> dan menunggu approval admin.</p>
+                            <div class="action-row">
+                                <button type="button" class="secondary-btn" id="contactAdminBtn">Hubungi Admin</button>
+                                <button type="button" class="auth-btn" id="backLoginBtn"><span>Kembali ke Login</span></button>
+                            </div>
                         </div>
                     </div>
-
-                    <div id="errorMessage" class="error-message"></div>
-                    <div id="successMessage" class="success-message"></div>
-                    
-                    <button type="submit" class="auth-btn" id="submitBtn">
-                        <span>Daftar</span>
-                    </button>
 
                     <div class="auth-footer">
                         <p>Sudah punya akun? <a href="https://infoadkor.com/permintaandof/login.html">Masuk di sini</a></p>
@@ -91,6 +135,8 @@
         </div>
     </div>
 
-    <script src="register.js?v=202603171600"></script>
+    <script src="auth.js?v=202603201615"></script>
+    <script src="register.js?v=202603201615"></script>
 </body>
 </html>
+

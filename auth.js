@@ -29,14 +29,20 @@ function getAppFullUrl(path) {
 }
 
 function setSession(sessionPayload) {
-    const isSuperAdmin = (sessionPayload?.user?.role === 'super_admin');
+    const rawUser = sessionPayload?.user || null;
+    let effectiveRole = rawUser?.role || 'user';
+    if (effectiveRole === 'approver' && String(rawUser?.approverType || '').toLowerCase() === 'manager') {
+        effectiveRole = 'manager';
+    }
+    const normalizedUser = rawUser ? { ...rawUser, role: effectiveRole } : null;
+    const isSuperAdmin = (effectiveRole === 'super_admin');
     const sessionData = {
         authenticated: true,
         token: sessionPayload?.token || null,
         expiresAt: sessionPayload?.expiresAt || null,
-        user: sessionPayload?.user || null,
+        user: normalizedUser,
         isSuperAdmin: isSuperAdmin,
-        role: sessionPayload?.user?.role || (isSuperAdmin ? 'super_admin' : 'user'),
+        role: effectiveRole || (isSuperAdmin ? 'super_admin' : 'user'),
         timestamp: Date.now()
     };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));

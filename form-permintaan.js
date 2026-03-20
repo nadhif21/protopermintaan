@@ -1403,7 +1403,7 @@ async function handleSubmit(e) {
         no_wa: selectedPetugasOption.getAttribute('data-wa')
     };
     
-    // Buat timestamp dalam format UTC (ISO 8601) dari waktu lokal user
+    // Buat timestamp UTC (single source of truth)
     const localNow = new Date();
     const timestampUTC = localNow.toISOString();
     
@@ -1506,13 +1506,13 @@ function openWhatsApp() {
     const baseUrl = window.location.origin;
     const detailUrl = `${baseUrl}/permintaandof/permintaan/permintaan.html?detail=${submittedRequestId}`;
     
+    const jenisPermintaan = selectedPilihPermintaan || '';
     const message = encodeURIComponent(
-        `Halo ${selectedPetugas.nama},\n\n` +
-        `Saya telah mengajukan permintaan dengan detail berikut:\n\n` +
+        `Halo ${selectedPetugas.nama},\n` +
+        `Permintaan DOF dengan detail berikut:\n\n` +
         `ID Permintaan: ${submittedRequestId}\n` +
-        `Nomor Permintaan: #${submittedRequestId}\n\n` +
-        `Silakan review permintaan saya melalui link berikut:\n${detailUrl}\n\n` +
-        `Terima kasih.`
+        `Jenis Permintaan: ${jenisPermintaan}\n\n` +
+        `Link Permintaan:\n${detailUrl}`
     );
     
     const waNumber = formatWhatsAppNumber(selectedPetugas?.no_wa);

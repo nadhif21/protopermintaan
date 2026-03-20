@@ -297,3 +297,244 @@ body {
         font-size: 1.5rem;
     }
 }
+
+.stepper {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.step-item {
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #6b7280;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    padding: 8px 10px;
+}
+
+.step-item.active {
+    color: #fff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+}
+
+.step-content {
+    display: none;
+}
+
+.step-content.active {
+    display: block;
+}
+
+.action-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+    margin-bottom: 10px;
+}
+
+.action-row .secondary-btn {
+    flex: 1;
+}
+
+.secondary-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.secondary-btn:hover {
+    background: #f9fafb;
+}
+
+.otp-input-group {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: center;
+    gap: clamp(6px, 2vw, 12px);
+    margin: 8px 0 2px;
+    width: 100%;
+}
+
+.otp-input-group .otp-input {
+    width: 100%;
+    max-width: 40px;
+    height: 44px;
+    justify-self: center;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    border-bottom: 2px solid #cbd5e1;
+    text-align: center;
+    font-size: clamp(1rem, 2.6vw, 1.45rem);
+    font-weight: 700;
+    color: #111827;
+    background: transparent !important;
+    outline: none;
+    transition: all 0.18s ease;
+    box-shadow: none !important;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.otp-input-group .otp-input:focus {
+    border-bottom-color: #667eea;
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: none !important;
+}
+
+.otp-input-group .otp-input.filled {
+    border-bottom-color: #8b96f2;
+}
+
+.otp-input-group .otp-input::placeholder {
+    color: #94a3b8;
+    opacity: 1;
+}
+
+.done-card {
+    text-align: center;
+    padding: 12px 12px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
+}
+
+.done-icon {
+    width: 62px;
+    height: 62px;
+    margin: 0 auto 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #16a34a;
+    border-radius: 999px;
+    background: #ecfdf3;
+    border: 1px solid #bbf7d0;
+    box-shadow: 0 6px 14px rgba(22, 163, 74, 0.18);
+}
+
+.done-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: 8px;
+    color: #111827;
+}
+
+.done-card p {
+    font-size: 0.92rem;
+    color: #4b5563;
+    margin-bottom: 14px;
+    line-height: 1.5;
+}
+
+.done-card .action-row {
+    margin-top: 6px;
+    margin-bottom: 0;
+    align-items: stretch;
+}
+
+#contactAdminBtn {
+    min-width: 140px;
+    border-width: 1.5px;
+    border-color: #c7d2fe;
+    color: #374151;
+    background: #fff;
+}
+
+#contactAdminBtn:hover {
+    background: #eef2ff;
+    border-color: #a5b4fc;
+    color: #1f2937;
+}
+
+#backLoginBtn {
+    min-width: 210px;
+    box-shadow: 0 8px 18px rgba(102, 126, 234, 0.33);
+}
+
+#backLoginBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(102, 126, 234, 0.4);
+}
+
+.toast-container {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 9999;
+    width: min(92vw, 340px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: #fff;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
+    animation: toastIn 0.24s ease-out;
+}
+
+.toast.success {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+}
+
+.toast.error {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (max-width: 640px) {
+    .stepper {
+        grid-template-columns: 1fr;
+    }
+
+    .action-row {
+        flex-direction: column;
+    }
+
+    .otp-input-group .otp-input {
+        max-width: 36px;
+        height: 40px;
+    }
+
+    .toast-container {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+    }
+
+    .done-card {
+        padding: 12px 10px 6px;
+    }
+
+    #contactAdminBtn,
+    #backLoginBtn {
+        min-width: 100%;
+    }
+}

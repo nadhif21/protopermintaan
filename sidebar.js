@@ -23,10 +23,11 @@ document.addEventListener('DOMContentLoaded', function() {
             'super_admin': 'Admin',
             'admin': 'Petugas',
             'approver': 'Approver',
+            'manager': 'Manager',
             'petugas': 'Petugas',
             'user': 'User'
         };
-        const role = session.user.role || 'user';
+        const role = getUserRole();
         userRoleEl.textContent = roleText[role] || 'User';
     }
 
@@ -61,10 +62,10 @@ document.addEventListener('DOMContentLoaded', function() {
         formPermintaanMenu.style.display = (session.user.role === 'user') ? 'block' : 'none';
     }
 
-    const userRole = session.user.role || 'user';
+    const userRole = getUserRole();
     
     if (backdateMenu) {
-        const userHasBackdateAccess = ['user', 'approver', 'petugas', 'admin', 'super_admin'].includes(userRole);
+        const userHasBackdateAccess = ['user', 'petugas', 'admin', 'super_admin'].includes(userRole);
         backdateMenu.style.display = userHasBackdateAccess ? 'block' : 'none';
         
         if (backdateSubmenu && userHasBackdateAccess) {
@@ -83,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (dashboardApproverBackdateMenu) {
         dashboardApproverBackdateMenu.style.display = 
-            (userRole === 'approver' || userRole === 'admin' || userRole === 'super_admin') ? 'block' : 'none';
+            (userRole === 'admin' || userRole === 'super_admin') ? 'block' : 'none';
     }
     
     if (dashboardPetugasBackdateMenu) {

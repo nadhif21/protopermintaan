@@ -25,6 +25,7 @@ function getApiUrl() {
 }
 
 let currentUser = null;
+let currentPinType = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!checkAuth()) {
@@ -65,6 +66,11 @@ function setupEventListeners() {
         changePasswordBtn.addEventListener('click', openPasswordModal);
     }
 
+    const changePinBtn = document.getElementById('changePinBtn');
+    if (changePinBtn) {
+        changePinBtn.addEventListener('click', openPinModal);
+    }
+
     // Close modals
     const closeButtons = document.querySelectorAll('.modal-close');
     closeButtons.forEach(btn => {
@@ -74,6 +80,8 @@ function setupEventListeners() {
                 closeEditProfileModal();
             } else if (modalId === 'passwordModal') {
                 closePasswordModal();
+            } else if (modalId === 'pinModal') {
+                closePinModal();
             }
         });
     });
@@ -86,6 +94,11 @@ function setupEventListeners() {
     const cancelPasswordBtn = document.getElementById('cancelPasswordBtn');
     if (cancelPasswordBtn) {
         cancelPasswordBtn.addEventListener('click', closePasswordModal);
+    }
+
+    const cancelPinBtn = document.getElementById('cancelPinBtn');
+    if (cancelPinBtn) {
+        cancelPinBtn.addEventListener('click', closePinModal);
     }
 
     const editProfileModal = document.getElementById('editProfileModal');
@@ -106,6 +119,15 @@ function setupEventListeners() {
         });
     }
 
+    const pinModal = document.getElementById('pinModal');
+    if (pinModal) {
+        pinModal.addEventListener('click', (e) => {
+            if (e.target === pinModal) {
+                closePinModal();
+            }
+        });
+    }
+
     const editProfileForm = document.getElementById('editProfileForm');
     if (editProfileForm) {
         editProfileForm.addEventListener('submit', handleProfileUpdate);
@@ -114,6 +136,11 @@ function setupEventListeners() {
     const passwordForm = document.getElementById('passwordForm');
     if (passwordForm) {
         passwordForm.addEventListener('submit', handlePasswordChange);
+    }
+
+    const pinForm = document.getElementById('pinForm');
+    if (pinForm) {
+        pinForm.addEventListener('submit', handlePinChange);
     }
 
     const toggleButtons = document.querySelectorAll('.toggle-password');
@@ -171,20 +198,37 @@ async function loadUserProfile() {
 }
 
 function displayProfile(user) {
-    document.getElementById('profileName').textContent = user.name || '-';
+    const displayName = user.name || user.username || '-';
+    document.getElementById('profileName').textContent = displayName;
+    const approverType = String(user.approverType || '').toLowerCase();
+    const effectiveRole = (user.role === 'approver' && approverType === 'manager') ? 'manager' : (user.role || 'user');
     
     const roleText = {
         'super_admin': 'Admin',
         'admin': 'Petugas',
+        'approver': 'Approver',
+        'manager': 'Manager',
         'user': 'User'
     };
-    document.getElementById('profileRole').textContent = roleText[user.role] || user.role || '-';
+    document.getElementById('profileRole').textContent = roleText[effectiveRole] || effectiveRole || '-';
     
     document.getElementById('profileUsername').textContent = user.username || '-';
     document.getElementById('profileNPK').textContent = user.npk || '-';
     document.getElementById('profileEmail').textContent = user.email || '-';
     document.getElementById('profilePhone').textContent = user.nomorTelepon || '-';
     document.getElementById('profileUnitKerja').textContent = user.unitKerja || '-';
+
+    const avatarEl = document.getElementById('profileSummaryAvatar');
+    if (avatarEl) {
+        const parts = displayName.trim().split(/\s+/).filter(Boolean);
+        let initials = 'U';
+        if (parts.length >= 2) {
+            initials = (parts[0][0] || '') + (parts[1][0] || '');
+        } else if (parts.length === 1) {
+            initials = parts[0].substring(0, 2);
+        }
+        avatarEl.textContent = initials.toUpperCase();
+    }
     
     // Hide Edit Profile button for users with role 'user'
     const editProfileBtn = document.getElementById('editProfileBtn');
@@ -193,6 +237,133 @@ function displayProfile(user) {
             editProfileBtn.style.display = 'none';
         } else {
             editProfileBtn.style.display = 'block';
+        }
+    }
+
+    const changePinBtn = document.getElementById('changePinBtn');
+    const pinRole = String(effectiveRole).toLowerCase();
+    if (changePinBtn) {
+        if (pinRole === 'approver' || pinRole === 'manager') {
+            changePinBtn.style.display = 'block';
+            currentPinType = pinRole;
+        } else {
+            changePinBtn.style.display = 'none';
+            currentPinType = null;
+        }
+    }
+}
+
+function openPinModal() {
+    if (!currentPinType) {
+        alert('Konfigurasi PIN hanya tersedia untuk role approver/manager.');
+        return;
+    }
+    const modal = document.getElementById('pinModal');
+    const title = document.getElementById('pinModalTitle');
+    const form = document.getElementById('pinForm');
+    if (!modal || !form) return;
+    if (title) {
+        title.textContent = currentPinType === 'manager' ? 'Konfigurasi PIN Manager' : 'Konfigurasi PIN Approver';
+    }
+    form.reset();
+    hidePinMessages();
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePinModal() {
+    const modal = document.getElementById('pinModal');
+    const form = document.getElementById('pinForm');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = 'auto';
+    }
+    if (form) form.reset();
+    hidePinMessages();
+}
+
+function hidePinMessages() {
+    const err = document.getElementById('pinError');
+    const ok = document.getElementById('pinSuccess');
+    if (err) err.style.display = 'none';
+    if (ok) ok.style.display = 'none';
+}
+
+function showPinError(message) {
+    const err = document.getElementById('pinError');
+    const ok = document.getElementById('pinSuccess');
+    if (err) {
+        err.textContent = message;
+        err.style.display = 'block';
+    }
+    if (ok) ok.style.display = 'none';
+}
+
+function showPinSuccess(message) {
+    const err = document.getElementById('pinError');
+    const ok = document.getElementById('pinSuccess');
+    if (ok) {
+        ok.textContent = message;
+        ok.style.display = 'block';
+    }
+    if (err) err.style.display = 'none';
+}
+
+async function handlePinChange(e) {
+    e.preventDefault();
+    hidePinMessages();
+    if (!currentPinType) {
+        showPinError('Role Anda tidak memiliki akses konfigurasi PIN.');
+        return;
+    }
+    const newPin = (document.getElementById('newPin')?.value || '').trim();
+    const confirmPin = (document.getElementById('confirmPin')?.value || '').trim();
+    const submitBtn = document.getElementById('submitPinBtn');
+
+    if (!/^\d{4}$/.test(newPin)) {
+        showPinError('PIN harus 4 digit angka.');
+        return;
+    }
+    if (newPin !== confirmPin) {
+        showPinError('Konfirmasi PIN tidak sama.');
+        return;
+    }
+
+    try {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.querySelector('span').textContent = 'Menyimpan...';
+        }
+        const token = getAuthToken();
+        if (!token) throw new Error('Token tidak ditemukan');
+
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(fullUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Auth-Token': token
+            },
+            body: new URLSearchParams({
+                action: 'setApprovalPin',
+                pin_type: currentPinType,
+                pin: newPin
+            }).toString()
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Gagal menyimpan PIN');
+        }
+        showPinSuccess('PIN berhasil diperbarui.');
+        setTimeout(() => closePinModal(), 1200);
+    } catch (error) {
+        showPinError(error.message || 'Terjadi kesalahan saat menyimpan PIN');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.querySelector('span').textContent = 'Simpan PIN';
         }
     }
 }

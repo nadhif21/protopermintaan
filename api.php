@@ -2,10 +2,15 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
+date_default_timezone_set('UTC');
 
 ob_start();
 
 require_once 'config.php';
+$mailConfigPath = __DIR__ . '/config/mail.php';
+if (file_exists($mailConfigPath)) {
+    require_once $mailConfigPath;
+}
 
 function convertToMySQLDateTime($dateString) {
     if (empty($dateString) || trim($dateString) === '') {
@@ -55,6 +60,21 @@ function convertToMySQLDateTime($dateString) {
     return null;
 }
 
+function normalizeDateTimeForClient($dateString) {
+    if (empty($dateString) || trim($dateString) === '') {
+        return '';
+    }
+    $value = trim((string)$dateString);
+    $value = str_replace(' ', 'T', $value);
+    // Remove milliseconds
+    $value = preg_replace('/\.\d+/', '', $value);
+    // Ensure timezone UTC suffix exists for consistent client conversion to local timezone
+    if (!preg_match('/(Z|[+-]\d{2}:\d{2})$/', $value)) {
+        $value .= 'Z';
+    }
+    return $value;
+}
+
 // Handle CORS preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     header('Access-Control-Allow-Origin: *');
@@ -71,6 +91,9 @@ $_REQUEST = array_merge($_GET, $_POST);
 
 try {
     $conn = getDBConnection();
+    if ($conn) {
+        $conn->query("SET time_zone = '+00:00'");
+    }
     
     switch ($action) {
         case 'login':
@@ -105,6 +128,12 @@ try {
             break;
         case 'register':
             handleRegister($conn);
+            break;
+        case 'requestRegisterOtp':
+            handleRequestRegisterOtp($conn);
+            break;
+        case 'verifyRegisterOtp':
+            handleVerifyRegisterOtp($conn);
             break;
         case 'listRegistrations':
             handleListRegistrations($conn);
@@ -202,6 +231,9 @@ try {
         case 'getAdminForWhatsApp':
             handleGetAdminForWhatsApp($conn);
             break;
+        case 'getPublicAdminForWhatsApp':
+            handleGetPublicAdminForWhatsApp($conn);
+            break;
             
         case 'createApprover':
             handleCreateApprover($conn);
@@ -229,6 +261,15 @@ try {
             
         case 'changePassword':
             handleChangePassword($conn);
+            break;
+        case 'requestForgotPasswordOtp':
+            handleRequestForgotPasswordOtp($conn);
+            break;
+        case 'verifyForgotPasswordOtp':
+            handleVerifyForgotPasswordOtp($conn);
+            break;
+        case 'resetForgotPassword':
+            handleResetForgotPassword($conn);
             break;
             
         case 'updateProfile':
@@ -435,7 +476,12 @@ function handleLogin($conn) {
     $hasPasswordColumn = $checkPasswordColumn && $checkPasswordColumn->num_rows > 0;
     
     // Build SELECT columns
+    $checkApproverTypeColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'approver_type'");
+    $hasApproverTypeColumn = $checkApproverTypeColumn && $checkApproverTypeColumn->num_rows > 0;
     $selectColumns = "`id`, `username`, `name`, `role`, `email`, `password_hash`";
+    if ($hasApproverTypeColumn) {
+        $selectColumns .= ", `approver_type`";
+    }
     if ($hasPasswordColumn) {
         $selectColumns .= ", `password`";
     }
@@ -539,7 +585,8 @@ function handleLogin($conn) {
             'id' => $userId,
             'username' => $user['username'],
             'name' => $user['name'],
-            'role' => $user['role']
+            'role' => $user['role'],
+            'approverType' => $user['approver_type'] ?? ''
         ]
     ]);
 }
@@ -549,8 +596,13 @@ function handleMe($conn) {
     
     // Get full user data including npk, email, nomor_telepon, unit_kerja
     $userId = intval($session['user_id']);
-    $sql = "SELECT `id`, `username`, `name`, `role`, `npk`, `email`, `nomor_telepon`, `unit_kerja` 
-            FROM `users` WHERE `id` = ? LIMIT 1";
+    $checkApproverTypeColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'approver_type'");
+    $hasApproverTypeColumn = $checkApproverTypeColumn && $checkApproverTypeColumn->num_rows > 0;
+    $selectColumns = "`id`, `username`, `name`, `role`, `npk`, `email`, `nomor_telepon`, `unit_kerja`";
+    if ($hasApproverTypeColumn) {
+        $selectColumns .= ", `approver_type`";
+    }
+    $sql = "SELECT $selectColumns FROM `users` WHERE `id` = ? LIMIT 1";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         throw new Exception("Prepare error: " . $conn->error);
@@ -589,6 +641,7 @@ function handleMe($conn) {
             'username' => $user['username'],
             'name' => $user['name'],
             'role' => $user['role'],
+            'approverType' => isset($user['approver_type']) && $user['approver_type'] !== null ? trim($user['approver_type']) : '',
             'npk' => $npk,
             'email' => $email,
             'nomorTelepon' => $nomorTelepon,
@@ -685,6 +738,436 @@ function handleChangePassword($conn) {
     auditLog($conn, $userId, 'change_password', 'user', ['success' => true]);
     
     sendJSONResponse(true, ['message' => 'Password berhasil diubah']);
+}
+
+function ensurePasswordResetSchema($conn) {
+    $checkTable = $conn->query("SHOW TABLES LIKE 'password_resets'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        $createSql = "CREATE TABLE `password_resets` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `email` VARCHAR(255) NOT NULL,
+            `otp` VARCHAR(10) NOT NULL,
+            `expired_at` DATETIME NOT NULL,
+            `attempt_count` INT NOT NULL DEFAULT 0,
+            `is_used` TINYINT(1) NOT NULL DEFAULT 0,
+            `ip_address` VARCHAR(45) NULL,
+            `otp_verified_at` DATETIME NULL,
+            `used_at` DATETIME NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_password_resets_email` (`email`),
+            INDEX `idx_password_resets_created_at` (`created_at`),
+            INDEX `idx_password_resets_ip` (`ip_address`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        if (!$conn->query($createSql)) {
+            throw new Exception("Gagal membuat tabel password_resets: " . $conn->error);
+        }
+        return;
+    }
+
+    $requiredColumns = [
+        "attempt_count" => "ALTER TABLE `password_resets` ADD COLUMN `attempt_count` INT NOT NULL DEFAULT 0 AFTER `expired_at`",
+        "is_used" => "ALTER TABLE `password_resets` ADD COLUMN `is_used` TINYINT(1) NOT NULL DEFAULT 0 AFTER `attempt_count`",
+        "ip_address" => "ALTER TABLE `password_resets` ADD COLUMN `ip_address` VARCHAR(45) NULL AFTER `is_used`",
+        "otp_verified_at" => "ALTER TABLE `password_resets` ADD COLUMN `otp_verified_at` DATETIME NULL AFTER `ip_address`",
+        "used_at" => "ALTER TABLE `password_resets` ADD COLUMN `used_at` DATETIME NULL AFTER `otp_verified_at`",
+        "updated_at" => "ALTER TABLE `password_resets` ADD COLUMN `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`"
+    ];
+
+    foreach ($requiredColumns as $column => $ddl) {
+        $checkCol = $conn->query("SHOW COLUMNS FROM `password_resets` LIKE '$column'");
+        if (!$checkCol || $checkCol->num_rows === 0) {
+            $conn->query($ddl);
+        }
+    }
+}
+
+function getLatestPasswordResetByEmail($conn, $email) {
+    $sql = "SELECT * FROM `password_resets` WHERE `email` = ? ORDER BY `id` DESC LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('s', $email);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function sendForgotPasswordOtpEmail($email, $otp, $expiryMinutes = 5) {
+    $subject = "Kode OTP Reset Password";
+    $textBody = "Halo,\n\nKode OTP reset password Anda adalah: $otp\n\nKode berlaku selama $expiryMinutes menit dan hanya dapat digunakan satu kali.\nJika Anda tidak meminta reset password, abaikan email ini.\n";
+    $htmlBody = "<p>Halo,</p><p>Kode OTP reset password Anda adalah: <strong>$otp</strong></p><p>Kode berlaku selama <strong>$expiryMinutes menit</strong> dan hanya dapat digunakan satu kali.</p><p>Jika Anda tidak meminta reset password, abaikan email ini.</p>";
+
+    $result = sendSystemEmail($email, $subject, $textBody, $htmlBody);
+    if (!$result['success']) {
+        error_log("SMTP forgot password OTP send failed for {$email}: " . ($result['error'] ?? 'unknown'));
+        throw new Exception("Gagal mengirim OTP. Silakan coba lagi nanti.");
+    }
+}
+
+function getMailConfig() {
+    if (function_exists('loadMailConfig')) {
+        return loadMailConfig();
+    }
+    return [
+        'host' => getenv('MAIL_HOST') ?: 'smtp.gmail.com',
+        'port' => intval(getenv('MAIL_PORT') ?: 587),
+        'encryption' => getenv('MAIL_ENCRYPTION') ?: 'tls',
+        'smtp_auth' => true,
+        'username' => getenv('MAIL_USERNAME') ?: '',
+        'password' => getenv('MAIL_PASSWORD') ?: '',
+        'from_email' => getenv('MAIL_FROM_EMAIL') ?: '',
+        'from_name' => getenv('MAIL_FROM_NAME') ?: 'Permintaan DOF',
+        'reply_to' => getenv('MAIL_REPLY_TO') ?: '',
+        'debug' => intval(getenv('MAIL_SMTP_DEBUG') ?: 0)
+    ];
+}
+
+function ensurePHPMailerLoaded() {
+    if (class_exists('\PHPMailer\PHPMailer\PHPMailer')) {
+        return true;
+    }
+
+    $autoload = __DIR__ . '/vendor/autoload.php';
+    if (file_exists($autoload)) {
+        require_once $autoload;
+        if (class_exists('\PHPMailer\PHPMailer\PHPMailer')) {
+            return true;
+        }
+    }
+
+    $manualBase = __DIR__ . '/phpmailer/src/';
+    $manualFiles = ['Exception.php', 'PHPMailer.php', 'SMTP.php'];
+    $allExist = true;
+    foreach ($manualFiles as $file) {
+        if (!file_exists($manualBase . $file)) {
+            $allExist = false;
+            break;
+        }
+    }
+    if ($allExist) {
+        require_once $manualBase . 'Exception.php';
+        require_once $manualBase . 'PHPMailer.php';
+        require_once $manualBase . 'SMTP.php';
+    }
+
+    return class_exists('\PHPMailer\PHPMailer\PHPMailer');
+}
+
+function sendSystemEmail($toEmail, $subject, $textBody, $htmlBody = null) {
+    try {
+        if (!ensurePHPMailerLoaded()) {
+            return ['success' => false, 'error' => 'PHPMailer tidak ditemukan'];
+        }
+
+        $cfg = getMailConfig();
+        if (empty($cfg['username']) || empty($cfg['password']) || empty($cfg['from_email'])) {
+            return ['success' => false, 'error' => 'Konfigurasi SMTP belum lengkap'];
+        }
+
+        $mailerClass = 'PHPMailer\\PHPMailer\\PHPMailer';
+        $mail = new $mailerClass(true);
+        $mail->isSMTP();
+        $mail->Host = $cfg['host'];
+        $mail->Port = intval($cfg['port']);
+        $mail->SMTPAuth = !empty($cfg['smtp_auth']);
+        $mail->Username = $cfg['username'];
+        $mail->Password = $cfg['password'];
+        $mail->SMTPSecure = ($cfg['encryption'] === 'ssl') ? 'ssl' : 'tls';
+        $mail->CharSet = 'UTF-8';
+        $mail->Timeout = 20;
+        $mail->SMTPDebug = intval($cfg['debug']);
+        if ($mail->SMTPDebug > 0) {
+            $mail->Debugoutput = function ($str, $level) {
+                error_log("SMTP Debug [$level]: $str");
+            };
+        }
+
+        $mail->setFrom($cfg['from_email'], $cfg['from_name'] ?: 'Permintaan DOF');
+        if (!empty($cfg['reply_to'])) {
+            $mail->addReplyTo($cfg['reply_to']);
+        }
+        $mail->addAddress($toEmail);
+        $mail->Subject = $subject;
+
+        if ($htmlBody !== null && $htmlBody !== '') {
+            $mail->isHTML(true);
+            $mail->Body = $htmlBody;
+            $mail->AltBody = $textBody;
+        } else {
+            $mail->isHTML(false);
+            $mail->Body = $textBody;
+        }
+
+        $mail->send();
+        return ['success' => true];
+    } catch (\Throwable $e) {
+        error_log("sendSystemEmail error: " . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
+function handleRequestForgotPasswordOtp($conn) {
+    ensurePasswordResetSchema($conn);
+
+    $email = strtolower(trim(getRequestParam('email', '')));
+    if ($email === '') {
+        throw new Exception("Email wajib diisi.");
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new Exception("Format email tidak valid.");
+    }
+
+    $userSql = "SELECT `id`, `email`, `is_active` FROM `users` WHERE `email` = ? LIMIT 1";
+    $userStmt = $conn->prepare($userSql);
+    if (!$userStmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $userStmt->bind_param('s', $email);
+    $userStmt->execute();
+    $user = $userStmt->get_result()->fetch_assoc();
+    $userStmt->close();
+
+    if (!$user) {
+        throw new Exception("Email tidak terdaftar.");
+    }
+    if (isset($user['is_active']) && intval($user['is_active']) !== 1) {
+        throw new Exception("Akun nonaktif.");
+    }
+
+    $clientIp = getClientIp() ?? '';
+    $dailyLimit = 150;
+    $dailySql = "SELECT COUNT(*) AS total FROM `password_resets` WHERE DATE(`created_at`) = UTC_DATE()";
+    $dailyResult = $conn->query($dailySql);
+    $dailyCount = 0;
+    if ($dailyResult) {
+        $dailyRow = $dailyResult->fetch_assoc();
+        $dailyCount = intval($dailyRow['total'] ?? 0);
+    }
+    if ($dailyCount >= $dailyLimit) {
+        throw new Exception("Sistem sedang sibuk, coba lagi nanti.");
+    }
+
+    if ($clientIp !== '') {
+        $ipHourlyLimit = 20;
+        $ipSql = "SELECT COUNT(*) AS total FROM `password_resets` WHERE `ip_address` = ? AND `created_at` >= (UTC_TIMESTAMP() - INTERVAL 1 HOUR)";
+        $ipStmt = $conn->prepare($ipSql);
+        if ($ipStmt) {
+            $ipStmt->bind_param('s', $clientIp);
+            $ipStmt->execute();
+            $ipRow = $ipStmt->get_result()->fetch_assoc();
+            $ipStmt->close();
+            $ipCount = intval($ipRow['total'] ?? 0);
+            if ($ipCount >= $ipHourlyLimit) {
+                throw new Exception("Terlalu banyak permintaan dari jaringan Anda. Coba lagi nanti.");
+            }
+        }
+    }
+
+    $latest = getLatestPasswordResetByEmail($conn, $email);
+    if ($latest) {
+        $lastCreatedAt = strtotime($latest['created_at']);
+        if ($lastCreatedAt !== false) {
+            $elapsed = time() - $lastCreatedAt;
+            if ($elapsed < 60) {
+                throw new Exception("Silakan tunggu sebelum meminta OTP kembali");
+            }
+        }
+    }
+
+    $otp = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $expiredAt = gmdate('Y-m-d H:i:s', time() + 300);
+
+    sendForgotPasswordOtpEmail($email, $otp, 5);
+
+    $insertSql = "INSERT INTO `password_resets` (`email`, `otp`, `expired_at`, `attempt_count`, `is_used`, `ip_address`) VALUES (?, ?, ?, 0, 0, ?)";
+    $insertStmt = $conn->prepare($insertSql);
+    if (!$insertStmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $insertStmt->bind_param('ssss', $email, $otp, $expiredAt, $clientIp);
+    if (!$insertStmt->execute()) {
+        $err = $insertStmt->error;
+        $insertStmt->close();
+        throw new Exception("Gagal menyimpan OTP: " . $err);
+    }
+    $resetId = intval($insertStmt->insert_id);
+    $insertStmt->close();
+
+    sendJSONResponse(true, [
+        'message' => 'OTP berhasil dikirim ke email.',
+        'resetId' => $resetId,
+        'cooldownSeconds' => 60,
+        'expiresInSeconds' => 300
+    ]);
+}
+
+function handleVerifyForgotPasswordOtp($conn) {
+    ensurePasswordResetSchema($conn);
+
+    $email = strtolower(trim(getRequestParam('email', '')));
+    $otp = trim(getRequestParam('otp', ''));
+
+    if ($email === '' || $otp === '') {
+        throw new Exception("Email dan OTP wajib diisi.");
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new Exception("Format email tidak valid.");
+    }
+    if (!preg_match('/^\d{6}$/', $otp)) {
+        throw new Exception("OTP harus 6 digit angka.");
+    }
+
+    $latest = getLatestPasswordResetByEmail($conn, $email);
+    if (!$latest) {
+        throw new Exception("OTP tidak ditemukan. Silakan minta OTP baru.");
+    }
+
+    $attemptCount = intval($latest['attempt_count'] ?? 0);
+    if ($attemptCount >= 5) {
+        throw new Exception("Maksimal percobaan OTP tercapai. Silakan ulangi dari awal.");
+    }
+    if (intval($latest['is_used'] ?? 0) === 1) {
+        throw new Exception("OTP sudah digunakan. Silakan minta OTP baru.");
+    }
+
+    $expiredAtTs = strtotime($latest['expired_at']);
+    if ($expiredAtTs !== false && time() > $expiredAtTs) {
+        throw new Exception("OTP sudah kedaluwarsa. Silakan minta OTP baru.");
+    }
+
+    if (trim((string)$latest['otp']) !== $otp) {
+        $newAttempt = $attemptCount + 1;
+        $updateSql = "UPDATE `password_resets` SET `attempt_count` = ? WHERE `id` = ?";
+        $updateStmt = $conn->prepare($updateSql);
+        if ($updateStmt) {
+            $rowId = intval($latest['id']);
+            $updateStmt->bind_param('ii', $newAttempt, $rowId);
+            $updateStmt->execute();
+            $updateStmt->close();
+        }
+
+        if ($newAttempt >= 5) {
+            throw new Exception("Maksimal percobaan OTP tercapai. Silakan ulangi dari awal.");
+        }
+        throw new Exception("OTP tidak valid.");
+    }
+
+    $verifySql = "UPDATE `password_resets` SET `otp_verified_at` = UTC_TIMESTAMP() WHERE `id` = ?";
+    $verifyStmt = $conn->prepare($verifySql);
+    if ($verifyStmt) {
+        $rowId = intval($latest['id']);
+        $verifyStmt->bind_param('i', $rowId);
+        $verifyStmt->execute();
+        $verifyStmt->close();
+    }
+
+    sendJSONResponse(true, [
+        'message' => 'OTP valid.',
+        'verified' => true
+    ]);
+}
+
+function handleResetForgotPassword($conn) {
+    ensurePasswordResetSchema($conn);
+
+    $email = strtolower(trim(getRequestParam('email', '')));
+    $otp = trim(getRequestParam('otp', ''));
+    $newPassword = getRequestParam('newPassword', '');
+    $confirmPassword = getRequestParam('confirmPassword', '');
+
+    if ($email === '' || $otp === '' || $newPassword === '' || $confirmPassword === '') {
+        throw new Exception("Email, OTP, password baru, dan konfirmasi wajib diisi.");
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new Exception("Format email tidak valid.");
+    }
+    if (!preg_match('/^\d{6}$/', $otp)) {
+        throw new Exception("OTP harus 6 digit angka.");
+    }
+    if (strlen($newPassword) < 8) {
+        throw new Exception("Password baru minimal 8 karakter.");
+    }
+    if ($newPassword !== $confirmPassword) {
+        throw new Exception("Password dan konfirmasi password tidak sama.");
+    }
+
+    $latest = getLatestPasswordResetByEmail($conn, $email);
+    if (!$latest) {
+        throw new Exception("OTP tidak ditemukan. Silakan minta OTP baru.");
+    }
+
+    if (intval($latest['attempt_count'] ?? 0) >= 5) {
+        throw new Exception("Maksimal percobaan OTP tercapai. Silakan ulangi dari awal.");
+    }
+    if (intval($latest['is_used'] ?? 0) === 1) {
+        throw new Exception("OTP sudah digunakan. Silakan minta OTP baru.");
+    }
+    if (trim((string)$latest['otp']) !== $otp) {
+        throw new Exception("OTP tidak valid.");
+    }
+
+    $expiredAtTs = strtotime($latest['expired_at']);
+    if ($expiredAtTs !== false && time() > $expiredAtTs) {
+        throw new Exception("OTP sudah kedaluwarsa. Silakan minta OTP baru.");
+    }
+    if (empty($latest['otp_verified_at'])) {
+        throw new Exception("OTP belum diverifikasi. Silakan verifikasi OTP terlebih dahulu.");
+    }
+
+    $userSql = "SELECT `id`, `is_active` FROM `users` WHERE `email` = ? LIMIT 1";
+    $userStmt = $conn->prepare($userSql);
+    if (!$userStmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $userStmt->bind_param('s', $email);
+    $userStmt->execute();
+    $user = $userStmt->get_result()->fetch_assoc();
+    $userStmt->close();
+
+    if (!$user) {
+        throw new Exception("Akun tidak ditemukan.");
+    }
+    if (isset($user['is_active']) && intval($user['is_active']) !== 1) {
+        throw new Exception("Akun nonaktif.");
+    }
+
+    $userId = intval($user['id']);
+    $newPasswordTrimmed = trim($newPassword);
+    $updateUserSql = "UPDATE `users` SET `password_hash` = ? WHERE `id` = ?";
+    $updateUserStmt = $conn->prepare($updateUserSql);
+    if (!$updateUserStmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $updateUserStmt->bind_param('si', $newPasswordTrimmed, $userId);
+    if (!$updateUserStmt->execute()) {
+        $err = $updateUserStmt->error;
+        $updateUserStmt->close();
+        throw new Exception("Gagal update password: " . $err);
+    }
+    $updateUserStmt->close();
+
+    $markUsedSql = "UPDATE `password_resets` SET `is_used` = 1, `used_at` = UTC_TIMESTAMP() WHERE `id` = ?";
+    $markUsedStmt = $conn->prepare($markUsedSql);
+    if ($markUsedStmt) {
+        $resetId = intval($latest['id']);
+        $markUsedStmt->bind_param('i', $resetId);
+        $markUsedStmt->execute();
+        $markUsedStmt->close();
+    }
+
+    $deleteSessionSql = "DELETE FROM `auth_sessions` WHERE `user_id` = ?";
+    $deleteSessionStmt = $conn->prepare($deleteSessionSql);
+    if ($deleteSessionStmt) {
+        $deleteSessionStmt->bind_param('i', $userId);
+        $deleteSessionStmt->execute();
+        $deleteSessionStmt->close();
+    }
+
+    auditLog($conn, $userId, 'forgot_password_reset', 'user', ['email' => $email]);
+    sendJSONResponse(true, ['message' => 'Password berhasil diubah. Silakan login kembali.']);
 }
 
 function handleUpdateProfile($conn) {
@@ -894,7 +1377,7 @@ function handleCreateUser($conn) {
     if (!preg_match('/^[a-zA-Z0-9._-]{3,50}$/', $username)) {
         throw new Exception("Username tidak valid. Gunakan 3-50 karakter: huruf/angka/._-");
     }
-    $allowedRoles = ['super_admin', 'admin', 'user'];
+    $allowedRoles = ['super_admin', 'admin', 'user', 'approver', 'manager'];
     if (!in_array($role, $allowedRoles, true)) {
         throw new Exception("Role tidak valid.");
     }
@@ -973,7 +1456,7 @@ function handleUpdateUser($conn) {
     }
 
     if ($role !== '') {
-        $allowedRoles = ['super_admin', 'admin', 'user'];
+        $allowedRoles = ['super_admin', 'admin', 'user', 'approver', 'manager'];
         if (!in_array($role, $allowedRoles, true)) {
             throw new Exception("Role tidak valid.");
         }
@@ -1280,14 +1763,172 @@ function handleGetAuditLogs($conn) {
     sendJSONResponse(true, $rows);
 }
 
+function ensureRegistrationOtpSchema($conn) {
+    $checkTable = $conn->query("SHOW TABLES LIKE 'registration_email_otps'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        $createSql = "CREATE TABLE `registration_email_otps` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `email` VARCHAR(255) NOT NULL,
+            `otp` VARCHAR(10) NOT NULL,
+            `expired_at` DATETIME NOT NULL,
+            `attempt_count` INT NOT NULL DEFAULT 0,
+            `is_verified` TINYINT(1) NOT NULL DEFAULT 0,
+            `is_used` TINYINT(1) NOT NULL DEFAULT 0,
+            `ip_address` VARCHAR(45) NULL,
+            `verified_at` DATETIME NULL,
+            `used_at` DATETIME NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX `idx_registration_otp_email` (`email`),
+            INDEX `idx_registration_otp_created_at` (`created_at`),
+            INDEX `idx_registration_otp_ip` (`ip_address`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        if (!$conn->query($createSql)) {
+            throw new Exception("Gagal membuat tabel registration_email_otps: " . $conn->error);
+        }
+    }
+}
+
+function getLatestRegistrationOtpByEmail($conn, $email) {
+    $sql = "SELECT * FROM `registration_email_otps` WHERE `email` = ? ORDER BY `id` DESC LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) throw new Exception("Prepare error: " . $conn->error);
+    $stmt->bind_param('s', $email);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function sendRegisterOtpEmail($email, $otp, $expiryMinutes = 5) {
+    $subject = "Kode OTP Verifikasi Registrasi";
+    $textBody = "Halo,\n\nKode OTP verifikasi email registrasi Anda adalah: $otp\n\nKode berlaku selama $expiryMinutes menit dan hanya dapat digunakan satu kali.\nJika Anda tidak melakukan pendaftaran, abaikan email ini.\n";
+    $htmlBody = "<p>Halo,</p><p>Kode OTP verifikasi email registrasi Anda adalah: <strong>$otp</strong></p><p>Kode berlaku selama <strong>$expiryMinutes menit</strong> dan hanya dapat digunakan satu kali.</p><p>Jika Anda tidak melakukan pendaftaran, abaikan email ini.</p>";
+    $result = sendSystemEmail($email, $subject, $textBody, $htmlBody);
+    if (!$result['success']) {
+        error_log("SMTP register OTP send failed for {$email}: " . ($result['error'] ?? 'unknown'));
+        throw new Exception("Gagal mengirim OTP verifikasi. Silakan coba lagi.");
+    }
+}
+
+function handleRequestRegisterOtp($conn) {
+    ensureRegistrationOtpSchema($conn);
+
+    $email = strtolower(trim(getRequestParam('email', '')));
+    if ($email === '') throw new Exception("Email wajib diisi.");
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new Exception("Format email tidak valid.");
+
+    $checkActiveEmail = $conn->prepare("SELECT `id` FROM `users` WHERE `email` = ? AND `is_active` = 1 LIMIT 1");
+    if ($checkActiveEmail) {
+        $checkActiveEmail->bind_param('s', $email);
+        $checkActiveEmail->execute();
+        $exists = $checkActiveEmail->get_result()->fetch_assoc();
+        $checkActiveEmail->close();
+        if ($exists) throw new Exception("Email sudah terdaftar pada akun aktif.");
+    }
+
+    $checkPendingEmail = $conn->prepare("SELECT `id` FROM `user_registrations` WHERE `email` = ? AND `status` = 'pending' LIMIT 1");
+    if ($checkPendingEmail) {
+        $checkPendingEmail->bind_param('s', $email);
+        $checkPendingEmail->execute();
+        $pending = $checkPendingEmail->get_result()->fetch_assoc();
+        $checkPendingEmail->close();
+        if ($pending) throw new Exception("Email sudah terdaftar dan sedang menunggu persetujuan.");
+    }
+
+    $clientIp = getClientIp() ?? '';
+    $dailyLimit = 150;
+    $dailyResult = $conn->query("SELECT COUNT(*) AS total FROM `registration_email_otps` WHERE DATE(`created_at`) = UTC_DATE()");
+    $dailyCount = $dailyResult ? intval(($dailyResult->fetch_assoc()['total'] ?? 0)) : 0;
+    if ($dailyCount >= $dailyLimit) throw new Exception("Sistem sedang sibuk, coba lagi nanti.");
+
+    if ($clientIp !== '') {
+        $ipSql = "SELECT COUNT(*) AS total FROM `registration_email_otps` WHERE `ip_address` = ? AND `created_at` >= (UTC_TIMESTAMP() - INTERVAL 1 HOUR)";
+        $ipStmt = $conn->prepare($ipSql);
+        if ($ipStmt) {
+            $ipStmt->bind_param('s', $clientIp);
+            $ipStmt->execute();
+            $ipCount = intval(($ipStmt->get_result()->fetch_assoc()['total'] ?? 0));
+            $ipStmt->close();
+            if ($ipCount >= 20) throw new Exception("Terlalu banyak permintaan dari jaringan Anda. Coba lagi nanti.");
+        }
+    }
+
+    $latest = getLatestRegistrationOtpByEmail($conn, $email);
+    if ($latest) {
+        $elapsed = time() - strtotime($latest['created_at']);
+        if ($elapsed < 60) throw new Exception("Silakan tunggu sebelum meminta OTP kembali");
+    }
+
+    $otp = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $expiredAt = gmdate('Y-m-d H:i:s', time() + 300);
+
+    sendRegisterOtpEmail($email, $otp, 5);
+
+    $insert = $conn->prepare("INSERT INTO `registration_email_otps` (`email`,`otp`,`expired_at`,`attempt_count`,`is_verified`,`is_used`,`ip_address`) VALUES (?,?,?,0,0,0,?)");
+    if (!$insert) throw new Exception("Prepare error: " . $conn->error);
+    $insert->bind_param('ssss', $email, $otp, $expiredAt, $clientIp);
+    if (!$insert->execute()) {
+        $err = $insert->error;
+        $insert->close();
+        throw new Exception("Gagal menyimpan OTP verifikasi: " . $err);
+    }
+    $insert->close();
+
+    sendJSONResponse(true, [
+        'message' => 'OTP verifikasi berhasil dikirim ke email.',
+        'cooldownSeconds' => 60,
+        'expiresInSeconds' => 300
+    ]);
+}
+
+function handleVerifyRegisterOtp($conn) {
+    ensureRegistrationOtpSchema($conn);
+    $email = strtolower(trim(getRequestParam('email', '')));
+    $otp = trim(getRequestParam('otp', ''));
+    if ($email === '' || $otp === '') throw new Exception("Email dan OTP wajib diisi.");
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new Exception("Format email tidak valid.");
+    if (!preg_match('/^\d{6}$/', $otp)) throw new Exception("OTP harus 6 digit angka.");
+
+    $latest = getLatestRegistrationOtpByEmail($conn, $email);
+    if (!$latest) throw new Exception("OTP tidak ditemukan. Silakan minta OTP baru.");
+    if (intval($latest['attempt_count']) >= 5) throw new Exception("Maksimal percobaan OTP tercapai. Silakan ulangi dari awal.");
+    if (intval($latest['is_used']) === 1) throw new Exception("OTP sudah digunakan. Silakan minta OTP baru.");
+    if (time() > strtotime($latest['expired_at'])) throw new Exception("OTP sudah kedaluwarsa. Silakan minta OTP baru.");
+
+    if (trim((string)$latest['otp']) !== $otp) {
+        $newAttempt = intval($latest['attempt_count']) + 1;
+        $up = $conn->prepare("UPDATE `registration_email_otps` SET `attempt_count` = ? WHERE `id` = ?");
+        if ($up) {
+            $rowId = intval($latest['id']);
+            $up->bind_param('ii', $newAttempt, $rowId);
+            $up->execute();
+            $up->close();
+        }
+        if ($newAttempt >= 5) throw new Exception("Maksimal percobaan OTP tercapai. Silakan ulangi dari awal.");
+        throw new Exception("OTP tidak valid.");
+    }
+
+    $rowId = intval($latest['id']);
+    $verify = $conn->prepare("UPDATE `registration_email_otps` SET `is_verified` = 1, `verified_at` = UTC_TIMESTAMP() WHERE `id` = ?");
+    if ($verify) {
+        $verify->bind_param('i', $rowId);
+        $verify->execute();
+        $verify->close();
+    }
+
+    sendJSONResponse(true, ['message' => 'OTP verifikasi valid.', 'verified' => true, 'verificationId' => $rowId]);
+}
+
 function handleRegister($conn) {
     // Tidak perlu auth untuk pendaftaran
     $nama = trim(getRequestParam('nama', ''));
     $npk = trim(getRequestParam('npk', ''));
     $nomor_telepon = trim(getRequestParam('nomor_telepon', ''));
-    $email = trim(getRequestParam('email', ''));
+    $email = strtolower(trim(getRequestParam('email', '')));
     $unit_kerja = trim(getRequestParam('unit_kerja', ''));
     $password = getRequestParam('password', '');
+    $registerOtpId = intval(getRequestParam('register_otp_id', 0));
 
     // Validation
     if ($nama === '' || $npk === '' || $nomor_telepon === '' || $email === '' || $unit_kerja === '' || $password === '') {
@@ -1307,6 +1948,35 @@ function handleRegister($conn) {
     // Validate phone number (should start with 08)
     if (!preg_match('/^08\d{8,11}$/', $nomor_telepon)) {
         throw new Exception("Format nomor telepon tidak valid. Gunakan format: 08xxxxxxxxxx");
+    }
+
+    ensureRegistrationOtpSchema($conn);
+    if ($registerOtpId <= 0) {
+        throw new Exception("Email belum diverifikasi. Silakan verifikasi OTP terlebih dahulu.");
+    }
+    $otpCheckSql = "SELECT `id`, `email`, `is_verified`, `is_used`, `expired_at` FROM `registration_email_otps` WHERE `id` = ? LIMIT 1";
+    $otpCheckStmt = $conn->prepare($otpCheckSql);
+    if (!$otpCheckStmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $otpCheckStmt->bind_param('i', $registerOtpId);
+    $otpCheckStmt->execute();
+    $otpRow = $otpCheckStmt->get_result()->fetch_assoc();
+    $otpCheckStmt->close();
+    if (!$otpRow) {
+        throw new Exception("Verifikasi email tidak ditemukan. Silakan verifikasi ulang.");
+    }
+    if (strtolower(trim((string)$otpRow['email'])) !== $email) {
+        throw new Exception("Verifikasi email tidak sesuai.");
+    }
+    if (intval($otpRow['is_verified']) !== 1) {
+        throw new Exception("Email belum diverifikasi. Silakan verifikasi OTP terlebih dahulu.");
+    }
+    if (intval($otpRow['is_used']) === 1) {
+        throw new Exception("OTP verifikasi sudah digunakan. Silakan minta OTP baru.");
+    }
+    if (time() > strtotime($otpRow['expired_at'])) {
+        throw new Exception("OTP verifikasi sudah kedaluwarsa. Silakan minta OTP baru.");
     }
 
     // Check if NPK already exists in ACTIVE users table (only if column exists)
@@ -1408,6 +2078,13 @@ function handleRegister($conn) {
     }
     $newId = $stmt->insert_id;
     $stmt->close();
+
+    $markOtpUsed = $conn->prepare("UPDATE `registration_email_otps` SET `is_used` = 1, `used_at` = UTC_TIMESTAMP() WHERE `id` = ?");
+    if ($markOtpUsed) {
+        $markOtpUsed->bind_param('i', $registerOtpId);
+        $markOtpUsed->execute();
+        $markOtpUsed->close();
+    }
 
     sendJSONResponse(true, ['message' => 'Pendaftaran berhasil. Menunggu persetujuan admin.', 'id' => $newId]);
 }
@@ -1816,12 +2493,10 @@ function handleGetData($conn) {
             }
             
             // Mapping menggunakan kolom yang jelas (dengan fallback ke col_a-col_j untuk backward compatibility)
-            // Format timestamp sebagai ISO 8601 dengan timezone UTC
+            // Format timestamp sebagai ISO 8601 lokal (tanpa konversi UTC)
             $timestampValue = $row['timestamp_data'] ?? $row['timestamp'] ?? $row['col_a'] ?? '';
             if ($timestampValue && $timestampValue !== '') {
-                if (!preg_match('/Z$|[+-]\d{2}:\d{2}$/', $timestampValue)) {
-                    $timestampValue = str_replace(' ', 'T', $timestampValue) . 'Z';
-                }
+                $timestampValue = normalizeDateTimeForClient($timestampValue);
             }
             $rowData['Timestamp'] = $timestampValue;
             $rowData['Nama Admin'] = $row['nama_admin'] ?? $row['col_b'] ?? '';
@@ -1835,12 +2510,10 @@ function handleGetData($conn) {
             $rowData['Email Address'] = $row['email_address'] ?? $row['col_j'] ?? '';
             $rowData['Status'] = $row['status'] ?? '';
             $rowData['Flag'] = $row['flag'] ?? '';
-            // Format Waktu Selesai sebagai ISO 8601 dengan timezone UTC
+            // Format Waktu Selesai sebagai ISO 8601 lokal (tanpa konversi UTC)
             $waktuSelesaiValue = $row['timestamp_selesai'] ?? '';
             if ($waktuSelesaiValue && $waktuSelesaiValue !== '') {
-                if (!preg_match('/Z$|[+-]\d{2}:\d{2}$/', $waktuSelesaiValue)) {
-                    $waktuSelesaiValue = str_replace(' ', 'T', $waktuSelesaiValue) . 'Z';
-                }
+                $waktuSelesaiValue = normalizeDateTimeForClient($waktuSelesaiValue);
             }
             $rowData['Waktu Selesai'] = $waktuSelesaiValue;
         } else {
@@ -1857,12 +2530,10 @@ function handleGetData($conn) {
             }
             
             // Mapping menggunakan kolom yang jelas (dengan fallback ke col_a-col_j untuk backward compatibility)
-            // Format timestamp sebagai ISO 8601 dengan timezone UTC
+            // Format timestamp sebagai ISO 8601 lokal (tanpa konversi UTC)
             $timestampValue = $row['timestamp_data'] ?? $row['timestamp'] ?? $row['col_a'] ?? '';
             if ($timestampValue && $timestampValue !== '') {
-                if (!preg_match('/Z$|[+-]\d{2}:\d{2}$/', $timestampValue)) {
-                    $timestampValue = str_replace(' ', 'T', $timestampValue) . 'Z';
-                }
+                $timestampValue = normalizeDateTimeForClient($timestampValue);
             }
             $rowData['Timestamp'] = $timestampValue;
             $rowData['NPK'] = $row['npk'] ?? $row['col_b'] ?? '';
@@ -1879,12 +2550,10 @@ function handleGetData($conn) {
             $rowData['Status'] = $row['status'] ?? '';
             $rowData['Flag'] = $row['flag'] ?? '';
             $rowData['Petugas'] = $row['petugas'] ?? '';
-            // Format Waktu Selesai sebagai ISO 8601 dengan timezone UTC
+            // Format Waktu Selesai sebagai ISO 8601 lokal (tanpa konversi UTC)
             $waktuSelesaiValue = $row['waktu_selesai'] ?? $row['timestamp_selesai'] ?? '';
             if ($waktuSelesaiValue && $waktuSelesaiValue !== '') {
-                if (!preg_match('/Z$|[+-]\d{2}:\d{2}$/', $waktuSelesaiValue)) {
-                    $waktuSelesaiValue = str_replace(' ', 'T', $waktuSelesaiValue) . 'Z';
-                }
+                $waktuSelesaiValue = normalizeDateTimeForClient($waktuSelesaiValue);
             }
             $rowData['Waktu Selesai'] = $waktuSelesaiValue;
             $rowData['Keterangan'] = $row['keterangan'] ?? '';
@@ -1920,34 +2589,9 @@ function handleBatchUpdate($conn) {
             throw new Exception("PIN harus berupa 4 digit angka");
         }
         
-        // Validasi PIN
-        $sql = "SELECT `pin` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
-        $result = $conn->query($sql);
-        
-        if (!$result) {
-            throw new Exception("Query error: " . $conn->error);
-        }
-        
-        if ($result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            $storedPin = trim($row['pin']);
-            
-            // Normalize stored PIN - remove all non-digit characters
-            $normalizedStored = preg_replace('/[^0-9]/', '', $storedPin);
-            
-            // Ensure both are exactly 4 digits (should already be, but just in case)
-            $normalizedInput = str_pad($normalizedInput, 4, '0', STR_PAD_LEFT);
-            $normalizedStored = str_pad($normalizedStored, 4, '0', STR_PAD_LEFT);
-            
-            // Debug logging
-            error_log("BatchUpdate PIN validation - Input: '$pin' (normalized: '$normalizedInput'), Stored: '$storedPin' (normalized: '$normalizedStored'), Match: " . ($normalizedInput === $normalizedStored ? 'YES' : 'NO'));
-            
-            // Compare normalized strings with strict validation
-            if ($normalizedInput !== $normalizedStored || strlen($normalizedInput) !== 4 || strlen($normalizedStored) !== 4 || !ctype_digit($normalizedInput) || !ctype_digit($normalizedStored)) {
-                throw new Exception("PIN tidak valid");
-            }
-        } else {
-            throw new Exception("PIN belum diatur oleh admin");
+        $validation = validateApprovalPinAndGetType($conn, $pin);
+        if (!$validation['valid']) {
+            throw new Exception("PIN tidak valid");
         }
     }
     
@@ -2436,145 +3080,178 @@ function handleInsertBackdate($conn) {
     sendJSONResponse(true, ['message' => 'Data backdate berhasil disimpan', 'rowNumber' => $maxRow]);
 }
 
+function ensureApprovalPinSchema($conn) {
+    $checkTable = $conn->query("SHOW TABLES LIKE 'approval_pin'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        $createSql = "CREATE TABLE `approval_pin` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `pin` VARCHAR(10) NOT NULL,
+            `pin_type` VARCHAR(20) NOT NULL DEFAULT 'approver',
+            `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        $conn->query($createSql);
+    } else {
+        $checkType = $conn->query("SHOW COLUMNS FROM `approval_pin` LIKE 'pin_type'");
+        if (!$checkType || $checkType->num_rows === 0) {
+            $conn->query("ALTER TABLE `approval_pin` ADD COLUMN `pin_type` VARCHAR(20) NOT NULL DEFAULT 'approver' AFTER `pin`");
+        }
+        $checkActive = $conn->query("SHOW COLUMNS FROM `approval_pin` LIKE 'is_active'");
+        if (!$checkActive || $checkActive->num_rows === 0) {
+            $conn->query("ALTER TABLE `approval_pin` ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `pin_type`");
+        }
+        $checkUpdated = $conn->query("SHOW COLUMNS FROM `approval_pin` LIKE 'updated_at'");
+        if (!$checkUpdated || $checkUpdated->num_rows === 0) {
+            $conn->query("ALTER TABLE `approval_pin` ADD COLUMN `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        }
+        $conn->query("UPDATE `approval_pin` SET `pin_type` = 'approver' WHERE `pin_type` IS NULL OR TRIM(`pin_type`) = ''");
+    }
+}
+
+function getApprovalPinByType($conn, $pinType = 'approver') {
+    ensureApprovalPinSchema($conn);
+    $pinType = ($pinType === 'manager') ? 'manager' : 'approver';
+    $sql = "SELECT `pin` FROM `approval_pin` WHERE `pin_type` = ? AND `is_active` = 1 ORDER BY `id` DESC LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return null;
+    $stmt->bind_param('s', $pinType);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+    if (!$row) return null;
+    $pinValue = preg_replace('/[^0-9]/', '', trim($row['pin'] ?? ''));
+    if (strlen($pinValue) !== 4 || !ctype_digit($pinValue)) return null;
+    return $pinValue;
+}
+
+function validateApprovalPinAndGetType($conn, $inputPin) {
+    ensureApprovalPinSchema($conn);
+    $normalizedInput = preg_replace('/[^0-9]/', '', trim((string)$inputPin));
+    if (strlen($normalizedInput) !== 4 || !ctype_digit($normalizedInput)) {
+        return ['valid' => false, 'pin_type' => null];
+    }
+    $sql = "SELECT `pin`, `pin_type` FROM `approval_pin` WHERE `is_active` = 1 ORDER BY `id` DESC";
+    $result = $conn->query($sql);
+    if (!$result) return ['valid' => false, 'pin_type' => null];
+    while ($row = $result->fetch_assoc()) {
+        $stored = preg_replace('/[^0-9]/', '', trim($row['pin'] ?? ''));
+        if (strlen($stored) === 4 && ctype_digit($stored) && $normalizedInput === $stored) {
+            $type = strtolower(trim($row['pin_type'] ?? 'approver'));
+            if ($type !== 'manager') $type = 'approver';
+            return ['valid' => true, 'pin_type' => $type];
+        }
+    }
+    return ['valid' => false, 'pin_type' => null];
+}
+
 // Handler untuk getApprovalPin (hanya super_admin)
 function handleGetApprovalPin($conn) {
     requireSuperAdmin($conn);
-    
-    $sql = "SELECT `pin` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
-    $result = $conn->query($sql);
-    
-    if (!$result) {
-        throw new Exception("Query error: " . $conn->error);
+    $approverPin = getApprovalPinByType($conn, 'approver') ?: '0000';
+    $managerPin = getApprovalPinByType($conn, 'manager') ?: '1111';
+    if (!getApprovalPinByType($conn, 'approver')) {
+        $conn->query("INSERT INTO `approval_pin` (`pin`,`pin_type`,`is_active`) VALUES ('0000','approver',1)");
     }
-    
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $pinValue = trim($row['pin']);
-        // Remove any non-digit characters
-        $pinValue = preg_replace('/[^0-9]/', '', $pinValue);
-        // Ensure it's exactly 4 digits
-        if (strlen($pinValue) === 4 && ctype_digit($pinValue)) {
-            sendJSONResponse(true, ['pin' => $pinValue]);
-        } else {
-            // If PIN is corrupted, return default
-            error_log("Warning: PIN in database is corrupted: '$pinValue' (length: " . strlen($pinValue) . ")");
-            sendJSONResponse(true, ['pin' => '0000']);
-        }
-    } else {
-        // Jika belum ada, buat default
-        $defaultPin = '0000';
-        $insertSql = "INSERT INTO `approval_pin` (`pin`) VALUES (?)";
-        $stmt = $conn->prepare($insertSql);
-        if ($stmt) {
-            $stmt->bind_param('s', $defaultPin);
-            $stmt->execute();
-            $stmt->close();
-        }
-        sendJSONResponse(true, ['pin' => $defaultPin]);
+    if (!getApprovalPinByType($conn, 'manager')) {
+        $conn->query("INSERT INTO `approval_pin` (`pin`,`pin_type`,`is_active`) VALUES ('1111','manager',1)");
     }
+    sendJSONResponse(true, [
+        'pin' => $approverPin,
+        'approver_pin' => $approverPin,
+        'manager_pin' => $managerPin
+    ]);
 }
 
 // Handler untuk setApprovalPin (hanya super_admin)
 function handleSetApprovalPin($conn) {
-    requireSuperAdmin($conn);
-    
-    $pin = trim(getRequestParam('pin', ''));
-    
-    // Normalize PIN - remove all non-digit characters
-    $pin = preg_replace('/[^0-9]/', '', $pin);
-    
-    if (empty($pin) || strlen($pin) !== 4 || !ctype_digit($pin)) {
-        throw new Exception("PIN harus berupa 4 digit angka");
-    }
-    
-    // Cek apakah sudah ada PIN
-    $checkSql = "SELECT `id` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
-    $checkResult = $conn->query($checkSql);
-    
-    if ($checkResult && $checkResult->num_rows > 0) {
-        // Update existing PIN - use WHERE clause instead of ORDER BY LIMIT
-        $row = $checkResult->fetch_assoc();
-        $pinId = intval($row['id']);
-        
-        $updateSql = "UPDATE `approval_pin` SET `pin` = ? WHERE `id` = ?";
-        $stmt = $conn->prepare($updateSql);
-        if (!$stmt) {
-            throw new Exception("Prepare error: " . $conn->error);
-        }
-        $stmt->bind_param('si', $pin, $pinId);
-        if (!$stmt->execute()) {
-            throw new Exception("Execute error: " . $stmt->error);
-        }
-        $stmt->close();
-    } else {
-        // Insert new PIN
-        $insertSql = "INSERT INTO `approval_pin` (`pin`) VALUES (?)";
-        $stmt = $conn->prepare($insertSql);
-        if (!$stmt) {
-            throw new Exception("Prepare error: " . $conn->error);
-        }
-        $stmt->bind_param('s', $pin);
-        if (!$stmt->execute()) {
-            throw new Exception("Execute error: " . $stmt->error);
-        }
-        $stmt->close();
-    }
-    
     $session = requireAuth($conn);
+    $sessionRole = strtolower(trim($session['role'] ?? ''));
+    ensureApprovalPinSchema($conn);
+    $pinType = strtolower(trim(getRequestParam('pin_type', '')));
+    $singlePin = preg_replace('/[^0-9]/', '', trim(getRequestParam('pin', '')));
+    $approverPin = preg_replace('/[^0-9]/', '', trim(getRequestParam('approver_pin', '')));
+    $managerPin = preg_replace('/[^0-9]/', '', trim(getRequestParam('manager_pin', '')));
+
+    $updates = [];
+    if ($sessionRole === 'super_admin') {
+        if ($pinType === 'approver' || $pinType === 'manager') {
+            if (strlen($singlePin) !== 4 || !ctype_digit($singlePin)) {
+                throw new Exception("PIN harus berupa 4 digit angka");
+            }
+            $updates[$pinType] = $singlePin;
+        } else {
+            if ($approverPin !== '') $updates['approver'] = $approverPin;
+            if ($managerPin !== '') $updates['manager'] = $managerPin;
+            if (empty($updates) && $singlePin !== '') $updates['approver'] = $singlePin; // backward compatibility
+            foreach ($updates as $t => $p) {
+                if (strlen($p) !== 4 || !ctype_digit($p)) {
+                    throw new Exception("PIN $t harus berupa 4 digit angka");
+                }
+            }
+        }
+    } else if ($sessionRole === 'approver' || $sessionRole === 'manager') {
+        $allowedType = $sessionRole;
+        if ($pinType !== $allowedType) {
+            throw new Exception("Akses ditolak: hanya boleh mengubah PIN $allowedType.");
+        }
+        if (strlen($singlePin) !== 4 || !ctype_digit($singlePin)) {
+            throw new Exception("PIN harus berupa 4 digit angka");
+        }
+        $updates[$allowedType] = $singlePin;
+    } else {
+        throw new Exception("Akses ditolak: role Anda tidak diizinkan mengubah PIN.");
+    }
+
+    if (empty($updates)) {
+        throw new Exception("Tidak ada PIN yang dikirim.");
+    }
+
+    foreach ($updates as $type => $valuePin) {
+        $checkSql = "SELECT `id` FROM `approval_pin` WHERE `pin_type` = ? ORDER BY `id` DESC LIMIT 1";
+        $stmt = $conn->prepare($checkSql);
+        $stmt->bind_param('s', $type);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result ? $result->fetch_assoc() : null;
+        $stmt->close();
+
+        if ($row && intval($row['id']) > 0) {
+            $pinId = intval($row['id']);
+            $updateSql = "UPDATE `approval_pin` SET `pin` = ?, `is_active` = 1, `updated_at` = NOW() WHERE `id` = ?";
+            $up = $conn->prepare($updateSql);
+            if (!$up) throw new Exception("Prepare error: " . $conn->error);
+            $up->bind_param('si', $valuePin, $pinId);
+            if (!$up->execute()) throw new Exception("Execute error: " . $up->error);
+            $up->close();
+        } else {
+            $insertSql = "INSERT INTO `approval_pin` (`pin`,`pin_type`,`is_active`) VALUES (?,?,1)";
+            $ins = $conn->prepare($insertSql);
+            if (!$ins) throw new Exception("Prepare error: " . $conn->error);
+            $ins->bind_param('ss', $valuePin, $type);
+            if (!$ins->execute()) throw new Exception("Execute error: " . $ins->error);
+            $ins->close();
+        }
+    }
+    
     auditLog($conn, intval($session['user_id']), 'set_approval_pin', 'system');
     
     // Return the updated PIN in response
-    sendJSONResponse(true, ['message' => 'PIN approval berhasil diubah', 'pin' => $pin]);
+    sendJSONResponse(true, [
+        'message' => 'PIN approval berhasil diubah',
+        'approver_pin' => getApprovalPinByType($conn, 'approver'),
+        'manager_pin' => getApprovalPinByType($conn, 'manager')
+    ]);
 }
 
 // Handler untuk validateApprovalPin (public, tidak perlu auth)
 function handleValidateApprovalPin($conn) {
     $pin = trim(getRequestParam('pin', ''));
-    
-    // Normalize input PIN - remove all non-digit characters first
-    $normalizedInput = preg_replace('/[^0-9]/', '', $pin);
-    
-    if (empty($normalizedInput) || strlen($normalizedInput) !== 4 || !ctype_digit($normalizedInput)) {
-        sendJSONResponse(false, ['valid' => false, 'message' => 'PIN harus berupa 4 digit angka']);
-        return;
-    }
-    
-    $sql = "SELECT `pin` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
-    $result = $conn->query($sql);
-    
-    if (!$result) {
-        sendJSONResponse(false, ['valid' => false, 'message' => 'Query error: ' . $conn->error]);
-        return;
-    }
-    
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $storedPin = trim($row['pin']);
-        
-        // Normalize stored PIN - remove all non-digit characters
-        $normalizedStored = preg_replace('/[^0-9]/', '', $storedPin);
-        
-        // Ensure both are exactly 4 digits
-        $normalizedInput = str_pad($normalizedInput, 4, '0', STR_PAD_LEFT);
-        $normalizedStored = str_pad($normalizedStored, 4, '0', STR_PAD_LEFT);
-        
-        // Debug logging - more detailed
-        $inputLen = strlen($normalizedInput);
-        $storedLen = strlen($normalizedStored);
-        $inputBytes = bin2hex($normalizedInput);
-        $storedBytes = bin2hex($normalizedStored);
-        $match = ($normalizedInput === $normalizedStored);
-        
-        error_log("PIN validation - Input: '$pin' (normalized: '$normalizedInput', len: $inputLen, bytes: $inputBytes), Stored: '$storedPin' (normalized: '$normalizedStored', len: $storedLen, bytes: $storedBytes), Match: " . ($match ? 'YES' : 'NO'));
-        
-        // Compare normalized strings with strict validation
-        if ($match && $inputLen === 4 && $storedLen === 4 && ctype_digit($normalizedInput) && ctype_digit($normalizedStored)) {
-            sendJSONResponse(true, ['valid' => true, 'message' => 'PIN valid', 'debug' => ['input' => $normalizedInput, 'stored' => $normalizedStored]]);
-        } else {
-            sendJSONResponse(false, ['valid' => false, 'message' => 'PIN tidak valid', 'debug' => ['input' => $normalizedInput, 'stored' => $normalizedStored, 'inputLen' => $inputLen, 'storedLen' => $storedLen, 'inputBytes' => $inputBytes, 'storedBytes' => $storedBytes]]);
-        }
+    $validation = validateApprovalPinAndGetType($conn, $pin);
+    if ($validation['valid']) {
+        sendJSONResponse(true, ['valid' => true, 'message' => 'PIN valid', 'pinType' => $validation['pin_type']]);
     } else {
-        sendJSONResponse(false, ['valid' => false, 'message' => 'PIN belum diatur']);
+        sendJSONResponse(false, ['valid' => false, 'message' => 'PIN tidak valid']);
     }
 }
 
@@ -3113,15 +3790,53 @@ function handleDeletePilihPermintaanOption($conn) {
 }
 
 // Handler untuk getPetugas
+function ensureApproverTypeColumn($conn) {
+    $checkColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'approver_type'");
+    if (!$checkColumn || $checkColumn->num_rows === 0) {
+        $conn->query("ALTER TABLE `users` ADD COLUMN `approver_type` VARCHAR(20) NULL DEFAULT NULL AFTER `role`");
+    }
+}
+
+function countActiveApprovers($conn, $excludeId = 0) {
+    $sql = "SELECT COUNT(*) AS total FROM `users` WHERE `role` = 'approver' AND `is_active` = 1";
+    if ($excludeId > 0) {
+        $sql .= " AND `id` != " . intval($excludeId);
+    }
+    $result = $conn->query($sql);
+    if (!$result) return 0;
+    $row = $result->fetch_assoc();
+    return intval($row['total'] ?? 0);
+}
+
 function handleGetApprovers($conn) {
-    $session = requireAuth($conn);
+    ensureApproverTypeColumn($conn);
+    // Untuk halaman approval via link WA, izinkan akses tanpa auth dengan for_approval=true
+    $forApproval = trim(getRequestParam('for_approval', '')) === 'true';
+    $session = null;
+    $includeInactive = false;
     
-    // Get users with role 'approver' (include inactive for super admin)
-    $includeInactive = ($session && isset($session['role']) && ($session['role'] === 'super_admin' || $session['role'] === 'admin'));
+    if ($forApproval) {
+        $includeInactive = false; // Untuk publik hanya boleh approver aktif
+    } else {
+        $session = requireAuth($conn);
+        // Get users with role 'approver' (include inactive for super admin/admin)
+        $includeInactive = ($session && isset($session['role']) && ($session['role'] === 'super_admin' || $session['role'] === 'admin'));
+    }
     
-    $sql = "SELECT `id`, `username`, `name`, `email`, `nomor_telepon`, `unit_kerja`, `role`, `is_active` 
-            FROM `users` 
-            WHERE `role` = 'approver'";
+    $checkNpkColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'npk'");
+    $hasNpkColumn = $checkNpkColumn && $checkNpkColumn->num_rows > 0;
+    $checkLastLoginColumn = $conn->query("SHOW COLUMNS FROM `users` LIKE 'last_login'");
+    $hasLastLoginColumn = $checkLastLoginColumn && $checkLastLoginColumn->num_rows > 0;
+
+    $selectColumns = "`id`, `username`, `name`, `email`, `nomor_telepon`, `unit_kerja`, `role`, `approver_type`, `is_active`";
+    if ($hasNpkColumn) {
+        $selectColumns .= ", `npk`";
+    }
+    if ($hasLastLoginColumn) {
+        $selectColumns .= ", `last_login`";
+    }
+
+    $sql = "SELECT $selectColumns FROM `users` WHERE `role` = 'approver'";
     
     if (!$includeInactive) {
         $sql .= " AND `is_active` = 1";
@@ -3140,11 +3855,14 @@ function handleGetApprovers($conn) {
             'id' => $row['id'],
             'username' => $row['username'],
             'name' => $row['name'],
+            'npk' => $row['npk'] ?? '',
             'email' => $row['email'] ?? '',
             'nomor_telepon' => $row['nomor_telepon'] ?? '',
             'unit_kerja' => $row['unit_kerja'] ?? '',
             'role' => $row['role'],
-            'is_active' => $row['is_active'] ?? 1
+            'approver_type' => ($row['approver_type'] ?? '') !== '' ? $row['approver_type'] : 'approver',
+            'is_active' => $row['is_active'] ?? 1,
+            'last_login' => $row['last_login'] ?? null
         ];
     }
     
@@ -3154,18 +3872,24 @@ function handleGetApprovers($conn) {
 // Handler untuk CRUD Approver
 function handleCreateApprover($conn) {
     $session = requireSuperAdmin($conn);
-    
-    // Check if there's already an active approver
-    $checkApprover = $conn->query("SELECT `id` FROM `users` WHERE `role` = 'approver' AND `is_active` = 1 LIMIT 1");
-    if ($checkApprover && $checkApprover->num_rows > 0) {
-        throw new Exception("Hanya boleh ada 1 approver aktif. Silakan edit atau nonaktifkan approver yang sudah ada terlebih dahulu.");
-    }
+    ensureApproverTypeColumn($conn);
     
     $name = trim(getRequestParam('name', ''));
     $username = trim(getRequestParam('username', ''));
     $nomorTelepon = trim(getRequestParam('nomor_telepon', ''));
     $email = trim(getRequestParam('email', ''));
+    $npk = trim(getRequestParam('npk', ''));
     $unitKerja = trim(getRequestParam('unit_kerja', ''));
+    $approverType = strtolower(trim(getRequestParam('approver_type', 'approver')));
+    if ($approverType !== 'approver' && $approverType !== 'manager') {
+        $approverType = 'approver';
+    }
+    // Maksimal 2 approver aktif
+    $activeCount = countActiveApprovers($conn);
+    if ($activeCount >= 2) {
+        throw new Exception("Maksimal 2 approver aktif (Approver + Manager). Nonaktifkan salah satu terlebih dahulu.");
+    }
+
     
     if ($name === '') {
         throw new Exception("Nama wajib diisi.");
@@ -3243,13 +3967,14 @@ function handleCreateApprover($conn) {
     // Create user with role 'approver'
     $password = 'Approver@25'; // Default password (plain text, no hashing)
     
-    $sql = "INSERT INTO `users` (`username`, `name`, `role`, `password_hash`, `is_active`";
-    $values = "VALUES (?, ?, 'approver', ?, 1";
-    $params = [$username, $name, $password];
-    $types = 'sss';
+    $sql = "INSERT INTO `users` (`username`, `name`, `role`, `approver_type`, `password_hash`, `is_active`";
+    $values = "VALUES (?, ?, 'approver', ?, ?, 1";
+    $params = [$username, $name, $approverType, $password];
+    $types = 'ssss';
     
     // Add optional fields
     $checkEmail = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
+    $checkNpk = $conn->query("SHOW COLUMNS FROM `users` LIKE 'npk'");
     $checkTel = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
     $checkUnit = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
     
@@ -3257,6 +3982,12 @@ function handleCreateApprover($conn) {
         $sql .= ", `email`";
         $values .= ", ?";
         $params[] = $email;
+        $types .= 's';
+    }
+    if ($checkNpk && $checkNpk->num_rows > 0 && $npk !== '') {
+        $sql .= ", `npk`";
+        $values .= ", ?";
+        $params[] = $npk;
         $types .= 's';
     }
     if ($checkTel && $checkTel->num_rows > 0 && $nomorTelepon !== '') {
@@ -3293,14 +4024,17 @@ function handleCreateApprover($conn) {
 
 function handleUpdateApprover($conn) {
     $session = requireSuperAdmin($conn);
+    ensureApproverTypeColumn($conn);
     
     $id = intval(getRequestParam('id', 0));
     $name = trim(getRequestParam('name', ''));
     $username = trim(getRequestParam('username', ''));
     $nomorTelepon = trim(getRequestParam('nomor_telepon', ''));
     $email = trim(getRequestParam('email', ''));
+    $npk = trim(getRequestParam('npk', ''));
     $unitKerja = trim(getRequestParam('unit_kerja', ''));
     $isActive = getRequestParam('is_active', null);
+    $approverType = strtolower(trim(getRequestParam('approver_type', '')));
     
     if ($id <= 0) {
         throw new Exception("ID approver tidak valid.");
@@ -3318,6 +4052,10 @@ function handleUpdateApprover($conn) {
             }
             $checkUser->close();
         }
+    }
+    
+    if ($approverType !== '' && $approverType !== 'approver' && $approverType !== 'manager') {
+        throw new Exception("Tipe approver tidak valid.");
     }
     
     $updates = [];
@@ -3338,18 +4076,36 @@ function handleUpdateApprover($conn) {
     
     if ($isActive !== null) {
         $isActiveVal = ($isActive === '1' || $isActive === 1 || $isActive === true || $isActive === 'true') ? 1 : 0;
+        if ($isActiveVal === 1) {
+            $activeCount = countActiveApprovers($conn, $id);
+            if ($activeCount >= 2) {
+                throw new Exception("Maksimal 2 approver aktif (Approver + Manager). Nonaktifkan salah satu terlebih dahulu.");
+            }
+        }
         $updates[] = "`is_active` = ?";
         $params[] = $isActiveVal;
         $types .= 'i';
     }
+
+    if ($approverType !== '') {
+        $updates[] = "`approver_type` = ?";
+        $params[] = $approverType;
+        $types .= 's';
+    }
     
     $checkEmail = $conn->query("SHOW COLUMNS FROM `users` LIKE 'email'");
+    $checkNpk = $conn->query("SHOW COLUMNS FROM `users` LIKE 'npk'");
     $checkTel = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
     $checkUnit = $conn->query("SHOW COLUMNS FROM `users` LIKE 'unit_kerja'");
     
     if ($checkEmail && $checkEmail->num_rows > 0 && $email !== '') {
         $updates[] = "`email` = ?";
         $params[] = $email;
+        $types .= 's';
+    }
+    if ($checkNpk && $checkNpk->num_rows > 0) {
+        $updates[] = "`npk` = ?";
+        $params[] = $npk;
         $types .= 's';
     }
     if ($checkTel && $checkTel->num_rows > 0) {
@@ -3496,6 +4252,38 @@ function handleGetAdminForWhatsApp($conn) {
         ];
         sendJSONResponse(true, $admin);
     }
+}
+
+function handleGetPublicAdminForWhatsApp($conn) {
+    // Endpoint publik untuk kebutuhan halaman register sebelum user login
+    $checkTel = $conn->query("SHOW COLUMNS FROM `users` LIKE 'nomor_telepon'");
+    $hasTelColumn = $checkTel && $checkTel->num_rows > 0;
+    if (!$hasTelColumn) {
+        throw new Exception("Kolom nomor telepon admin tidak tersedia.");
+    }
+
+    $sql = "SELECT `id`, `username`, `name`, `nomor_telepon`
+            FROM `users`
+            WHERE (`role` = 'admin' OR `role` = 'super_admin')
+            AND `is_active` = 1
+            AND `nomor_telepon` IS NOT NULL
+            AND TRIM(`nomor_telepon`) != ''
+            ORDER BY `name` ASC
+            LIMIT 1";
+
+    $result = $conn->query($sql);
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $nomorTelepon = trim((string)($row['nomor_telepon'] ?? ''));
+        sendJSONResponse(true, [
+            'id' => $row['id'],
+            'username' => $row['username'],
+            'name' => $row['name'],
+            'nomor_telepon' => $nomorTelepon
+        ]);
+    }
+
+    throw new Exception("Nomor telepon admin belum tersedia. Silakan hubungi admin sistem.");
 }
 
 function handleGetPetugas($conn) {
@@ -4791,20 +5579,9 @@ function handleApprovePermintaanBackdate($conn) {
             throw new Exception("PIN tidak valid");
         }
         
-        $sql = "SELECT `pin` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
-        $result = $conn->query($sql);
-        if ($result && $result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            $storedPin = trim($row['pin']);
-            $normalizedStored = preg_replace('/[^0-9]/', '', $storedPin);
-            $normalizedInput = str_pad($normalizedInput, 4, '0', STR_PAD_LEFT);
-            $normalizedStored = str_pad($normalizedStored, 4, '0', STR_PAD_LEFT);
-            
-            if ($normalizedInput !== $normalizedStored || strlen($normalizedInput) !== 4 || strlen($normalizedStored) !== 4) {
-                throw new Exception("PIN tidak valid");
-            }
-        } else {
-            throw new Exception("PIN tidak ditemukan");
+        $validation = validateApprovalPinAndGetType($conn, $pin);
+        if (!$validation['valid']) {
+            throw new Exception("PIN tidak valid");
         }
         // Use system user for PIN-based approval
         $userId = 0;
@@ -4932,20 +5709,9 @@ function handleRejectPermintaanBackdate($conn) {
             throw new Exception("PIN tidak valid");
         }
         
-        $sql = "SELECT `pin` FROM `approval_pin` ORDER BY `id` DESC LIMIT 1";
-        $result = $conn->query($sql);
-        if ($result && $result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            $storedPin = trim($row['pin']);
-            $normalizedStored = preg_replace('/[^0-9]/', '', $storedPin);
-            $normalizedInput = str_pad($normalizedInput, 4, '0', STR_PAD_LEFT);
-            $normalizedStored = str_pad($normalizedStored, 4, '0', STR_PAD_LEFT);
-            
-            if ($normalizedInput !== $normalizedStored || strlen($normalizedInput) !== 4 || strlen($normalizedStored) !== 4) {
-                throw new Exception("PIN tidak valid");
-            }
-        } else {
-            throw new Exception("PIN tidak ditemukan");
+        $validation = validateApprovalPinAndGetType($conn, $pin);
+        if (!$validation['valid']) {
+            throw new Exception("PIN tidak valid");
         }
         // Use system user for PIN-based rejection
         $userId = 0;

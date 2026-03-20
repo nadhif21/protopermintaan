@@ -6,6 +6,26 @@ let dashboardData = {
     recentActivity: []
 };
 
+function parseServerDate(input) {
+    if (!input) return null;
+    const raw = String(input).trim();
+    if (!raw) return null;
+    let normalized = raw.replace(' ', 'T');
+    if (!/(Z|[+-]\d{2}:\d{2})$/.test(normalized)) {
+        normalized += 'Z';
+    }
+    const d = new Date(normalized);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function normalizeDashboardStatus(rawStatus) {
+    const s = (rawStatus || '').trim().toLowerCase();
+    if (s === 'closed') return 'closed';
+    if (s === 'cancelled') return 'cancelled';
+    // Semua status selain Closed/Cancelled dianggap proses
+    return 'process';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     if (!checkAuth()) {
         return;
@@ -119,28 +139,29 @@ async function loadDashboardData() {
         
         dashboardData.total = allData.length;
         dashboardData.open = allData.filter(row => {
-            const status = (findColumnValue(row, 'Status') || row.Status || '').trim().toLowerCase();
-            return status === 'open';
+            const status = findColumnValue(row, 'Status') || row.Status || '';
+            return normalizeDashboardStatus(status) === 'process';
         }).length;
         dashboardData.closed = allData.filter(row => {
-            const status = (findColumnValue(row, 'Status') || row.Status || '').trim().toLowerCase();
-            return status === 'closed' || status === 'approved';
+            const status = findColumnValue(row, 'Status') || row.Status || '';
+            return normalizeDashboardStatus(status) === 'closed';
         }).length;
         dashboardData.cancelled = allData.filter(row => {
-            const status = (findColumnValue(row, 'Status') || row.Status || '').trim().toLowerCase();
-            return status === 'cancelled' || status === 'rejected';
+            const status = findColumnValue(row, 'Status') || row.Status || '';
+            return normalizeDashboardStatus(status) === 'cancelled';
         }).length;
 
         const sortedData = [...allData].sort((a, b) => {
             const timestampA = findColumnValue(a, 'Timestamp') || a.Timestamp || a.created_at || '';
             const timestampB = findColumnValue(b, 'Timestamp') || b.Timestamp || b.created_at || '';
-            const dateA = timestampA ? new Date(timestampA) : new Date(0);
-            const dateB = timestampB ? new Date(timestampB) : new Date(0);
+        const dateA = timestampA ? (parseServerDate(timestampA) || new Date(0)) : new Date(0);
+        const dateB = timestampB ? (parseServerDate(timestampB) || new Date(0)) : new Date(0);
             return dateB - dateA;
         });
 
         const recentData = sortedData.slice(0, 5).map((row, index) => {
             const status = (findColumnValue(row, 'Status') || row.Status || '').trim();
+            const normalizedStatus = normalizeDashboardStatus(status);
             const nama = findColumnValue(row, 'Nama Lengkap') || 
                         findColumnValue(row, 'NAMA LENGKAP') || 
                         findColumnValue(row, 'Nama') ||
@@ -160,6 +181,13 @@ async function loadDashboardData() {
                              row.created_at ||
                              findColumnValue(row, 'timestamp') || 
                              '';
+            const waktuSelesai = findColumnValue(row, 'Waktu Selesai') ||
+                               row['Waktu Selesai'] ||
+                               row.waktu_selesai ||
+                               '';
+            const activityTimestamp = (normalizedStatus === 'closed' || normalizedStatus === 'cancelled')
+                ? (waktuSelesai || timestamp)
+                : timestamp;
             const type = row.Type || (row.row_number ? 'backdate' : 'permintaan');
             const petugas = findColumnValue(row, 'Petugas') || 
                            row['Petugas'] || 
@@ -170,7 +198,7 @@ async function loadDashboardData() {
                 id: idPermintaan,
                 nama: nama,
                 status: status,
-                timestamp: timestamp,
+                timestamp: activityTimestamp,
                 type: type,
                 petugas: petugas
             };
@@ -225,36 +253,31 @@ function updateDashboard() {
 }
 
 function getStatusClass(status) {
-    const s = (status || '').trim().toLowerCase();
-    if (s === 'open') return 'status-open';
-    if (s === 'closed' || s === 'approved') return 'status-closed';
-    if (s === 'cancelled' || s === 'rejected') return 'status-cancelled';
-    if (s === 'in progress') return 'status-open';
-    return 'status-default';
+    const s = normalizeDashboardStatus(status);
+    if (s === 'process') return 'status-open';
+    if (s === 'closed') return 'status-closed';
+    if (s === 'cancelled') return 'status-cancelled';
+    return 'status-open';
 }
 
 function getStatusText(status) {
-    const s = (status || '').trim().toLowerCase();
-    if (s === 'open') return 'PENDING';
-    if (s === 'closed' || s === 'approved') return 'APPROVED';
-    if (s === 'cancelled' || s === 'rejected') return 'REJECTED';
-    if (s === 'in progress') return 'IN PROGRESS';
-    return 'UNKNOWN';
+    const s = normalizeDashboardStatus(status);
+    if (s === 'process') return 'PROCESS';
+    if (s === 'closed') return 'CLOSED';
+    if (s === 'cancelled') return 'CANCELLED';
+    return 'PROCESS';
 }
 
 function getStatusIcon(status) {
-    const s = (status || '').trim().toLowerCase();
-    if (s === 'open') {
+    const s = normalizeDashboardStatus(status);
+    if (s === 'process') {
         return '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="18" cy="18" r="1"/><path d="M18 15v3"/></svg>';
     }
-    if (s === 'closed' || s === 'approved') {
+    if (s === 'closed') {
         return '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
     }
-    if (s === 'cancelled' || s === 'rejected') {
+    if (s === 'cancelled') {
         return '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-    }
-    if (s === 'in progress') {
-        return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
     }
     return '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
 }
@@ -263,8 +286,8 @@ function formatTimeAgo(timestamp) {
     if (!timestamp) return 'Tidak diketahui';
     
     try {
-        const date = new Date(timestamp);
-        if (isNaN(date.getTime())) return 'Tidak diketahui';
+        const date = parseServerDate(timestamp);
+        if (!date || isNaN(date.getTime())) return 'Tidak diketahui';
         
         const now = new Date();
         const diff = now - date;

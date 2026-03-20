@@ -7,8 +7,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Persetujuan Permintaan</title>
-    <script src="../version.js?v=202603171600"></script>
-    <link rel="stylesheet" href="../layout.css?v=202603171600">
+    <script src="../version.js?v=202603201615"></script>
+    <link rel="stylesheet" href="../layout.css?v=202603201615">
     <style>
         body {
             background: #f5f7fa;
@@ -339,6 +339,23 @@
             position: sticky;
             bottom: 0;
             z-index: 10;
+        }
+
+        /* Sticky action khusus panel approval:
+           tetap sticky di bawah card, tidak fixed menimpa konten */
+        #actionButtons.sticky-bottom {
+            position: sticky;
+            left: auto;
+            transform: none;
+            width: 100%;
+            max-width: none;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+            z-index: 30;
+        }
+
+        /* Ruang ekstra agar konten terakhir tidak ketutup area aksi sticky */
+        .detail-info-wrapper {
+            padding-bottom: 84px;
         }
 
         .sticky-bottom {
@@ -681,6 +698,7 @@
             .detail-info-wrapper {
                 padding: 12px;
                 max-height: calc(100vh - 180px);
+                padding-bottom: 120px;
             }
 
             .detail-item {
@@ -761,6 +779,7 @@
 
             .detail-info-wrapper {
                 padding: 10px;
+                padding-bottom: 112px;
             }
 
             .action-buttons {
@@ -820,7 +839,6 @@
                         <div class="form-group">
                             <label for="editFlagSelect" style="display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 14px;">Flag</label>
                             <select id="editFlagSelect" style="width: 100%; padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: inherit;">
-                                <option value="">Pilih Flag</option>
                                 <option value="Hijau">Hijau</option>
                                 <option value="Kuning">Kuning</option>
                                 <option value="Merah">Merah</option>
@@ -829,13 +847,13 @@
                         <div class="form-group">
                             <label for="editPetugasSelect" style="display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 14px;">Petugas</label>
                             <select id="editPetugasSelect" style="width: 100%; padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: inherit;">
-                                <option value="">Pilih Petugas</option>
+                                <option value="">-</option>
                             </select>
                         </div>
                     </div>
                 </div>
             </div>
-            <div id="actionButtons" class="action-buttons" style="display: none;">
+            <div id="actionButtons" class="action-buttons sticky-bottom" style="display: none; flex-wrap: wrap;">
                 <button id="approveBtn" class="btn btn-approve">
                     <span>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -852,6 +870,14 @@
                         </svg>
                     </span>
                     <span>Tolak Permintaan</span>
+                </button>
+                <button id="hubungiManagerBtn" class="btn" style="display: none; flex: 1 1 100%; background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: white;">
+                    <span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                        </svg>
+                    </span>
+                    <span>Hubungi Manager (Flag Merah)</span>
                 </button>
             </div>
         </div>
@@ -950,7 +976,7 @@
             div.textContent = text;
             return div.innerHTML;
         }
-        
+
         function showStatus(message, type) {
             const statusMessage = document.getElementById('statusMessage');
             // Check if message contains HTML tags, if so use innerHTML, otherwise use textContent
@@ -973,7 +999,9 @@
             if (!timestamp) return '';
             
             try {
-                const date = new Date(timestamp);
+                let normalized = String(timestamp).trim().replace(' ', 'T');
+                if (!/(Z|[+-]\d{2}:\d{2})$/.test(normalized)) normalized += 'Z';
+                const date = new Date(normalized);
                 if (isNaN(date.getTime())) return timestamp;
                 
                 const day = String(date.getDate()).padStart(2, '0');
@@ -1111,9 +1139,13 @@
         }
         
         let validatedPin = null;
+        let validatedPinType = 'approver';
         let rowData = null;
         let rowNumber = null;
         let petugasNoWa = null;
+        let managerNoWa = null;
+        let managerName = '';
+        let isRealtimeSaving = false;
 
         function getPin() {
             const pin1 = document.getElementById('pin1').value;
@@ -1206,6 +1238,9 @@
                         }
                         
                         validatedPin = cleanPin;
+                        validatedPinType = (validationData.pinType || validateResult.pinType || 'approver').toString().toLowerCase() === 'manager'
+                            ? 'manager'
+                            : 'approver';
                         document.getElementById('pinCard').style.display = 'none';
                         document.getElementById('detailsCard').classList.add('show');
                         
@@ -1421,7 +1456,7 @@
                 url.searchParams.append('persetujuan', action === 'approve' ? 'Disetujui' : 'Ditolak');
                 url.searchParams.append('pin', pin);
                 
-                // Set waktu selesai untuk approve dan reject
+                // Set waktu selesai dalam UTC (source of truth)
                 const waktuSelesai = new Date().toISOString();
                 url.searchParams.append('waktuSelesai', waktuSelesai);
                 
@@ -1760,6 +1795,7 @@
                     statusMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
                 setupHubungiPetugasButton();
+                setupHubungiManagerButton();
                 
                 // Reset
                 pendingKeterangan = null;
@@ -1897,6 +1933,7 @@
                 document.getElementById('editSection').style.display = 'none';
                 document.getElementById('statusMessage').style.display = 'block';
                 setupHubungiPetugasButton();
+                setupHubungiManagerButton();
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -2026,6 +2063,7 @@
                         document.getElementById('editSection').style.display = 'none';
                         document.getElementById('statusMessage').style.display = 'block';
                         setupHubungiPetugasButton();
+                        setupHubungiManagerButton();
                         return;
                     } else if (persetujuan.toLowerCase().includes('ditolak') || persetujuan.toLowerCase().includes('rejected')) {
                         let message = 'Permintaan Sudah Ditolak';
@@ -2038,6 +2076,7 @@
                         document.getElementById('editSection').style.display = 'none';
                         document.getElementById('statusMessage').style.display = 'block';
                         setupHubungiPetugasButton();
+                        setupHubungiManagerButton();
                         return;
                     }
                 }
@@ -2046,8 +2085,13 @@
                 document.getElementById('actionButtons').style.display = 'flex';
                 document.getElementById('statusMessage').style.display = 'none';
                 
-                // Setup edit section
-                await setupEditSection(rowData);
+                // Manager: hanya boleh lihat detail + setujui/tolak (tanpa edit flag/petugas)
+                if (validatedPinType !== 'manager') {
+                    await setupEditSection(rowData);
+                } else {
+                    const editSection = document.getElementById('editSection');
+                    if (editSection) editSection.style.display = 'none';
+                }
                 
                 const approveBtn = document.getElementById('approveBtn');
                 const rejectBtn = document.getElementById('rejectBtn');
@@ -2146,6 +2190,8 @@
             
             if (currentFlag) {
                 flagSelect.value = currentFlag;
+            } else {
+                flagSelect.selectedIndex = 0;
             }
             
             // Set petugas by name (find matching option)
@@ -2161,6 +2207,16 @@
             
             // Show edit section
             editSection.style.display = 'block';
+
+            // Auto-save realtime saat user memilih flag/petugas
+            flagSelect.onchange = async () => {
+                await saveFlagAndPetugasIfChanged(true);
+            };
+            petugasSelect.onchange = async () => {
+                await saveFlagAndPetugasIfChanged(true);
+            };
+            
+            setupHubungiManagerButton();
         }
         
         // Setup button hubungi petugas
@@ -2205,15 +2261,113 @@
             // Show button
             hubungiPetugasSection.style.display = 'flex';
         }
+
+        async function loadManagerForFlagMerah() {
+            try {
+                const apiUrl = getApiUrl();
+                const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+                const fullUrl = window.location.origin + path;
+                const response = await fetch(`${fullUrl}?action=getApprovers&for_approval=true`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Gagal memuat data manager');
+                }
+                
+                const result = await response.json();
+                if (!result.success || !Array.isArray(result.data) || result.data.length === 0) {
+                    managerNoWa = null;
+                    managerName = '';
+                    return;
+                }
+                
+                const managerCandidate = result.data.find(a => (a.approver_type || '').toLowerCase() === 'manager')
+                    || result.data[0];
+                
+                managerNoWa = (managerCandidate.nomor_telepon || managerCandidate.no_wa || '').trim();
+                managerName = managerCandidate.name || managerCandidate.username || 'Manager';
+            } catch (error) {
+                console.error('Error loading manager:', error);
+                managerNoWa = null;
+                managerName = '';
+            }
+        }
+
+        function openWhatsAppManager() {
+            if (!managerNoWa) {
+                alert('Nomor WhatsApp manager belum tersedia. Silakan hubungi admin.');
+                return;
+            }
+            
+            let cleanPhone = managerNoWa.replace(/\D/g, '');
+            if (cleanPhone.startsWith('62')) {
+                // sudah format internasional
+            } else if (cleanPhone.startsWith('0')) {
+                cleanPhone = '62' + cleanPhone.substring(1);
+            } else if (cleanPhone.startsWith('8')) {
+                cleanPhone = '62' + cleanPhone;
+            } else {
+                cleanPhone = '62' + cleanPhone;
+            }
+            
+            const namaPeminta = (rowData && (rowData['Nama Lengkap'] || rowData['Nama'] || rowData.nama_lengkap || rowData.nama || '').trim()) || '-';
+            const jenisPermintaan = (rowData && (rowData['Pilih Permintaan'] || rowData['Jenis Permintaan'] || rowData.pilih_permintaan || rowData.jenis_permintaan || '').trim()) || '-';
+            const currentFlag = (rowData && (rowData.Flag || rowData.flag || '').trim()) || '-';
+            const reqId = String((rowData && (rowData['ID PERMINTAAN'] || rowData.id || rowNumber)) || rowNumber || '-').trim();
+            const approvalUrl = `${window.location.origin}${window.location.pathname}?rowId=${encodeURIComponent(rowNumber || reqId)}`;
+            
+            let message = `*Permintaan Tinjauan Manager (Flag Merah)*\n\n`;
+            message += `Halo ${managerName || 'Manager'},\n`;
+            message += `Mohon bantu tinjau permintaan berikut:\n\n`;
+            message += `ID Permintaan: ${reqId}\n`;
+            message += `Nama: ${namaPeminta}\n`;
+            message += `Jenis Permintaan: ${jenisPermintaan}\n`;
+            message += `Flag: ${currentFlag}\n\n`;
+            message += `Link approval:\n${approvalUrl}`;
+            
+            const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        async function setupHubungiManagerButton() {
+            const managerBtn = document.getElementById('hubungiManagerBtn');
+            if (!managerBtn) return;
+            
+            // Jika login pakai PIN manager, jangan tampilkan tombol hubungi manager
+            if (validatedPinType === 'manager') {
+                managerBtn.style.display = 'none';
+                return;
+            }
+            
+            const flag = (rowData && (rowData.Flag || rowData.flag || '').trim().toLowerCase()) || '';
+            if (flag !== 'merah') {
+                managerBtn.style.display = 'none';
+                return;
+            }
+            
+            await loadManagerForFlagMerah();
+            if (!managerNoWa) {
+                managerBtn.style.display = 'none';
+                return;
+            }
+            
+            managerBtn.onclick = () => openWhatsAppManager();
+            managerBtn.style.display = 'flex';
+        }
         
         // Auto-save flag & petugas hanya jika berubah (dipanggil saat approve/reject)
-        async function saveFlagAndPetugasIfChanged() {
+        async function saveFlagAndPetugasIfChanged(isRealtime = false) {
             const flagSelect = document.getElementById('editFlagSelect');
             const petugasSelect = document.getElementById('editPetugasSelect');
             
             if (!flagSelect || !petugasSelect || !rowNumber || !rowData) {
                 return;
             }
+            
+            if (isRealtimeSaving) return;
             
             const selectedFlag = flagSelect.value.trim();
             const selectedPetugasId = petugasSelect.value;
@@ -2233,6 +2387,7 @@
             }
             
             try {
+                isRealtimeSaving = true;
                 const apiUrl = getApiUrl();
                 const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
                 const fullUrl = window.location.origin + path;
@@ -2269,6 +2424,7 @@
                 if (flagChanged) {
                     rowData.Flag = selectedFlag;
                     rowData.flag = selectedFlag;
+                    setupHubungiManagerButton();
                 }
                 
                 if (petugasChanged) {
@@ -2306,12 +2462,18 @@
                     }
                 }
                 // Tidak perlu reload full. Detail akan direfresh setelah approve/reject.
+                if (isRealtime) {
+                    showStatus('Perubahan Flag/Petugas tersimpan otomatis.', 'success');
+                }
                 
             } catch (error) {
                 console.error('Error saving flag and petugas:', error);
                 throw new Error('Gagal menyimpan perubahan Flag/Petugas: ' + error.message);
+            } finally {
+                isRealtimeSaving = false;
             }
         }
     </script>
 </body>
 </html>
+

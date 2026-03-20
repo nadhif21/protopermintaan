@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Panel Admin - Permintaan DOF</title>
-    <script src="../version.js?v=202603171600"></script>
-    <link rel="stylesheet" href="../layout.css?v=202603171600">
-    <link rel="stylesheet" href="admin.css?v=202603171600">
-    <link rel="stylesheet" href="../icons.css?v=202603171600">
+    <script src="../version.js?v=202603201615"></script>
+    <link rel="stylesheet" href="../layout.css?v=202603201615">
+    <link rel="stylesheet" href="admin.css?v=202603201615">
+    <link rel="stylesheet" href="../icons.css?v=202603201615">
 </head>
 <body>
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -141,14 +141,26 @@
                 </div>
                 <div class="panel-content pin-content">
                     <div class="pin-display">
-                        <label class="pin-label">CURRENT SYSTEM PIN</label>
+                        <label class="pin-label">PIN APPROVER</label>
                         <div class="pin-input-wrapper">
-                            <input type="text" id="approvalPinInput" maxlength="4" pattern="[0-9]{4}" placeholder="0000" readonly class="pin-input" value="••••">
+                            <input type="text" id="approverPinInput" maxlength="4" pattern="[0-9]{4}" placeholder="0000" readonly class="pin-input" value="••••">
                             <span class="pin-status-badge">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
-                                Active PIN
+                                Active
+                            </span>
+                        </div>
+                    </div>
+                    <div class="pin-display" style="margin-top: 12px;">
+                        <label class="pin-label">PIN MANAGER</label>
+                        <div class="pin-input-wrapper">
+                            <input type="text" id="managerPinInput" maxlength="4" pattern="[0-9]{4}" placeholder="0000" readonly class="pin-input" value="••••">
+                            <span class="pin-status-badge">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Active
                             </span>
                         </div>
                     </div>
@@ -182,6 +194,8 @@
                             <tr>
                                 <th>NAMA</th>
                                 <th>USERNAME</th>
+                                <th>NPK</th>
+                                <th>TIPE</th>
                                 <th>NOMOR TELEPON</th>
                                 <th>EMAIL</th>
                                 <th>UNIT KERJA</th>
@@ -190,7 +204,7 @@
                             </tr>
                         </thead>
                         <tbody id="approversTbody">
-                            <tr><td colspan="7" class="loading">Memuat...</td></tr>
+                            <tr><td colspan="9" class="loading">Memuat...</td></tr>
                         </tbody>
                     </table>
                     <div class="admin-cards" id="approversCards"></div>
@@ -556,6 +570,8 @@
                     <select id="editRole" required>
                         <option value="user">User</option>
                         <option value="admin">Petugas</option>
+                        <option value="approver">Approver</option>
+                        <option value="manager">Manager</option>
                         <option value="super_admin">Admin</option>
                     </select>
                 </div>
@@ -614,6 +630,8 @@
                     <select id="newRole" required>
                         <option value="user">User</option>
                         <option value="admin">Petugas</option>
+                        <option value="approver">Approver</option>
+                        <option value="manager">Manager</option>
                         <option value="super_admin">Admin</option>
                     </select>
                 </div>
@@ -681,6 +699,17 @@
                 <div class="form-row">
                     <label>Username</label>
                     <input type="text" id="approverUsername" placeholder="username">
+                </div>
+                <div class="form-row">
+                    <label>NPK</label>
+                    <input type="text" id="approverNpk" placeholder="NPK">
+                </div>
+                <div class="form-row">
+                    <label>Tipe <span style="color: red;">*</span></label>
+                    <select id="approverType" required>
+                        <option value="approver">Approver</option>
+                        <option value="manager">Manager</option>
+                    </select>
                 </div>
                 <div class="form-row">
                     <label>Email</label>
@@ -853,9 +882,10 @@
         </div>
     </div>
 
-    <script src="../auth.js?v=202603171600"></script>
-    <script src="../sidebar.js?v=202603171600"></script>
-    <script src="admin.js?v=202603171600"></script>
+    <script src="../auth.js?v=202603201615"></script>
+    <script src="../sidebar.js?v=202603201615"></script>
+    <script src="admin.js?v=202603201615"></script>
 </body>
 </html>
+
 

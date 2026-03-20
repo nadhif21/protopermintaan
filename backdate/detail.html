@@ -7,8 +7,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Detail & Approval Permintaan Backdate</title>
-    <script src="../version.js?v=202603171600"></script>
-    <link rel="stylesheet" href="../layout.css?v=202603171600">
+    <script src="../version.js?v=202603201615"></script>
+    <link rel="stylesheet" href="../layout.css?v=202603201615">
     <style>
         body {
             background: #f5f7fa;
@@ -502,7 +502,7 @@ Mohon informasi progress terbaru. Terima kasih.`;
                 html += '<h3>Informasi Permintaan</h3>';
                 html += `<div class="detail-item"><label>Nomor Permintaan</label><div class="value">${permintaanData.row_number || '-'}</div></div>`;
                 html += `<div class="detail-item"><label>Status</label><div class="value">${getStatusBadge(permintaanData.status)}</div></div>`;
-                html += `<div class="detail-item"><label>Tanggal Dibuat</label><div class="value">${new Date(permintaanData.created_at).toLocaleString('id-ID')}</div></div>`;
+                html += `<div class="detail-item"><label>Tanggal Dibuat</label><div class="value">${formatServerDateTime(permintaanData.created_at)}</div></div>`;
                 html += '</div>';
                 
                 // Data Pemohon
@@ -1075,6 +1075,20 @@ Mohon informasi progress terbaru. Terima kasih.`;
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function parseServerDate(input) {
+            if (!input) return null;
+            let normalized = String(input).trim().replace(' ', 'T');
+            if (!/(Z|[+-]\d{2}:\d{2})$/.test(normalized)) normalized += 'Z';
+            const d = new Date(normalized);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        function formatServerDateTime(input) {
+            const d = parseServerDate(input);
+            if (!d) return '-';
+            return d.toLocaleString('id-ID');
+        }
         
         // Custom Alert & Confirm Functions
         function showAlert(message, type = 'info', title = null) {
@@ -1201,3 +1215,4 @@ Mohon informasi progress terbaru. Terima kasih.`;
     </script>
 </body>
 </html>
+

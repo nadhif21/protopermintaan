@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Profile - Permintaan DOF</title>
-    <script src="version.js?v=202603171600"></script>
-    <link rel="stylesheet" href="layout.css?v=202603171600">
-    <link rel="stylesheet" href="profile.css?v=202603171600">
-    <link rel="stylesheet" href="icons.css?v=202603171600">
+    <script src="version.js?v=202603201615"></script>
+    <link rel="stylesheet" href="layout.css?v=202603201615">
+    <link rel="stylesheet" href="profile.css?v=202603201615">
+    <link rel="stylesheet" href="icons.css?v=202603201615">
 </head>
 <body>
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -116,46 +116,44 @@
         <main class="main-content">
 
         <div class="profile-content">
-            <div class="profile-card">
-                <div class="profile-header">
-                    <div class="profile-avatar">
-                        <span class="avatar-icon">👤</span>
-                    </div>
+            <section class="profile-summary-card">
+                <div class="profile-avatar" id="profileSummaryAvatar">U</div>
+                <div class="profile-summary-meta">
                     <h2 id="profileName">Loading...</h2>
                     <p id="profileRole" class="profile-role">Loading...</p>
                 </div>
+            </section>
 
+            <section class="profile-card">
+                <div class="profile-card-title">Account Information</div>
                 <div class="profile-info">
                     <div class="info-item">
                         <label>Username</label>
                         <div class="info-value" id="profileUsername">-</div>
                     </div>
                     <div class="info-item">
-                        <label>NPK</label>
+                        <label>NPK / Employee ID</label>
                         <div class="info-value" id="profileNPK">-</div>
                     </div>
                     <div class="info-item">
-                        <label>Email</label>
+                        <label>Email Address</label>
                         <div class="info-value" id="profileEmail">-</div>
                     </div>
                     <div class="info-item">
-                        <label>Nomor Telepon</label>
+                        <label>Phone Number</label>
                         <div class="info-value" id="profilePhone">-</div>
                     </div>
                     <div class="info-item">
-                        <label>Unit Kerja</label>
+                        <label>Department</label>
                         <div class="info-value" id="profileUnitKerja">-</div>
                     </div>
                 </div>
+            </section>
 
-                <div class="profile-actions">
-                    <button id="editProfileBtn" class="btn-primary" style="margin-bottom: 12px;">
-                        ✏️ Edit Profile
-                    </button>
-                    <button id="changePasswordBtn" class="btn-primary">
-                        🔒 Ubah Password
-                    </button>
-                </div>
+            <div class="profile-actions">
+                <button id="editProfileBtn" class="btn-primary">Edit Profile</button>
+                <button id="changePinBtn" class="btn-primary btn-muted" style="display: none;">PIN Config</button>
+                <button id="changePasswordBtn" class="btn-primary btn-muted">Change Password</button>
             </div>
         </div>
         </main>
@@ -271,8 +269,38 @@
         </div>
     </div>
 
-    <script src="auth.js?v=202603171600"></script>
-    <script src="sidebar.js?v=202603171600"></script>
-    <script src="profile.js?v=202603171600"></script>
+    <div id="pinModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="pinModalTitle">Konfigurasi PIN</h2>
+                <span class="modal-close" data-modal="pinModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="pinForm">
+                    <div class="form-group">
+                        <label for="newPin">PIN Baru <span class="required">*</span></label>
+                        <input type="password" id="newPin" class="form-input" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="4 digit angka" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPin">Konfirmasi PIN Baru <span class="required">*</span></label>
+                        <input type="password" id="confirmPin" class="form-input" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="Ulangi PIN baru" required>
+                    </div>
+                    <div id="pinError" class="error-message" style="display: none;"></div>
+                    <div id="pinSuccess" class="success-message" style="display: none;"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelPinBtn">Batal</button>
+                        <button type="submit" class="btn-primary" id="submitPinBtn">
+                            <span>Simpan PIN</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js?v=202603201615"></script>
+    <script src="sidebar.js?v=202603201615"></script>
+    <script src="profile.js?v=202603201615"></script>
 </body>
 </html>
+

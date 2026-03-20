@@ -330,6 +330,8 @@ function filterUsers(searchTerm) {
         let roleDisplay = role;
         if (role === 'super_admin') roleDisplay = 'admin';
         else if (role === 'admin') roleDisplay = 'petugas';
+        else if (role === 'approver') roleDisplay = 'approver';
+        else if (role === 'manager') roleDisplay = 'manager';
         
         return name.includes(term) ||
                username.includes(term) ||
@@ -556,6 +558,8 @@ function userRowHtml(u) {
     let roleDisplay = u.role || 'user';
     if (roleDisplay === 'super_admin') roleDisplay = 'Admin';
     else if (roleDisplay === 'admin') roleDisplay = 'Petugas';
+    else if (roleDisplay === 'approver') roleDisplay = 'Approver';
+    else if (roleDisplay === 'manager') roleDisplay = 'Manager';
     else if (roleDisplay === 'user') roleDisplay = 'User';
     
     const roleBadge = `<span class="badge badge-role">${escapeHtml(roleDisplay)}</span>`;
@@ -1461,7 +1465,9 @@ function normalizeToStringValues(obj) {
 
 function formatDateTime(input) {
     if (!input) return '-';
-    const d = new Date(input);
+    let normalized = String(input).trim().replace(' ', 'T');
+    if (!/(Z|[+-]\d{2}:\d{2})$/.test(normalized)) normalized += 'Z';
+    const d = new Date(normalized);
     if (isNaN(d.getTime())) return input;
     const pad = (n) => String(n).padStart(2, '0');
     return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -1580,8 +1586,8 @@ function renderRegistrationsTable() {
                     `;
                 }
                 
-                // Generate WhatsApp button only for approved registrations
-                const whatsappButton = r.status === 'approved' ? `
+                // Generate WhatsApp button for approved/rejected registrations
+                const whatsappButton = (r.status === 'approved' || r.status === 'rejected') ? `
                     <button class="btn btn-whatsapp btn-small" data-action="whatsapp" data-registration-id="${r.id}" title="Kirim notifikasi WhatsApp">
                         📱 WhatsApp
                     </button>
@@ -1701,8 +1707,8 @@ function registrationRowHtml(r) {
         `;
     }
 
-    // Generate WhatsApp button only for approved registrations
-    const whatsappButton = r.status === 'approved' ? `
+    // Generate WhatsApp button for approved/rejected registrations
+    const whatsappButton = (r.status === 'approved' || r.status === 'rejected') ? `
         <button class="btn btn-whatsapp btn-small" data-action="whatsapp" data-registration-id="${r.id}" title="Kirim notifikasi WhatsApp">
             📱 WhatsApp
         </button>
@@ -1866,9 +1872,9 @@ async function sendWhatsAppNotification(registrationId) {
             return;
         }
 
-        // Only allow WhatsApp notification for approved registrations
-        if (registration.status !== 'approved') {
-            await showAlert('Notifikasi WhatsApp hanya dapat dikirim untuk registrasi yang sudah disetujui.', 'Informasi', 'info');
+        // Allow WhatsApp notification for approved or rejected registrations
+        if (registration.status !== 'approved' && registration.status !== 'rejected') {
+            await showAlert('Notifikasi WhatsApp hanya dapat dikirim untuk registrasi yang sudah diproses (approved/rejected).', 'Informasi', 'info');
             return;
         }
 
@@ -1877,18 +1883,28 @@ async function sendWhatsAppNotification(registrationId) {
             return;
         }
 
-        // Generate username from NPK (lowercase)
-        const username = registration.npk ? registration.npk.toLowerCase() : '';
-
-        // Generate message according to format
-        let message = "Pendaftaran akun Anda telah DISETUJUI.\n\n";
-        message += "Detail Akun:\n";
-        message += "• Nama: " + registration.nama + "\n";
-        message += "• Username: " + username + "\n";
-        message += "• NPK: " + registration.npk + "\n";
-        message += "• Unit Kerja: " + registration.unitKerja + "\n\n";
-        message += "Silakan login menggunakan username di atas.\n\n";
-        message += "Terima kasih.";
+        let message = '';
+        if (registration.status === 'approved') {
+            const username = registration.npk ? registration.npk.toLowerCase() : '';
+            message += "Pendaftaran akun Anda telah DISETUJUI.\n\n";
+            message += "Detail Akun:\n";
+            message += "• Nama: " + registration.nama + "\n";
+            message += "• Username: " + username + "\n";
+            message += "• NPK: " + registration.npk + "\n";
+            message += "• Unit Kerja: " + registration.unitKerja + "\n\n";
+            message += "Silakan login menggunakan username di atas.\n\n";
+            message += "Terima kasih.";
+        } else {
+            const alasan = (registration.rejectionReason || '').trim() || '-';
+            message += "Pendaftaran akun Anda DITOLAK.\n\n";
+            message += "Detail Pendaftaran:\n";
+            message += "• Nama: " + (registration.nama || '-') + "\n";
+            message += "• NPK: " + (registration.npk || '-') + "\n";
+            message += "• Email: " + (registration.email || '-') + "\n";
+            message += "• Alasan Penolakan: " + alasan + "\n\n";
+            message += "Silakan perbaiki data dan lakukan pendaftaran ulang.\n\n";
+            message += "Terima kasih.";
+        }
 
         // Generate WhatsApp URL
         // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
@@ -2176,30 +2192,39 @@ function clearRejectError() {
 }
 
 function bindPinApproval() {
-    const pinInput = document.getElementById('approvalPinInput');
+    const approverPinInput = document.getElementById('approverPinInput');
+    const managerPinInput = document.getElementById('managerPinInput');
     const editPinBtn = document.getElementById('editPinBtn');
     const savePinBtn = document.getElementById('savePinBtn');
     const cancelEditPinBtn = document.getElementById('cancelEditPinBtn');
     const pinError = document.getElementById('pinError');
     
-    if (!pinInput || !editPinBtn || !savePinBtn) return;
+    if (!approverPinInput || !managerPinInput || !editPinBtn || !savePinBtn) return;
     
-    let originalPin = ''; // Store original PIN value
+    let originalApproverPin = '';
+    let originalManagerPin = '';
     
     // Only allow numbers
-    pinInput.addEventListener('input', (e) => {
+    approverPinInput.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    });
+    managerPinInput.addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/[^0-9]/g, '');
     });
     
     // Edit PIN button - enable edit mode
     editPinBtn.addEventListener('click', () => {
-        // Get actual PIN value from data attribute or use masked value
-        originalPin = pinInput.getAttribute('data-pin-value') || pinInput.value.replace(/•/g, '') || '';
-        pinInput.value = originalPin; // Show actual value when editing
-        pinInput.readOnly = false;
-        pinInput.style.backgroundColor = '#ffffff';
-        pinInput.style.cursor = 'text';
-        pinInput.focus();
+        originalApproverPin = approverPinInput.getAttribute('data-pin-value') || '';
+        originalManagerPin = managerPinInput.getAttribute('data-pin-value') || '';
+        approverPinInput.value = originalApproverPin;
+        managerPinInput.value = originalManagerPin;
+        approverPinInput.readOnly = false;
+        managerPinInput.readOnly = false;
+        approverPinInput.style.backgroundColor = '#ffffff';
+        managerPinInput.style.backgroundColor = '#ffffff';
+        approverPinInput.style.cursor = 'text';
+        managerPinInput.style.cursor = 'text';
+        approverPinInput.focus();
         
         editPinBtn.style.display = 'none';
         const pinEditActions = document.getElementById('pinEditActions');
@@ -2213,11 +2238,14 @@ function bindPinApproval() {
     // Cancel edit button - restore original value
     if (cancelEditPinBtn) {
         cancelEditPinBtn.addEventListener('click', () => {
-            // Restore masked display
-            pinInput.value = '••••';
-            pinInput.readOnly = true;
-            pinInput.style.backgroundColor = '#f5f5f5';
-            pinInput.style.cursor = 'not-allowed';
+            approverPinInput.value = '••••';
+            managerPinInput.value = '••••';
+            approverPinInput.readOnly = true;
+            managerPinInput.readOnly = true;
+            approverPinInput.style.backgroundColor = '#f5f5f5';
+            managerPinInput.style.backgroundColor = '#f5f5f5';
+            approverPinInput.style.cursor = 'not-allowed';
+            managerPinInput.style.cursor = 'not-allowed';
             
             editPinBtn.style.display = 'inline-block';
             const pinEditActions = document.getElementById('pinEditActions');
@@ -2231,19 +2259,27 @@ function bindPinApproval() {
     
     // Save PIN
     savePinBtn.addEventListener('click', async () => {
-        const pin = pinInput.value.trim();
+        const approverPin = approverPinInput.value.trim();
+        const managerPin = managerPinInput.value.trim();
         
-        if (pin.length !== 4) {
+        if (approverPin.length !== 4 || managerPin.length !== 4) {
             if (pinError) {
-                pinError.textContent = 'PIN harus 4 digit angka';
+                pinError.textContent = 'PIN Approver dan PIN Manager harus 4 digit angka';
                 pinError.style.display = 'block';
             }
             return;
         }
         
-        if (!/^\d{4}$/.test(pin)) {
+        if (!/^\d{4}$/.test(approverPin) || !/^\d{4}$/.test(managerPin)) {
             if (pinError) {
-                pinError.textContent = 'PIN harus berupa 4 digit angka';
+                pinError.textContent = 'PIN Approver dan PIN Manager harus berupa 4 digit angka';
+                pinError.style.display = 'block';
+            }
+            return;
+        }
+        if (approverPin === managerPin) {
+            if (pinError) {
+                pinError.textContent = 'PIN Manager harus berbeda dari PIN Approver';
                 pinError.style.display = 'block';
             }
             return;
@@ -2256,7 +2292,7 @@ function bindPinApproval() {
         }
         
         try {
-            const url = getApiUrlWithParams('setApprovalPin', { pin: pin });
+            const url = getApiUrlWithParams('setApprovalPin', { approver_pin: approverPin, manager_pin: managerPin });
             
             const response = await fetch(url.toString(), {
                 method: 'GET',
@@ -2281,13 +2317,18 @@ function bindPinApproval() {
             
             showSuccessMessage('PIN berhasil disimpan!');
             
-            // Exit edit mode and mask PIN
-            const savedPin = result.pin ? String(result.pin).trim().replace(/\s/g, '') : pin;
-            pinInput.value = '••••';
-            pinInput.setAttribute('data-pin-value', savedPin);
-            pinInput.readOnly = true;
-            pinInput.style.backgroundColor = '#f5f5f5';
-            pinInput.style.cursor = 'not-allowed';
+            const savedApproverPin = result.approver_pin ? String(result.approver_pin).trim().replace(/\s/g, '') : approverPin;
+            const savedManagerPin = result.manager_pin ? String(result.manager_pin).trim().replace(/\s/g, '') : managerPin;
+            approverPinInput.value = '••••';
+            managerPinInput.value = '••••';
+            approverPinInput.setAttribute('data-pin-value', savedApproverPin);
+            managerPinInput.setAttribute('data-pin-value', savedManagerPin);
+            approverPinInput.readOnly = true;
+            managerPinInput.readOnly = true;
+            approverPinInput.style.backgroundColor = '#f5f5f5';
+            managerPinInput.style.backgroundColor = '#f5f5f5';
+            approverPinInput.style.cursor = 'not-allowed';
+            managerPinInput.style.cursor = 'not-allowed';
             
             editPinBtn.style.display = 'inline-block';
             const pinEditActions = document.getElementById('pinEditActions');
@@ -2313,8 +2354,9 @@ function bindPinApproval() {
 }
 
 async function loadApprovalPin() {
-    const pinInput = document.getElementById('approvalPinInput');
-    if (!pinInput) {
+    const approverPinInput = document.getElementById('approverPinInput');
+    const managerPinInput = document.getElementById('managerPinInput');
+    if (!approverPinInput || !managerPinInput) {
         console.warn('PIN input element not found');
         return;
     }
@@ -2346,24 +2388,31 @@ async function loadApprovalPin() {
         console.log('PIN Load Result (JSON):', JSON.stringify(result));
         
         if (result.success) {
-            // Handle both result.pin and result.data.pin formats
-            let pinValue = null;
-            if (result.pin) {
-                pinValue = String(result.pin).trim().replace(/\s/g, '');
-            } else if (result.data && result.data.pin) {
-                pinValue = String(result.data.pin).trim().replace(/\s/g, '');
+            let approverPinValue = null;
+            let managerPinValue = null;
+            if (result.approver_pin || result.manager_pin) {
+                approverPinValue = String(result.approver_pin || '').trim().replace(/\s/g, '');
+                managerPinValue = String(result.manager_pin || '').trim().replace(/\s/g, '');
+            } else if (result.data) {
+                approverPinValue = String(result.data.approver_pin || result.data.pin || '').trim().replace(/\s/g, '');
+                managerPinValue = String(result.data.manager_pin || '').trim().replace(/\s/g, '');
             }
             
-            if (pinValue && pinValue.length === 4) {
-                console.log('Setting PIN value to:', pinValue);
-                // Mask PIN for display
-                pinInput.value = '••••';
-                pinInput.setAttribute('data-pin-value', pinValue);
-                
-                // Ensure input is readonly after loading
-                pinInput.readOnly = true;
-                pinInput.style.backgroundColor = '#f5f5f5';
-                pinInput.style.cursor = 'not-allowed';
+            if (approverPinValue && approverPinValue.length === 4) {
+                approverPinInput.value = '••••';
+                approverPinInput.setAttribute('data-pin-value', approverPinValue);
+                approverPinInput.readOnly = true;
+                approverPinInput.style.backgroundColor = '#f5f5f5';
+                approverPinInput.style.cursor = 'not-allowed';
+            }
+            if (managerPinValue && managerPinValue.length === 4) {
+                managerPinInput.value = '••••';
+                managerPinInput.setAttribute('data-pin-value', managerPinValue);
+                managerPinInput.readOnly = true;
+                managerPinInput.style.backgroundColor = '#f5f5f5';
+                managerPinInput.style.cursor = 'not-allowed';
+            }
+            if (approverPinValue && approverPinValue.length === 4 && managerPinValue && managerPinValue.length === 4) {
                 
                 // Ensure buttons are in correct state
                 const editPinBtn = document.getElementById('editPinBtn');
@@ -2371,7 +2420,7 @@ async function loadApprovalPin() {
                 const pinEditActions = document.getElementById('pinEditActions');
                 if (pinEditActions) pinEditActions.style.display = 'none';
             } else {
-                console.warn('PIN value is invalid:', pinValue);
+                console.warn('PIN value is invalid:', { approverPinValue, managerPinValue });
                 console.warn('Full result:', result);
             }
         } else {
@@ -2422,31 +2471,6 @@ async function openApproverModal(id = null) {
     if (!form) {
         console.error('Form element tidak ditemukan.');
         return;
-    }
-    
-    // Jika menambah approver baru (bukan edit), cek apakah sudah ada approver aktif
-    if (!id) {
-        try {
-            const token = getAuthToken();
-            const apiUrl = getApiUrl();
-            const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
-            const fullUrl = window.location.origin + path;
-            const response = await fetch(`${fullUrl}?action=getApprovers`, {
-                headers: { 'X-Auth-Token': token || '' }
-            });
-            
-            const result = await response.json();
-            if (result.success && result.data && result.data.length > 0) {
-                const activeApprovers = result.data.filter(a => a.is_active !== false);
-                if (activeApprovers.length > 0) {
-                    await showAlert('Hanya boleh ada 1 approver aktif. Silakan edit atau nonaktifkan approver yang sudah ada terlebih dahulu.', 'Peringatan', 'warning');
-                    return;
-                }
-            }
-        } catch (error) {
-            console.error('Error checking approvers:', error);
-            // Continue anyway, backend will validate
-        }
     }
     
     // Load unit kerja dropdown
@@ -2546,13 +2570,17 @@ function loadApproverData(id) {
                 const username = row.querySelector('[data-field="username"]')?.textContent || '';
                 const email = row.querySelector('[data-field="email"]')?.textContent || '';
                 const nomorTelepon = row.querySelector('[data-field="nomor_telepon"]')?.textContent || '';
+                const npk = row.querySelector('[data-field="npk"]')?.textContent || '';
                 const unitKerja = row.querySelector('[data-field="unit_kerja"]')?.textContent || '';
+                const approverType = row.querySelector('[data-field="approver_type"]')?.getAttribute('data-value') || 'approver';
                 
                 document.getElementById('approverName').value = name;
                 document.getElementById('approverUsername').value = username;
+                document.getElementById('approverNpk').value = npk === '-' ? '' : npk;
                 document.getElementById('approverEmail').value = email;
                 document.getElementById('approverNomorTelepon').value = nomorTelepon;
                 document.getElementById('approverUnitKerja').value = unitKerja;
+                document.getElementById('approverType').value = approverType;
                 break;
             }
         }
@@ -2564,9 +2592,11 @@ async function saveApprover(e) {
     const errorBox = document.getElementById('approverError');
     const name = document.getElementById('approverName').value.trim();
     const usernameInput = document.getElementById('approverUsername').value.trim();
+    const npk = document.getElementById('approverNpk').value.trim();
     const email = document.getElementById('approverEmail').value.trim();
     const nomorTelepon = document.getElementById('approverNomorTelepon').value.trim();
     const unitKerja = document.getElementById('approverUnitKerja').value.trim();
+    const approverType = (document.getElementById('approverType').value || 'approver').trim().toLowerCase();
     
     if (!name) {
         showError(errorBox, 'Nama wajib diisi');
@@ -2587,6 +2617,8 @@ async function saveApprover(e) {
             username = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
         }
         url.searchParams.append('username', username);
+        url.searchParams.append('approver_type', approverType);
+        if (npk) url.searchParams.append('npk', npk);
         if (email) url.searchParams.append('email', email);
         if (nomorTelepon) url.searchParams.append('nomor_telepon', nomorTelepon);
         if (unitKerja) url.searchParams.append('unit_kerja', unitKerja);
@@ -2632,30 +2664,29 @@ async function loadApprovers() {
         const tbody = document.getElementById('approversTbody');
         const approvers = result.data || [];
         
-        // Hide/show "Tambah Approver" button based on active approvers count
+        // Selalu tampilkan tombol tambah approver (bisa lebih dari 1 approver aktif)
         const addBtn = document.getElementById('addApproverBtn');
         if (addBtn) {
-            const activeApprovers = approvers.filter(a => a.is_active !== false);
-            if (activeApprovers.length >= 1) {
-                addBtn.style.display = 'none';
-            } else {
-                addBtn.style.display = 'inline-block';
-            }
+            addBtn.style.display = 'inline-block';
         }
         
         if (approvers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="loading">Tidak ada approver</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="loading">Tidak ada approver</td></tr>';
             return;
         }
         
         tbody.innerHTML = approvers.map(approver => {
             const status = approver.is_active !== false ? 'Aktif' : 'Non Aktif';
             const statusClass = approver.is_active !== false ? 'badge-active' : 'badge-inactive';
+            const approverType = (approver.approver_type || 'approver').toLowerCase();
+            const approverTypeLabel = approverType === 'manager' ? 'Manager' : 'Approver';
             
             return `
                 <tr data-id="${approver.id}">
                     <td data-field="name">${escapeHtml(approver.name || '')}</td>
                     <td data-field="username">${escapeHtml(approver.username || '')}</td>
+                    <td data-field="npk">${escapeHtml(approver.npk || '-')}</td>
+                    <td data-field="approver_type" data-value="${escapeHtml(approverType)}">${escapeHtml(approverTypeLabel)}</td>
                     <td data-field="nomor_telepon">${escapeHtml(approver.nomor_telepon || '-')}</td>
                     <td data-field="email">${escapeHtml(approver.email || '-')}</td>
                     <td data-field="unit_kerja">${escapeHtml(approver.unit_kerja || '-')}</td>
@@ -2673,6 +2704,13 @@ async function loadApprovers() {
                                     ${approver.is_active !== false ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
                                 </svg>
                             </button>
+                            <button class="btn-icon-action" onclick="resetPasswordFlow(${approver.id})" title="Reset Password">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 11V7a5 5 0 0 0-10 0v4"></path>
+                                    <rect x="5" y="11" width="14" height="10" rx="2"></rect>
+                                    <line x1="12" y1="15" x2="12" y2="17"></line>
+                                </svg>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -2688,6 +2726,8 @@ async function loadApprovers() {
                 cardsContainer.innerHTML = approvers.map(approver => {
                     const status = approver.is_active !== false ? 'Active' : 'Inactive';
                     const statusClass = approver.is_active !== false ? 'badge-active' : 'badge-inactive';
+                    const approverType = (approver.approver_type || 'approver').toLowerCase();
+                    const approverTypeLabel = approverType === 'manager' ? 'Manager' : 'Approver';
                     
                     return `
                         <div class="admin-card" data-id="${approver.id}">
@@ -2700,8 +2740,16 @@ async function loadApprovers() {
                                 <div class="admin-card-value">${escapeHtml(approver.username || '')}</div>
                             </div>
                             <div class="admin-card-row">
+                                <div class="admin-card-label">NPK</div>
+                                <div class="admin-card-value">${escapeHtml(approver.npk || '-')}</div>
+                            </div>
+                            <div class="admin-card-row">
                                 <div class="admin-card-label">Nomor Telepon</div>
                                 <div class="admin-card-value">${escapeHtml(approver.nomor_telepon || '-')}</div>
+                            </div>
+                            <div class="admin-card-row">
+                                <div class="admin-card-label">Tipe</div>
+                                <div class="admin-card-value">${escapeHtml(approverTypeLabel)}</div>
                             </div>
                             <div class="admin-card-row">
                                 <div class="admin-card-label">Email</div>
@@ -2729,6 +2777,14 @@ async function loadApprovers() {
                                     </svg>
                                     ${approver.is_active !== false ? 'Non Aktif' : 'Aktif'}
                                 </button>
+                                <button class="btn-icon-action" onclick="resetPasswordFlow(${approver.id})" title="Reset Password">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 11V7a5 5 0 0 0-10 0v4"></path>
+                                        <rect x="5" y="11" width="14" height="10" rx="2"></rect>
+                                        <line x1="12" y1="15" x2="12" y2="17"></line>
+                                    </svg>
+                                    Reset Password
+                                </button>
                             </div>
                         </div>
                     `;
@@ -2739,7 +2795,7 @@ async function loadApprovers() {
         console.error('Error loading approvers:', error);
         const tbody = document.getElementById('approversTbody');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="7" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
         }
         const cardsContainer = document.getElementById('approversCards');
         if (cardsContainer) {
