@@ -29,6 +29,21 @@ function getApiUrl() {
     return basePath + 'api.php';
 }
 
+function openWhatsAppUrl(url) {
+    if (!url) return;
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent || '');
+    const popup = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        if (isMobile) {
+            window.location.href = url;
+        } else {
+            console.warn('Popup WhatsApp diblokir browser desktop.');
+        }
+        return;
+    }
+    popup.opener = null;
+}
+
 // Fungsi helper untuk membuat URL API dengan query parameters
 function getApiUrlWithParams(action, params = {}) {
     const apiUrl = getApiUrl();
@@ -1839,7 +1854,7 @@ function bindDetailModal() {
             cleanPhone = '62' + cleanPhone;
         }
         const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, '_blank');
+        openWhatsAppUrl(whatsappUrl);
     });
 }
 
@@ -1924,7 +1939,7 @@ async function sendWhatsAppNotification(registrationId) {
         const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 
         // Open WhatsApp
-        window.open(whatsappUrl, '_blank');
+        openWhatsAppUrl(whatsappUrl);
     } catch (error) {
         await showAlert('Error: ' + error.message, 'Error', 'error');
     }
@@ -2074,7 +2089,7 @@ function bindSuccessApproveModal() {
 
     whatsappBtn?.addEventListener('click', () => {
         if (currentWhatsAppUrl) {
-            window.open(currentWhatsAppUrl, '_blank');
+            openWhatsAppUrl(currentWhatsAppUrl);
         }
         close();
     });

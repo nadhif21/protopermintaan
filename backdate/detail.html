@@ -431,6 +431,21 @@
             return cleaned;
         }
 
+        function openWhatsAppUrl(url) {
+            if (!url) return;
+            const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent || '');
+            const popup = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                if (isMobile) {
+                    window.location.href = url;
+                } else {
+                    console.warn('Popup WhatsApp diblokir browser desktop.');
+                }
+                return;
+            }
+            popup.opener = null;
+        }
+
         // Open WhatsApp
         async function openWhatsApp() {
             if (!permintaanData.petugas_no_wa || !permintaanData.petugas_nama) {
@@ -461,7 +476,7 @@ Mohon informasi progress terbaru. Terima kasih.`;
             const whatsappNumber = formatWhatsAppNumber(permintaanData.petugas_no_wa);
             const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
             
-            window.open(whatsappUrl, '_blank');
+            openWhatsAppUrl(whatsappUrl);
         }
 
         // Load and display data

@@ -245,10 +245,14 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = getAppFullUrl('/login.html');
     });
     contactAdminBtn?.addEventListener('click', async () => {
+        // Buka window lebih awal agar tidak diblokir popup blocker pada browser mobile.
+        const preOpenedWindow = window.open('', '_blank');
+        const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent || '');
         try {
             const admin = await callApi('getPublicAdminForWhatsApp', {});
             const rawPhone = (admin.nomor_telepon || '').replace(/[^0-9]/g, '');
             if (!rawPhone) {
+                if (preOpenedWindow && !preOpenedWindow.closed) preOpenedWindow.close();
                 showToast('Nomor admin belum tersedia. Silakan coba lagi nanti.', 'error');
                 return;
             }
@@ -257,8 +261,24 @@ document.addEventListener('DOMContentLoaded', function() {
             const npk = document.getElementById('npk')?.value?.trim() || '-';
             const email = document.getElementById('email')?.value?.trim() || '-';
             const msg = `Saya telah melakukan pendaftaran akun di Permintaan DOF.\n\nDetail akun:\nNama : ${name}\nNPK : ${npk}\nEmail : ${email}\n\nMohon dibantu approval akun saya. Terima Kasih.`;
-            window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+            const whatsappUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`;
+
+            if (preOpenedWindow && !preOpenedWindow.closed) {
+                preOpenedWindow.location.href = whatsappUrl;
+            } else {
+                if (isMobile) {
+                    window.location.href = whatsappUrl;
+                } else {
+                    const fallbackPopup = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+                    if (fallbackPopup) {
+                        fallbackPopup.opener = null;
+                    } else {
+                        showToast('Popup WhatsApp diblokir browser. Izinkan pop-up untuk situs ini.', 'error');
+                    }
+                }
+            }
         } catch (err) {
+            if (preOpenedWindow && !preOpenedWindow.closed) preOpenedWindow.close();
             showToast(err?.message || 'Gagal membuka kontak admin.', 'error');
         }
     });

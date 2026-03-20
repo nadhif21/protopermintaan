@@ -24,6 +24,21 @@ function getApiUrl() {
     return basePath + 'api.php';
 }
 
+function openWhatsAppUrl(url) {
+    if (!url) return;
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent || '');
+    const popup = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        if (isMobile) {
+            window.location.href = url;
+        } else {
+            console.warn('Popup WhatsApp diblokir browser desktop.');
+        }
+        return;
+    }
+    popup.opener = null;
+}
+
 // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)
 function formatWhatsAppNumber(phone) {
     if (!phone) return '';
@@ -1521,7 +1536,7 @@ function openWhatsApp() {
         return;
     }
     const waUrl = `https://wa.me/${waNumber}?text=${message}`;
-    window.open(waUrl, '_blank');
+    openWhatsAppUrl(waUrl);
 }
 
 function setupLogout() {

@@ -970,6 +970,21 @@
             
             return basePath + 'api.php';
         }
+
+        function openWhatsAppUrl(url) {
+            if (!url) return;
+            const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent || '');
+            const popup = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                if (isMobile) {
+                    window.location.href = url;
+                } else {
+                    console.warn('Popup WhatsApp diblokir browser desktop.');
+                }
+                return;
+            }
+            popup.opener = null;
+        }
         
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -1441,7 +1456,7 @@
             }
             
             const whatsappUrl = `https://wa.me/${formattedNo}?text=${encodeURIComponent(message)}`;
-            window.open(whatsappUrl, '_blank');
+            openWhatsAppUrl(whatsappUrl);
         }
 
         async function processApproval(rowId, action, pin, keterangan = '') {
@@ -2329,7 +2344,7 @@
             message += `Link approval:\n${approvalUrl}`;
             
             const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-            window.open(whatsappUrl, '_blank');
+            openWhatsAppUrl(whatsappUrl);
         }
 
         async function setupHubungiManagerButton() {

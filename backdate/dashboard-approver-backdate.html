@@ -1514,7 +1514,7 @@
                 }
                 
                 const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-                window.open(whatsappUrl, '_blank');
+                openWhatsAppUrl(whatsappUrl);
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -1592,7 +1592,7 @@
                             }
                             
                             const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-                            window.open(whatsappUrl, '_blank');
+                            openWhatsAppUrl(whatsappUrl);
                             return;
                         }
                     }
@@ -1640,7 +1640,7 @@
                 }
                 
                 const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-                window.open(whatsappUrl, '_blank');
+                openWhatsAppUrl(whatsappUrl);
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -1848,6 +1848,21 @@
             const d = parseServerDate(input);
             if (!d) return '-';
             return d.toLocaleString('id-ID');
+        }
+
+        function openWhatsAppUrl(url) {
+            if (!url) return;
+            const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent || '');
+            const popup = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                if (isMobile) {
+                    window.location.href = url;
+                } else {
+                    console.warn('Popup WhatsApp diblokir browser desktop.');
+                }
+                return;
+            }
+            popup.opener = null;
         }
         
         function showAlert(message, type = 'info', title = null) {

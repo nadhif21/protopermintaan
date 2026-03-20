@@ -30,6 +30,21 @@ function getApiUrl() {
     return result;
 }
 
+function openWhatsAppUrl(url) {
+    if (!url) return;
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent || '');
+    const popup = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        if (isMobile) {
+            window.location.href = url;
+        } else {
+            console.warn('Popup WhatsApp diblokir browser desktop.');
+        }
+        return;
+    }
+    popup.opener = null;
+}
+
 function getApiUrlWithParams(action, params = {}) {
     const apiUrl = getApiUrl();
     const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
@@ -2268,7 +2283,7 @@ async function showDetail(rowId) {
             const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
             
             // Open WhatsApp
-            window.open(whatsappUrl, '_blank');
+            openWhatsAppUrl(whatsappUrl);
         } catch (error) {
             console.error('Error getting approver:', error);
             alert('Error: ' + error.message);
@@ -3159,7 +3174,7 @@ function setupHubungiUserButton(row, originalRow, currentStatus, currentFlag, cu
         const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
         
         // Open WhatsApp
-        window.open(whatsappUrl, '_blank');
+        openWhatsAppUrl(whatsappUrl);
     };
 }
 
@@ -3433,6 +3448,6 @@ function setupHubungiPetugasButton(row, currentPetugas, dataName, chatUlangBtn, 
         const encodedMessage = encodeURIComponent(message);
         const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
         
-        window.open(whatsappUrl, '_blank');
+        openWhatsAppUrl(whatsappUrl);
     };
 }

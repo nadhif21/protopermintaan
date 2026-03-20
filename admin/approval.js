@@ -24,6 +24,21 @@ function getApiUrl() {
     return basePath + 'api.php';
 }
 
+function openWhatsAppUrl(url) {
+    if (!url) return;
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent || '');
+    const popup = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        if (isMobile) {
+            window.location.href = url;
+        } else {
+            console.warn('Popup WhatsApp diblokir browser desktop.');
+        }
+        return;
+    }
+    popup.opener = null;
+}
+
 function getApiUrlWithParams(action, params = {}) {
     const apiUrl = getApiUrl();
     const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
@@ -310,7 +325,7 @@ async function sendWhatsAppNotification(registrationId) {
         const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 
         // Open WhatsApp
-        window.open(whatsappUrl, '_blank');
+        openWhatsAppUrl(whatsappUrl);
     } catch (error) {
         alert('Error: ' + error.message);
     }
@@ -369,7 +384,7 @@ function showSuccessApprovalModal(data) {
     if (whatsappBtn) {
         whatsappBtn.onclick = () => {
             if (data.whatsappUrl) {
-                window.open(data.whatsappUrl, '_blank');
+                openWhatsAppUrl(data.whatsappUrl);
             }
         };
     }
@@ -902,5 +917,5 @@ function openWhatsAppForUser(user) {
     const encodedMessage = encodeURIComponent(message);
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
     
-    window.open(waUrl, '_blank');
+    openWhatsAppUrl(waUrl);
 }
