@@ -102,6 +102,30 @@
     flex: 1;
 }
 
+.profile-pin-value-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.profile-pin-toggle-btn {
+    border: 1px solid #d8d8e8;
+    background: #f5f5fb;
+    color: #4d3cc7;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.profile-pin-toggle-btn:hover {
+    background: #ecebfb;
+}
+
 .profile-actions {
     display: flex;
     flex-direction: row;

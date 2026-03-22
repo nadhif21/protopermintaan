@@ -608,6 +608,12 @@ tbody td .status-badge {
     word-break: break-word;
 }
 
+.detail-item .value.detail-penjelasan-full {
+    white-space: pre-wrap;
+    overflow: visible;
+    text-overflow: unset;
+}
+
 .edit-input {
     width: 100% !important;
     padding: 8px 12px !important;

@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Panel Admin - Permintaan DOF</title>
-    <script src="../version.js?v=202603201615"></script>
-    <link rel="stylesheet" href="../layout.css?v=202603201615">
-    <link rel="stylesheet" href="admin.css?v=202603201615">
-    <link rel="stylesheet" href="../icons.css?v=202603201615">
+    <script src="../version.js?v=202603201816"></script>
+    <link rel="stylesheet" href="../layout.css?v=202603201816">
+    <link rel="stylesheet" href="admin.css?v=202603201816">
+    <link rel="stylesheet" href="../icons.css?v=202603201816">
 </head>
 <body>
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -208,6 +208,51 @@
                         </tbody>
                     </table>
                     <div class="admin-cards" id="approversCards"></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div class="panel-title-with-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2l3.09 6.26L22 9l-5 4.87L18.18 21 12 17.77 5.82 21 7 13.87 2 9l6.91-.74L12 2z"></path>
+                        </svg>
+                        <div>
+                            <h2>Jenis Permintaan Management</h2>
+                            <p class="panel-description">Kelola data jenis permintaan</p>
+                        </div>
+                    </div>
+                    <div class="panel-actions">
+                        <button id="addJenisPermintaanBtn" class="btn btn-primary">Tambah Jenis Permintaan</button>
+                        <button id="refreshJenisPermintaanBtn" class="btn">Refresh</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="admin-table" id="jenisPermintaanTable">
+                        <thead>
+                            <tr>
+                                <th>NAMA JENIS PERMINTAAN</th>
+                                <th>STATUS</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jenisPermintaanTbody">
+                            <tr><td colspan="3" class="loading">Memuat...</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="admin-cards" id="jenisPermintaanCards"></div>
+                    <div id="jenisPermintaanPagination" class="pagination-container" style="display: none;">
+                        <div class="pagination-info">
+                            <span>Menampilkan <span id="jenisPermintaanPaginationStart">0</span> sampai <span id="jenisPermintaanPaginationEnd">0</span> dari <span id="jenisPermintaanPaginationTotal">0</span> data</span>
+                        </div>
+                        <div class="pagination-controls">
+                            <button id="jenisPermintaanPaginationFirst" class="pagination-btn" disabled>«</button>
+                            <button id="jenisPermintaanPaginationPrev" class="pagination-btn" disabled>‹</button>
+                            <span id="jenisPermintaanPaginationPageInfo" class="pagination-page-info">Halaman 1</span>
+                            <button id="jenisPermintaanPaginationNext" class="pagination-btn">›</button>
+                            <button id="jenisPermintaanPaginationLast" class="pagination-btn">»</button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -800,6 +845,33 @@
         </div>
     </div>
 
+    <div id="jenisPermintaanModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="jenisPermintaanModalTitle">Tambah Jenis Permintaan</h3>
+                <button id="closeJenisPermintaanModal" class="icon-btn" title="Tutup">✕</button>
+            </div>
+            <form id="jenisPermintaanForm" class="form" novalidate>
+                <div class="form-row">
+                    <label>Nama Jenis Permintaan <span style="color: red;">*</span></label>
+                    <input type="text" id="jenisPermintaanNama" placeholder="Nama Jenis Permintaan">
+                </div>
+                <div class="form-row" id="jenisPermintaanStatusRow" style="display: none;">
+                    <label>Status</label>
+                    <select id="jenisPermintaanStatus" required>
+                        <option value="1">Aktif</option>
+                        <option value="0">Non Aktif</option>
+                    </select>
+                </div>
+                <div id="jenisPermintaanError" class="error-box"></div>
+                <div class="form-actions">
+                    <button type="button" id="cancelJenisPermintaanBtn" class="btn">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="confirmToggleUserStatusModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -882,9 +954,9 @@
         </div>
     </div>
 
-    <script src="../auth.js?v=202603201615"></script>
-    <script src="../sidebar.js?v=202603201615"></script>
-    <script src="admin.js?v=202603201615"></script>
+    <script src="../auth.js?v=202603201816"></script>
+    <script src="../sidebar.js?v=202603201816"></script>
+    <script src="admin.js?v=202603201816"></script>
 </body>
 </html>
 

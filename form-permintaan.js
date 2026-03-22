@@ -621,7 +621,7 @@ async function loadPilihPermintaanOptions() {
         const apiUrl = getApiUrl();
         const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
         const fullUrl = window.location.origin + path;
-        const response = await fetch(`${fullUrl}?action=getPilihPermintaanOptions`);
+        const response = await fetch(`${fullUrl}?action=getJenisPermintaan`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -700,7 +700,7 @@ function renderPilihPermintaanOptions() {
 async function updatePilihPermintaanOption(id, data) {
     try {
         const formData = new FormData();
-        formData.append('action', 'updatePilihPermintaanOption');
+        formData.append('action', 'updateJenisPermintaan');
         formData.append('id', id);
         Object.entries(data).forEach(([key, value]) => {
             formData.append(key, value);
@@ -726,7 +726,7 @@ async function updatePilihPermintaanOption(id, data) {
 async function deletePilihPermintaanOption(id) {
     try {
         const formData = new FormData();
-        formData.append('action', 'deletePilihPermintaanOption');
+        formData.append('action', 'deleteJenisPermintaan');
         formData.append('id', id);
         
         const apiUrl = getApiUrl();

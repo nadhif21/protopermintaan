@@ -6,11 +6,11 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Profile - Permintaan DOF</title>
-    <script src="version.js?v=202603201615"></script>
-    <link rel="stylesheet" href="layout.css?v=202603201615">
-    <link rel="stylesheet" href="profile.css?v=202603201615">
-    <link rel="stylesheet" href="icons.css?v=202603201615">
+    <title>Profil - Permintaan DOF</title>
+    <script src="version.js?v=202603201816"></script>
+    <link rel="stylesheet" href="layout.css?v=202603201816">
+    <link rel="stylesheet" href="profile.css?v=202603201816">
+    <link rel="stylesheet" href="icons.css?v=202603201816">
 </head>
 <body>
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -36,7 +36,7 @@
                 <span class="sidebar-nav-icon">
                     <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </span>
-                <span>User Management</span>
+                <span>Manajemen Pengguna</span>
             </a>
             <a href="https://infoadkor.com/permintaandof/form-permintaan.html" class="sidebar-nav-item" id="formPermintaanMenuLink" style="display:none;">
                 <span class="sidebar-nav-icon">
@@ -48,7 +48,7 @@
                 <span class="sidebar-nav-icon">
                     <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </span>
-                <span>Profile</span>
+                <span>Profil</span>
             </a>
             <div class="sidebar-nav-item sidebar-nav-parent" id="backdateMenu" style="cursor: pointer;">
                 <span class="sidebar-nav-icon">
@@ -108,8 +108,8 @@
 
         <div class="content-header">
             <div>
-                <h1>Profile</h1>
-                <p>Lihat dan ubah informasi profile Anda</p>
+                <h1>Profil</h1>
+                <p>Lihat dan ubah informasi profil Anda</p>
             </div>
         </div>
 
@@ -125,35 +125,42 @@
             </section>
 
             <section class="profile-card">
-                <div class="profile-card-title">Account Information</div>
+                <div class="profile-card-title">Informasi Akun</div>
                 <div class="profile-info">
                     <div class="info-item">
-                        <label>Username</label>
+                        <label>Nama Pengguna</label>
                         <div class="info-value" id="profileUsername">-</div>
                     </div>
                     <div class="info-item">
-                        <label>NPK / Employee ID</label>
+                        <label>NPK / ID Pegawai</label>
                         <div class="info-value" id="profileNPK">-</div>
                     </div>
                     <div class="info-item">
-                        <label>Email Address</label>
+                        <label>Alamat Email</label>
                         <div class="info-value" id="profileEmail">-</div>
                     </div>
                     <div class="info-item">
-                        <label>Phone Number</label>
+                        <label>Nomor Telepon</label>
                         <div class="info-value" id="profilePhone">-</div>
                     </div>
                     <div class="info-item">
-                        <label>Department</label>
+                        <label>Unit Kerja</label>
                         <div class="info-value" id="profileUnitKerja">-</div>
+                    </div>
+                    <div class="info-item" id="profilePinInfoItem" style="display: none;">
+                        <label>PIN Saat Ini</label>
+                        <div class="info-value profile-pin-value-wrap">
+                            <span id="profileCurrentPinText">••••</span>
+                            <button type="button" id="toggleProfilePinBtn" class="profile-pin-toggle-btn">Lihat</button>
+                        </div>
                     </div>
                 </div>
             </section>
 
             <div class="profile-actions">
-                <button id="editProfileBtn" class="btn-primary">Edit Profile</button>
-                <button id="changePinBtn" class="btn-primary btn-muted" style="display: none;">PIN Config</button>
-                <button id="changePasswordBtn" class="btn-primary btn-muted">Change Password</button>
+                <button id="editProfileBtn" class="btn-primary">Ubah Profil</button>
+                <button id="changePinBtn" class="btn-primary btn-muted" style="display: none;">Konfigurasi PIN</button>
+                <button id="changePasswordBtn" class="btn-primary btn-muted">Ubah Kata Sandi</button>
             </div>
         </div>
         </main>
@@ -163,7 +170,7 @@
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Edit Profile</h2>
+                <h2>Ubah Profil</h2>
                 <span class="modal-close" data-modal="editProfileModal">&times;</span>
             </div>
             <div class="modal-body">
@@ -279,11 +286,21 @@
                 <form id="pinForm">
                     <div class="form-group">
                         <label for="newPin">PIN Baru <span class="required">*</span></label>
-                        <input type="password" id="newPin" class="form-input" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="4 digit angka" required>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="newPin" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="4 digit angka" autocomplete="new-password" required>
+                            <button type="button" class="toggle-password" data-target="newPin" title="Lihat/Sembunyikan PIN">
+                                <span class="eye-icon">👁️</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="confirmPin">Konfirmasi PIN Baru <span class="required">*</span></label>
-                        <input type="password" id="confirmPin" class="form-input" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="Ulangi PIN baru" required>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="confirmPin" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="Ulangi PIN baru" autocomplete="new-password" required>
+                            <button type="button" class="toggle-password" data-target="confirmPin" title="Lihat/Sembunyikan PIN">
+                                <span class="eye-icon">👁️</span>
+                            </button>
+                        </div>
                     </div>
                     <div id="pinError" class="error-message" style="display: none;"></div>
                     <div id="pinSuccess" class="success-message" style="display: none;"></div>
@@ -298,9 +315,9 @@
         </div>
     </div>
 
-    <script src="auth.js?v=202603201615"></script>
-    <script src="sidebar.js?v=202603201615"></script>
-    <script src="profile.js?v=202603201615"></script>
+    <script src="auth.js?v=202603201816"></script>
+    <script src="sidebar.js?v=202603201816"></script>
+    <script src="profile.js?v=202603201816"></script>
 </body>
 </html>
 

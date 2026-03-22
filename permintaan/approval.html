@@ -7,8 +7,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Persetujuan Permintaan</title>
-    <script src="../version.js?v=202603201615"></script>
-    <link rel="stylesheet" href="../layout.css?v=202603201615">
+    <script src="../version.js?v=202603201816"></script>
+    <link rel="stylesheet" href="../layout.css?v=202603201816">
     <style>
         body {
             background: #f5f7fa;
@@ -1054,6 +1054,27 @@
         function showDetailInfo(rowData) {
             const detailInfo = document.getElementById('detailInfo');
             let html = '';
+
+            // Satukan beberapa sumber kolom penjelasan menjadi satu field final.
+            const displayRowData = { ...(rowData || {}) };
+            const penjelasanKeys = [
+                'Penjelasan Permintaan',
+                'Alasan Permintaan/Permintaan',
+                'Isi Penjelasan Singkat Permintaanya',
+                'alasan_permintaan',
+                'alasanPermintaan'
+            ];
+            let penjelasanValue = '';
+            penjelasanKeys.forEach((key) => {
+                const val = displayRowData[key];
+                if (!penjelasanValue && val !== null && val !== undefined && String(val).trim() !== '') {
+                    penjelasanValue = String(val).trim();
+                }
+                delete displayRowData[key];
+            });
+            if (penjelasanValue) {
+                displayRowData['Penjelasan Permintaan'] = penjelasanValue;
+            }
             
             // Fields to exclude (internal fields and fields that should not be displayed)
             const excludeFields = ['rowNumber', 'id'];
@@ -1077,11 +1098,20 @@
                 'Pilih Permintaan': 'Jenis Permintaan',
                 'pilih_permintaan': 'Jenis Permintaan',
                 'Jenis Permintaan': 'Jenis Permintaan',
-                'jenis_permintaan': 'Jenis Permintaan'
+                'jenis_permintaan': 'Jenis Permintaan',
+                // Penjelasan permintaan: samakan label untuk berbagai sumber kolom
+                'Alasan Permintaan/Permintaan': 'Penjelasan Permintaan',
+                'alasan permintaan/permintaan': 'Penjelasan Permintaan',
+                'alasan_permintaan': 'Penjelasan Permintaan',
+                'alasan permintaan': 'Penjelasan Permintaan',
+                'Isi Penjelasan Singkat Permintaanya': 'Penjelasan Permintaan',
+                'isi penjelasan singkat permintaanya': 'Penjelasan Permintaan',
+                'Penjelasan Permintaan': 'Penjelasan Permintaan',
+                'penjelasan permintaan': 'Penjelasan Permintaan'
             };
             
             // Get all keys and filter excluded fields
-            const keys = Object.keys(rowData).filter(key => {
+            const keys = Object.keys(displayRowData).filter(key => {
                 // Check exact match in excludeFields
                 if (excludeFields.includes(key)) return false;
                 
@@ -1093,7 +1123,7 @@
             // Sort keys: put important fields first, then alphabetical
             // Order: Waktu Permintaan, Nama Peminta, NPK, Unit Kerja, Jenis Permintaan, then others
             const priorityFields = ['Timestamp', 'Waktu Permintaan', 'Nama Lengkap', 'Nama', 'NPK', 'Unit Kerja', 
-                                   'Pilih Permintaan', 'Jenis Permintaan', 'Alasan Permintaan', 'Email', 'Status', 
+                                   'Pilih Permintaan', 'Jenis Permintaan', 'Penjelasan Permintaan', 'Email', 'Status', 
                                    'Flag', 'Petugas', 'Waktu Selesai', 'Keterangan', 'Persetujuan'];
             
             keys.sort((a, b) => {
@@ -1107,7 +1137,7 @@
             });
             
             keys.forEach(key => {
-                const value = rowData[key];
+                const value = displayRowData[key];
                 if (value !== null && value !== undefined && value !== '') {
                     const formattedValue = formatValueForDisplay(value, key);
                     const keyLower = key.toLowerCase();
@@ -1157,6 +1187,7 @@
         let validatedPinType = 'approver';
         let rowData = null;
         let rowNumber = null;
+        let isEditSectionReady = false;
         let petugasNoWa = null;
         let managerNoWa = null;
         let managerName = '';
@@ -1434,25 +1465,39 @@
                 const namaLengkap = (rowData['Nama Lengkap'] || rowData['Nama'] || rowData.nama_lengkap || rowData.nama || '').trim();
                 const jenisPermintaan = (rowData['Pilih Permintaan'] || rowData['Jenis Permintaan'] || rowData.pilih_permintaan || rowData.jenis_permintaan || '').trim();
                 const idPermintaan = (rowData['ID PERMINTAAN'] || rowData['Id Permintaan'] || rowData['ID Permintaan'] || rowData.id_permintaan || rowData.id || rowNumber || '').toString().trim();
+                const isRejected = persetujuan.toLowerCase().includes('ditolak') || persetujuan.toLowerCase().includes('rejected');
                 
-                message = `*Konfirmasi Persetujuan Permintaan*\n\n`;
-                message += `Halo ${petugasName},\n\n`;
-                
-                if (persetujuan.toLowerCase().includes('disetujui') || persetujuan.toLowerCase().includes('approved')) {
-                    message += `Saya telah *menyetujui* permintaan berikut:\n\n`;
-                } else if (persetujuan.toLowerCase().includes('ditolak') || persetujuan.toLowerCase().includes('rejected')) {
-                    message += `Saya telah *menolak* permintaan berikut:\n\n`;
+                if (isRejected) {
+                    // Template tolak disamakan untuk manager dan approver
+                    message = `Halo ${petugasName || '-'},\n`;
+                    message += `Pengajuan permintaan.\n`;
+                    message += `ID Permintaan: ${idPermintaan || '-'}\n`;
+                    message += `Nama: ${namaLengkap || '-'}\n`;
+                    message += `Jenis Permintaan: ${jenisPermintaan || '-'}\n`;
+                    message += `Flag: ${flag}\n`;
+                    message += `Petugas: ${petugasName || '-'}\n\n`;
+                    message += `DITOLAK\n\n`;
+                    message += `Silakan ditindaklanjuti sesuai dengan Permintaan yg diajukan`;
                 } else {
-                    message += `Saya telah memproses permintaan berikut:\n\n`;
+                    message = `*Konfirmasi Persetujuan Permintaan*\n\n`;
+                    message += `Halo ${petugasName},\n\n`;
+                    
+                    if (persetujuan.toLowerCase().includes('disetujui') || persetujuan.toLowerCase().includes('approved')) {
+                        message += `Saya telah *menyetujui* permintaan berikut:\n\n`;
+                    } else if (isRejected) {
+                        message += `Saya telah *menolak* permintaan berikut:\n\n`;
+                    } else {
+                        message += `Saya telah memproses permintaan berikut:\n\n`;
+                    }
+                    
+                    if (idPermintaan) message += `ID Permintaan: ${idPermintaan}\n`;
+                    if (namaLengkap) message += `Nama: ${namaLengkap}\n`;
+                    if (jenisPermintaan) message += `Jenis Permintaan: ${jenisPermintaan}\n`;
+                    if (flag) message += `Flag: ${flag}\n`;
+                    if (petugasName) message += `Petugas: ${petugasName}\n`;
+                    
+                    message += `\nSilakan ditindaklanjuti sesuai dengan Permintaan yg diajukan.`;
                 }
-                
-                if (idPermintaan) message += `ID Permintaan: ${idPermintaan}\n`;
-                if (namaLengkap) message += `Nama: ${namaLengkap}\n`;
-                if (jenisPermintaan) message += `Jenis Permintaan: ${jenisPermintaan}\n`;
-                if (flag) message += `Flag: ${flag}\n`;
-                if (petugasName) message += `Petugas: ${petugasName}\n`;
-                
-                message += `\nSilakan ditindaklanjuti sesuai dengan Permintaan yg diajukan.`;
             }
             
             const whatsappUrl = `https://wa.me/${formattedNo}?text=${encodeURIComponent(message)}`;
@@ -1474,6 +1519,12 @@
                 // Set waktu selesai dalam UTC (source of truth)
                 const waktuSelesai = new Date().toISOString();
                 url.searchParams.append('waktuSelesai', waktuSelesai);
+
+                // Kunci nilai flag agar tetap current value dan tidak fallback ke default dropdown.
+                const currentFlagForSave = normalizeFlagLabel(rowData && (rowData.Flag || rowData.flag || ''));
+                if (currentFlagForSave) {
+                    url.searchParams.append('flag', currentFlagForSave);
+                }
                 
                 if (action === 'reject') {
                     url.searchParams.append('status', 'Cancelled');
@@ -2106,6 +2157,7 @@
                 } else {
                     const editSection = document.getElementById('editSection');
                     if (editSection) editSection.style.display = 'none';
+                    isEditSectionReady = false;
                 }
                 
                 const approveBtn = document.getElementById('approveBtn');
@@ -2200,13 +2252,21 @@
             await loadPetugasList();
             
             // Set current values
-            const currentFlag = (rowData.Flag || rowData.flag || '').trim();
+            const currentFlag = normalizeFlagLabel((rowData.Flag || rowData.flag || '').trim());
             const currentPetugas = (rowData.Petugas || rowData.petugas || '').trim();
+
+            // Tambahkan placeholder kosong agar tidak otomatis jatuh ke Hijau.
+            if (!flagSelect.querySelector('option[value=""]')) {
+                const placeholderOpt = document.createElement('option');
+                placeholderOpt.value = '';
+                placeholderOpt.textContent = '-- Pilih Flag --';
+                flagSelect.insertBefore(placeholderOpt, flagSelect.firstChild);
+            }
             
             if (currentFlag) {
                 flagSelect.value = currentFlag;
             } else {
-                flagSelect.selectedIndex = 0;
+                flagSelect.value = '';
             }
             
             // Set petugas by name (find matching option)
@@ -2222,6 +2282,7 @@
             
             // Show edit section
             editSection.style.display = 'block';
+            isEditSectionReady = true;
 
             // Auto-save realtime saat user memilih flag/petugas
             flagSelect.onchange = async () => {
@@ -2334,14 +2395,26 @@
             const reqId = String((rowData && (rowData['ID PERMINTAAN'] || rowData.id || rowNumber)) || rowNumber || '-').trim();
             const approvalUrl = `${window.location.origin}${window.location.pathname}?rowId=${encodeURIComponent(rowNumber || reqId)}`;
             
-            let message = `*Permintaan Tinjauan Manager (Flag Merah)*\n\n`;
-            message += `Halo ${managerName || 'Manager'},\n`;
-            message += `Mohon bantu tinjau permintaan berikut:\n\n`;
-            message += `ID Permintaan: ${reqId}\n`;
-            message += `Nama: ${namaPeminta}\n`;
-            message += `Jenis Permintaan: ${jenisPermintaan}\n`;
-            message += `Flag: ${currentFlag}\n\n`;
-            message += `Link approval:\n${approvalUrl}`;
+            const unitKerja = (rowData && (rowData['Unit Kerja'] || rowData['Unit Kerja :'] || rowData.unit_kerja || rowData['UNIT KERJA'] || '').trim()) || '-';
+            const penjelasanRaw = (rowData && (
+                rowData['Alasan Permintaan/Permintaan'] ||
+                rowData['Isi Penjelasan Singkat Permintaanya'] ||
+                rowData['Penjelasan Permintaan'] ||
+                rowData.alasan_permintaan ||
+                rowData.alasanPermintaan ||
+                ''
+            ).toString().trim()) || '-';
+            const penjelasanSingkat = truncateWithEllipsis(penjelasanRaw, 120);
+            const finalFlag = currentFlag || '-';
+            let message = `*Persetujuan Permintaan DOF (Flag ${finalFlag} )*\n`;
+            message += `Mohon bantuan Tinjauan Permintaan DOF berikut:\n`;
+            message += `Permintaan No: ${reqId || '-'}\n`;
+            message += `Unit Kerja : ${unitKerja}\n`;
+            message += `Nama: ${namaPeminta || '-'}\n`;
+            message += `Jenis Permintaan: ${jenisPermintaan || '-'}\n`;
+            message += `Flag: ${finalFlag}\n\n`;
+            message += `Penjelasan permintaan:\n${penjelasanSingkat}\n\n`;
+            message += `Link PermintaanDOF:\n${approvalUrl}`;
             
             const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
             openWhatsAppUrl(whatsappUrl);
@@ -2372,6 +2445,21 @@
             managerBtn.onclick = () => openWhatsAppManager();
             managerBtn.style.display = 'flex';
         }
+
+        function normalizeFlagLabel(rawFlag) {
+            const normalized = String(rawFlag || '').trim().toLowerCase();
+            if (normalized === 'hijau') return 'Hijau';
+            if (normalized === 'kuning') return 'Kuning';
+            if (normalized === 'merah') return 'Merah';
+            return '';
+        }
+
+        function truncateWithEllipsis(text, maxLength) {
+            const value = String(text || '').trim();
+            if (!value) return '-';
+            if (value.length <= maxLength) return value;
+            return value.slice(0, maxLength).trimEnd() + '...';
+        }
         
         // Auto-save flag & petugas hanya jika berubah (dipanggil saat approve/reject)
         async function saveFlagAndPetugasIfChanged(isRealtime = false) {
@@ -2381,16 +2469,21 @@
             if (!flagSelect || !petugasSelect || !rowNumber || !rowData) {
                 return;
             }
+
+            // Hindari auto-save saat edit section belum disiapkan (contoh: login PIN manager).
+            if (!isEditSectionReady) {
+                return;
+            }
             
             if (isRealtimeSaving) return;
             
-            const selectedFlag = flagSelect.value.trim();
+            const selectedFlag = normalizeFlagLabel(flagSelect.value);
             const selectedPetugasId = petugasSelect.value;
             const selectedPetugasOption = petugasSelect.options[petugasSelect.selectedIndex];
             const selectedPetugasNama = selectedPetugasOption ? selectedPetugasOption.getAttribute('data-nama') : '';
             const selectedPetugasNoWa = selectedPetugasOption ? selectedPetugasOption.getAttribute('data-no-wa') : '';
             
-            const currentFlag = (rowData.Flag || rowData.flag || '').trim();
+            const currentFlag = normalizeFlagLabel(rowData.Flag || rowData.flag || '');
             const currentPetugas = (rowData.Petugas || rowData.petugas || '').trim();
             
             // Hanya update kalau user memilih value non-empty dan memang berbeda

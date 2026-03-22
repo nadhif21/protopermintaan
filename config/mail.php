@@ -7,17 +7,17 @@ function loadMailConfig() {
     }
 
     return [
-        // Gmail SMTP default
-        'host' => getenv('MAIL_HOST') ?: 'smtp.gmail.com',
-        'port' => intval(getenv('MAIL_PORT') ?: 587),
-        'encryption' => getenv('MAIL_ENCRYPTION') ?: 'tls', // tls | ssl
+        // Hostinger SMTP default (tetap bisa dioverride via env)
+        'host' => getenv('MAIL_HOST') ?: 'smtp.hostinger.com',
+        'port' => intval(getenv('MAIL_PORT') ?: 465),
+        'encryption' => getenv('MAIL_ENCRYPTION') ?: 'ssl', // tls | ssl
         'smtp_auth' => true,
 
         // Jangan hardcode credential, isi via environment/hosting panel
-        'username' => getenv('MAIL_USERNAME') ?: 'permintaandof@gmail.com',
-        'password' => getenv('MAIL_PASSWORD') ?: 'sjeh dqxi kkbt anye', // Gmail App Password
+        'username' => getenv('MAIL_USERNAME') ?: '',
+        'password' => getenv('MAIL_PASSWORD') ?: '',
 
-        'from_email' => getenv('MAIL_FROM_EMAIL') ?: (getenv('MAIL_USERNAME') ?: 'permintaandof@gmail.com'),
+        'from_email' => getenv('MAIL_FROM_EMAIL') ?: (getenv('MAIL_USERNAME') ?: ''),
         'from_name' => getenv('MAIL_FROM_NAME') ?: 'Permintaan DOF',
         'reply_to' => getenv('MAIL_REPLY_TO') ?: '',
 

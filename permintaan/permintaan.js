@@ -491,7 +491,7 @@ async function loadData() {
         allData = sortedData;
         filteredData = [];
         
-        setupFilterOptions();
+        await setupFilterOptions();
         filterAndDisplayData();
     } catch (error) {
         console.error('Error loading data:', error);
@@ -548,27 +548,42 @@ function findColumnValue(row, columnName) {
     return '';
 }
 
-function setupFilterOptions() {
-    // Setup jenis permintaan filter
-    const jenisSet = new Set();
-    allData.forEach(row => {
-        if (row.pilihPermintaan) {
-            jenisSet.add(row.pilihPermintaan);
-        }
-    });
-    
+async function setupFilterOptions() {
+    // Setup jenis permintaan filter dari master data
     const jenisPermintaanFilter = document.getElementById('jenisPermintaanFilter');
     if (jenisPermintaanFilter) {
-        // Clear existing options except the first one
         while (jenisPermintaanFilter.options.length > 1) {
             jenisPermintaanFilter.remove(1);
         }
-        Array.from(jenisSet).sort().forEach(jenis => {
-            const option = document.createElement('option');
-            option.value = jenis;
-            option.textContent = jenis;
-            jenisPermintaanFilter.appendChild(option);
-        });
+        try {
+            const apiUrl = getApiUrl();
+            const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+            const fullUrl = window.location.origin + path;
+            const response = await fetch(`${fullUrl}?action=getJenisPermintaan`);
+            const result = await response.json();
+            if (result.success && Array.isArray(result.data)) {
+                result.data.forEach(item => {
+                    const nama = (item.nama_jenis || item.nama_opsi || '').trim();
+                    if (!nama) return;
+                    const option = document.createElement('option');
+                    option.value = nama;
+                    option.textContent = nama;
+                    jenisPermintaanFilter.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.warn('Gagal memuat master jenis permintaan, fallback dari data tabel:', error);
+            const jenisSet = new Set();
+            allData.forEach(row => {
+                if (row.pilihPermintaan) jenisSet.add(row.pilihPermintaan);
+            });
+            Array.from(jenisSet).sort().forEach(jenis => {
+                const option = document.createElement('option');
+                option.value = jenis;
+                option.textContent = jenis;
+                jenisPermintaanFilter.appendChild(option);
+            });
+        }
     }
 
     // Setup petugas filter
@@ -1384,6 +1399,16 @@ async function showDetail(rowId) {
     const jenisPermintaanPrimary = originalRow['Pilih Permintaan'] || row.pilihPermintaan || row.G || '-';
     const namaLengkapPrimary = originalRow['Nama Lengkap'] || row.C || '-';
     const noSuratPrimary = originalRow['No Surat'] || originalRow['Nomor Surat'] || '';
+    const penjelasanPermintaanPrimary = (
+        originalRow['Penjelasan Permintaan'] ||
+        originalRow['Alasan Permintaan/Permintaan'] ||
+        originalRow['Alasan Permintaan'] ||
+        originalRow['Isi Penjelasan Singkat Permintaanya'] ||
+        row._originalRow?.['alasan_permintaan'] ||
+        row.alasanPermintaan ||
+        row.J ||
+        ''
+    ).toString().trim();
     const petugasPrimary = currentPetugas || '-';
     
     let detailHtml = `
@@ -1406,6 +1431,10 @@ async function showDetail(rowId) {
         <div class="detail-item">
             <label>No Surat</label>
             <div class="value">${escapeHtml(String(noSuratPrimary || '-'))}</div>
+        </div>
+        <div class="detail-item">
+            <label>Penjelasan Permintaan</label>
+            <div class="value detail-penjelasan-full">${escapeHtml(String(penjelasanPermintaanPrimary || '-'))}</div>
         </div>
         <div class="detail-item">
             <label>Petugas</label>
@@ -2132,12 +2161,11 @@ async function showDetail(rowId) {
         const rowNumber = row.originalRowNumber || row.rowNumber;
         const approvalUrl = `${baseUrl}approval.html?rowId=${rowNumber}`;
         
-        // Build message template
-        let message = `*Permintaan Persetujuan*\n\n`;
-        
-        // Urutan informasi yang benar:
-        // 1. ID Permintaan
-        message += `ID Permintaan: ${rowNumber}\n`;
+        // Build message template (samakan format approver dengan manager)
+        const finalFlag = selectedFlag || '-';
+        let message = `*Persetujuan Permintaan DOF (Flag ${finalFlag} )*\n`;
+        message += `Mohon bantuan Tinjauan Permintaan DOF berikut:\n`;
+        message += `Permintaan No: ${rowNumber || '-'}\n`;
         
         // 2. Unit Kerja
         let unitKerja = '';
@@ -2180,7 +2208,7 @@ async function showDetail(rowId) {
             }
         }
         
-        message += `Unit Kerja: ${unitKerja || 'N/A'}\n`;
+        message += `Unit Kerja : ${unitKerja || '-'}\n`;
         
         let namaLengkap = '';
         if (row._originalRow) {
@@ -2222,46 +2250,32 @@ async function showDetail(rowId) {
             }
         }
         
-        if (namaLengkap) message += `Nama: ${namaLengkap}\n`;
+        message += `Nama: ${namaLengkap || '-'}\n`;
         
-        // 4. Jenis Permintaan
-        if (row.pilihPermintaan) message += `Jenis Permintaan: ${row.pilihPermintaan}\n`;
+        message += `Jenis Permintaan: ${row.pilihPermintaan || '-'}\n`;
         
-        // 5. Flag
-        message += `Flag: ${selectedFlag}\n`;
+        message += `Flag: ${finalFlag}\n\n`;
         
-        // 6. Status
-        message += `Status: ${statusSelect.value}\n`;
+        const penjelasanRaw = (
+            (row._originalRow && (
+                row._originalRow['Alasan Permintaan/Permintaan'] ||
+                row._originalRow['Isi Penjelasan Singkat Permintaanya'] ||
+                row._originalRow['Penjelasan Permintaan'] ||
+                row._originalRow['Alasan Permintaan'] ||
+                row._originalRow['alasan_permintaan']
+            )) ||
+            row.alasanPermintaan ||
+            row.J ||
+            ''
+        ).toString().trim();
+        const penjelasanSingkat = penjelasanRaw.length > 120
+            ? penjelasanRaw.slice(0, 120).trimEnd() + '...'
+            : (penjelasanRaw || '-');
         
-        // 7. Petugas
-        let petugas = '';
-        if (row._originalRow) {
-            const originalRow = row._originalRow;
-            const petugasKeys = [
-                'Petugas',
-                'PETUGAS'
-            ];
-            
-            for (const key of petugasKeys) {
-                const value = findColumnValue(originalRow, key);
-                if (value && value.trim() !== '') {
-                    petugas = value.trim();
-                    break;
-                }
-            }
-        }
+        message += `Penjelasan permintaan:\n`;
+        message += `${penjelasanSingkat}\n\n`;
         
-        // Jika tidak ditemukan, cari dari row.petugas
-        if (!petugas || petugas.trim() === '') {
-            petugas = row.petugas || '';
-        }
-        
-        if (petugas) message += `Petugas: ${petugas}\n`;
-        
-        message += `\n`;
-        
-        // 8. Link Persetujuan (format baru)
-        message += `*Klik link di bawah untuk menyetujui atau menolak permintaan ini:*\n`;
+        message += `Link PermintaanDOF:\n`;
         message += `${approvalUrl}\n`;
         
             // Format nomor telepon untuk WhatsApp (menangani 8, 08, +62)

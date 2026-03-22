@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindApprovers();
     bindPetugas();
     bindUnitKerja();
+    bindJenisPermintaan();
 
     loadUsers();
     loadRegistrations();
@@ -86,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPetugas();
     loadUnitKerja();
     loadUnitKerjaForApprover();
+    loadJenisPermintaan();
 });
 
 function bindLogout() {
@@ -3135,7 +3137,8 @@ const paginationState = {
     petugas: { currentPage: 1, itemsPerPage: 5, totalItems: 0, allData: [] },
     users: { currentPage: 1, itemsPerPage: 5, totalItems: 0, allData: [] },
     registrations: { currentPage: 1, itemsPerPage: 5, totalItems: 0, allData: [] },
-    unitKerja: { currentPage: 1, itemsPerPage: 5, totalItems: 0, allData: [] }
+    unitKerja: { currentPage: 1, itemsPerPage: 5, totalItems: 0, allData: [] },
+    jenisPermintaan: { currentPage: 1, itemsPerPage: 5, totalItems: 0, allData: [] }
 };
 
 function setupPagination(tableName) {
@@ -3207,6 +3210,8 @@ function goToPage(tableName, page) {
         renderRegistrationsTable();
     } else if (tableName === 'unitKerja') {
         renderUnitKerjaTable();
+    } else if (tableName === 'jenisPermintaan') {
+        renderJenisPermintaanTable();
     }
     
     setupPagination(tableName);
@@ -3593,6 +3598,302 @@ async function toggleUnitKerjaStatus(id, activate) {
         // Reload unit kerja dropdowns
         loadUnitKerjaForApprover();
         loadUnitKerjaForUserEdit();
+    } catch (error) {
+        await showAlert('Error: ' + error.message, 'Error', 'error');
+    }
+}
+
+// ========== JENIS PERMINTAAN MANAGEMENT ==========
+let currentJenisPermintaanId = null;
+
+function bindJenisPermintaan() {
+    const addBtn = document.getElementById('addJenisPermintaanBtn');
+    const refreshBtn = document.getElementById('refreshJenisPermintaanBtn');
+    const form = document.getElementById('jenisPermintaanForm');
+    const closeBtn = document.getElementById('closeJenisPermintaanModal');
+    const cancelBtn = document.getElementById('cancelJenisPermintaanBtn');
+
+    if (addBtn) addBtn.addEventListener('click', () => openJenisPermintaanModal());
+    if (refreshBtn) refreshBtn.addEventListener('click', loadJenisPermintaan);
+    if (closeBtn) closeBtn.addEventListener('click', closeJenisPermintaanModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeJenisPermintaanModal);
+    if (form) form.addEventListener('submit', saveJenisPermintaan);
+}
+
+function openJenisPermintaanModal(id = null) {
+    currentJenisPermintaanId = id;
+    const modal = document.getElementById('jenisPermintaanModal');
+    const title = document.getElementById('jenisPermintaanModalTitle');
+    const form = document.getElementById('jenisPermintaanForm');
+    const errorBox = document.getElementById('jenisPermintaanError');
+    const statusRow = document.getElementById('jenisPermintaanStatusRow');
+    const namaInput = document.getElementById('jenisPermintaanNama');
+
+    if (id) {
+        title.textContent = 'Edit Jenis Permintaan';
+        if (statusRow) statusRow.style.display = 'block';
+        loadJenisPermintaanData(id);
+    } else {
+        title.textContent = 'Tambah Jenis Permintaan';
+        if (statusRow) statusRow.style.display = 'none';
+        form?.reset();
+    }
+
+    if (errorBox) {
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
+        errorBox.classList.remove('show');
+    }
+
+    if (namaInput) {
+        setTimeout(() => namaInput.focus(), 100);
+    }
+    modal?.classList.add('show');
+}
+
+function loadJenisPermintaanData(id) {
+    loadJenisPermintaan().then(() => {
+        const list = paginationState.jenisPermintaan.allData;
+        const item = list.find((x) => x.id === id);
+        if (!item) return;
+        const nama = item.nama_jenis || item.nama_opsi || '';
+        document.getElementById('jenisPermintaanNama').value = nama;
+        const status = item.is_active !== false ? '1' : '0';
+        const statusSelect = document.getElementById('jenisPermintaanStatus');
+        if (statusSelect) statusSelect.value = status;
+    });
+}
+
+async function saveJenisPermintaan(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const errorBox = document.getElementById('jenisPermintaanError');
+    const namaInput = document.getElementById('jenisPermintaanNama');
+    const nama = namaInput ? namaInput.value.trim() : '';
+
+    if (errorBox) {
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
+        errorBox.classList.remove('show');
+    }
+    if (namaInput) {
+        namaInput.classList.remove('error');
+        namaInput.style.borderColor = '';
+    }
+
+    if (!nama) {
+        if (errorBox) showError(errorBox, 'Nama jenis permintaan wajib diisi');
+        if (namaInput) {
+            namaInput.focus();
+            namaInput.classList.add('error');
+            namaInput.style.borderColor = '#f44336';
+        }
+        return false;
+    }
+
+    try {
+        const token = getAuthToken();
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const url = new URL(`${fullUrl}?action=${currentJenisPermintaanId ? 'updateJenisPermintaan' : 'createJenisPermintaan'}`);
+        if (currentJenisPermintaanId) {
+            url.searchParams.append('id', currentJenisPermintaanId);
+            const statusSelect = document.getElementById('jenisPermintaanStatus');
+            if (statusSelect) {
+                url.searchParams.append('is_active', statusSelect.value);
+            }
+        }
+        url.searchParams.append('nama', nama);
+
+        const response = await fetch(url.toString(), {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal menyimpan jenis permintaan');
+        }
+
+        showSuccessMessage(result.data?.message || 'Jenis permintaan berhasil disimpan');
+        closeJenisPermintaanModal();
+        loadJenisPermintaan();
+        return true;
+    } catch (error) {
+        if (errorBox) showError(errorBox, error.message);
+        if (namaInput) namaInput.focus();
+        return false;
+    }
+}
+
+function closeJenisPermintaanModal() {
+    const modal = document.getElementById('jenisPermintaanModal');
+    const form = document.getElementById('jenisPermintaanForm');
+    const errorBox = document.getElementById('jenisPermintaanError');
+    if (modal) modal.classList.remove('show');
+    if (form) form.reset();
+    if (errorBox) {
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
+        errorBox.classList.remove('show');
+    }
+    currentJenisPermintaanId = null;
+}
+
+async function loadJenisPermintaan() {
+    try {
+        const token = getAuthToken();
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const response = await fetch(`${fullUrl}?action=getAllJenisPermintaan`, {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Gagal memuat jenis permintaan');
+        }
+        const list = Array.isArray(result.data) ? result.data : [];
+        paginationState.jenisPermintaan.allData = list;
+        paginationState.jenisPermintaan.totalItems = list.length;
+        paginationState.jenisPermintaan.currentPage = 1;
+
+        renderJenisPermintaanTable();
+        setupPagination('jenisPermintaan');
+    } catch (error) {
+        console.error('Error loading jenis permintaan:', error);
+        const tbody = document.getElementById('jenisPermintaanTbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="3" class="loading" style="color: #f44336;">Error: ${error.message}</td></tr>`;
+        }
+        const cardsContainer = document.getElementById('jenisPermintaanCards');
+        if (cardsContainer) {
+            cardsContainer.innerHTML = `<div class="loading" style="padding: 20px; text-align: center; color: #f44336;">Error: ${error.message}</div>`;
+        }
+    }
+}
+
+function renderJenisPermintaanTable() {
+    const tbody = document.getElementById('jenisPermintaanTbody');
+    const list = getPaginatedData('jenisPermintaan');
+    const state = paginationState.jenisPermintaan;
+
+    if (state.totalItems === 0) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="loading">Tidak ada jenis permintaan</td></tr>';
+        const cardsContainer = document.getElementById('jenisPermintaanCards');
+        if (cardsContainer) cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada jenis permintaan</div>';
+        return;
+    }
+
+    if (tbody) {
+        tbody.innerHTML = list.map((item) => {
+            const status = item.is_active !== false ? 'Aktif' : 'Non Aktif';
+            const statusClass = item.is_active !== false ? 'badge-active' : 'badge-inactive';
+            const nama = item.nama_jenis || item.nama_opsi || '';
+            return `
+                <tr data-id="${item.id}">
+                    <td data-field="nama">${escapeHtml(nama)}</td>
+                    <td><span class="badge ${statusClass}">${status}</span></td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn-icon-action" onclick="openJenisPermintaanModal(${item.id})" title="Edit">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <button class="btn-icon-action" onclick="toggleJenisPermintaanStatus(${item.id}, ${item.is_active !== false ? false : true})" title="${item.is_active !== false ? 'Non Aktifkan' : 'Aktifkan'}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    ${item.is_active !== false ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    const cardsContainer = document.getElementById('jenisPermintaanCards');
+    if (cardsContainer) {
+        if (list.length === 0) {
+            cardsContainer.innerHTML = '<div class="loading" style="padding: 20px; text-align: center; color: #666;">Tidak ada jenis permintaan</div>';
+        } else {
+            cardsContainer.innerHTML = list.map((item) => {
+                const status = item.is_active !== false ? 'Aktif' : 'Non Aktif';
+                const statusClass = item.is_active !== false ? 'badge-active' : 'badge-inactive';
+                const nama = item.nama_jenis || item.nama_opsi || '';
+                return `
+                    <div class="admin-card" data-id="${item.id}">
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Nama Jenis Permintaan</div>
+                            <div class="admin-card-value">${escapeHtml(nama)}</div>
+                        </div>
+                        <div class="admin-card-row">
+                            <div class="admin-card-label">Status</div>
+                            <div class="admin-card-value"><span class="badge ${statusClass}">${status}</span></div>
+                        </div>
+                        <div class="admin-card-actions">
+                            <button class="btn-icon-action" onclick="openJenisPermintaanModal(${item.id})" title="Edit">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                Edit
+                            </button>
+                            <button class="btn-icon-action" onclick="toggleJenisPermintaanStatus(${item.id}, ${item.is_active !== false ? false : true})" title="${item.is_active !== false ? 'Non Aktifkan' : 'Aktifkan'}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    ${item.is_active !== false ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' : '<polyline points="20 6 9 17 4 12"></polyline>'}
+                                </svg>
+                                ${item.is_active !== false ? 'Non Aktif' : 'Aktif'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+}
+
+async function toggleJenisPermintaanStatus(id, activate) {
+    activate = activate === true || activate === 'true' || activate === 1;
+    const title = activate ? 'Aktifkan Jenis Permintaan' : 'Nonaktifkan Jenis Permintaan';
+    const description = activate
+        ? 'Jenis permintaan akan tampil di semua dropdown setelah diaktifkan.'
+        : 'Jenis permintaan tidak akan tampil di semua dropdown setelah dinonaktifkan.';
+    const confirmed = await showConfirm(
+        `${activate ? 'Aktifkan' : 'Nonaktifkan'} jenis permintaan ini?`,
+        title,
+        description
+    );
+    if (!confirmed) return;
+
+    const list = paginationState.jenisPermintaan.allData;
+    const item = list.find((x) => x.id === id);
+    const nama = item ? (item.nama_jenis || item.nama_opsi || '') : '';
+    if (!nama) {
+        await showAlert('Error: Jenis permintaan tidak ditemukan', 'Error', 'error');
+        return;
+    }
+
+    try {
+        const token = getAuthToken();
+        const apiUrl = getApiUrl();
+        const path = apiUrl.startsWith('/') ? apiUrl : '/' + apiUrl;
+        const fullUrl = window.location.origin + path;
+        const url = new URL(`${fullUrl}?action=updateJenisPermintaan`);
+        url.searchParams.append('id', id);
+        url.searchParams.append('nama', nama);
+        url.searchParams.append('is_active', activate ? 1 : 0);
+
+        const response = await fetch(url.toString(), {
+            headers: { 'X-Auth-Token': token || '' }
+        });
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || `Gagal ${activate ? 'mengaktifkan' : 'menonaktifkan'} jenis permintaan`);
+        }
+        showSuccessMessage(`Jenis permintaan berhasil ${activate ? 'diaktifkan' : 'dinonaktifkan'}`);
+        loadJenisPermintaan();
     } catch (error) {
         await showAlert('Error: ' + error.message, 'Error', 'error');
     }

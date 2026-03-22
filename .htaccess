@@ -23,6 +23,21 @@ Options -Indexes
 # Set default charset
 AddDefaultCharset UTF-8
 
+# Mail environment (Hostinger SMTP)
+# Ganti nilai di bawah sesuai mailbox Anda
+<IfModule mod_env.c>
+    SetEnv APP_ENV production
+    SetEnv MAIL_HOST smtp.hostinger.com
+    SetEnv MAIL_PORT 465
+    SetEnv MAIL_ENCRYPTION ssl
+    SetEnv MAIL_USERNAME andaladkorpkt@infoadkor.com
+    SetEnv MAIL_PASSWORD Adkor2025!
+    SetEnv MAIL_FROM_EMAIL andaladkorpkt@infoadkor.com
+    SetEnv MAIL_FROM_NAME "Permintaan DOF"
+    SetEnv MAIL_REPLY_TO andaladkorpkt@infoadkor.com
+    SetEnv MAIL_SMTP_DEBUG 0
+</IfModule>
+
 # PHP settings for Hostinger (PHP 8.x)
 <IfModule mod_php.c>
     php_value default_charset "UTF-8"

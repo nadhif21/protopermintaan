@@ -192,20 +192,34 @@ try {
             handleDeleteUnitKerja($conn);
             break;
             
+        case 'getJenisPermintaan':
+            handleGetJenisPermintaan($conn);
+            break;
+        case 'getAllJenisPermintaan':
+            handleGetAllJenisPermintaan($conn);
+            break;
+        case 'createJenisPermintaan':
+            handleCreateJenisPermintaan($conn);
+            break;
+        case 'updateJenisPermintaan':
+            handleUpdateJenisPermintaan($conn);
+            break;
+        case 'deleteJenisPermintaan':
+            handleDeleteJenisPermintaan($conn);
+            break;
+
+        // Backward compatibility
         case 'getPilihPermintaanOptions':
-            handleGetPilihPermintaanOptions($conn);
+            handleGetJenisPermintaan($conn);
             break;
-            
         case 'addPilihPermintaanOption':
-            handleAddPilihPermintaanOption($conn);
+            handleCreateJenisPermintaan($conn);
             break;
-            
         case 'updatePilihPermintaanOption':
-            handleUpdatePilihPermintaanOption($conn);
+            handleUpdateJenisPermintaan($conn);
             break;
-            
         case 'deletePilihPermintaanOption':
-            handleDeletePilihPermintaanOption($conn);
+            handleDeleteJenisPermintaan($conn);
             break;
             
         case 'getPetugas':
@@ -623,6 +637,19 @@ function handleMe($conn) {
     $nomorTelepon = isset($user['nomor_telepon']) && $user['nomor_telepon'] !== null ? trim($user['nomor_telepon']) : '';
     $unitKerja = isset($user['unit_kerja']) && $user['unit_kerja'] !== null ? trim($user['unit_kerja']) : '';
     
+    $approverType = isset($user['approver_type']) && $user['approver_type'] !== null ? trim($user['approver_type']) : '';
+    $effectiveRole = strtolower(trim($user['role'] ?? ''));
+    if ($effectiveRole === 'approver' && strtolower($approverType) === 'manager') {
+        $effectiveRole = 'manager';
+    }
+
+    $currentPin = '';
+    if ($effectiveRole === 'approver' || $effectiveRole === 'manager') {
+        $pinType = ($effectiveRole === 'manager') ? 'manager' : 'approver';
+        $pinValue = getApprovalPinByType($conn, $pinType);
+        $currentPin = ($pinValue !== null) ? trim((string)$pinValue) : '';
+    }
+
     // Return response dengan format yang benar - user langsung di root, bukan di data
     // Karena sendJSONResponse akan wrap dalam 'data', kita perlu struktur khusus
     if (ob_get_level() > 0) {
@@ -641,11 +668,12 @@ function handleMe($conn) {
             'username' => $user['username'],
             'name' => $user['name'],
             'role' => $user['role'],
-            'approverType' => isset($user['approver_type']) && $user['approver_type'] !== null ? trim($user['approver_type']) : '',
+            'approverType' => $approverType,
             'npk' => $npk,
             'email' => $email,
             'nomorTelepon' => $nomorTelepon,
-            'unitKerja' => $unitKerja
+            'unitKerja' => $unitKerja,
+            'currentPin' => $currentPin
         ],
         'expiresAt' => $session['expires_at']
     ];
@@ -812,9 +840,9 @@ function getMailConfig() {
         return loadMailConfig();
     }
     return [
-        'host' => getenv('MAIL_HOST') ?: 'smtp.gmail.com',
-        'port' => intval(getenv('MAIL_PORT') ?: 587),
-        'encryption' => getenv('MAIL_ENCRYPTION') ?: 'tls',
+        'host' => getenv('MAIL_HOST') ?: 'smtp.hostinger.com',
+        'port' => intval(getenv('MAIL_PORT') ?: 465),
+        'encryption' => getenv('MAIL_ENCRYPTION') ?: 'ssl',
         'smtp_auth' => true,
         'username' => getenv('MAIL_USERNAME') ?: '',
         'password' => getenv('MAIL_PASSWORD') ?: '',
@@ -858,6 +886,11 @@ function ensurePHPMailerLoaded() {
 
 function sendSystemEmail($toEmail, $subject, $textBody, $htmlBody = null) {
     try {
+        $toEmail = strtolower(trim((string)$toEmail));
+        if ($toEmail === '' || !filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
+            return ['success' => false, 'error' => 'Email tujuan tidak valid'];
+        }
+
         if (!ensurePHPMailerLoaded()) {
             return ['success' => false, 'error' => 'PHPMailer tidak ditemukan'];
         }
@@ -3686,107 +3719,236 @@ function handleDeleteUnitKerja($conn) {
     sendJSONResponse(true, ['message' => 'Unit kerja berhasil dihapus']);
 }
 
-// Handler untuk getPilihPermintaanOptions
-function handleGetPilihPermintaanOptions($conn) {
-    $sql = "SELECT `id`, `nama_opsi`, `bagian_target`, `urutan` FROM `pilih_permintaan_options` WHERE `is_active` = 1 ORDER BY `urutan` ASC, `id` ASC";
+function ensureJenisPermintaanTable($conn) {
+    $checkTable = $conn->query("SHOW TABLES LIKE 'pilih_permintaan_options'");
+    if (!$checkTable || $checkTable->num_rows === 0) {
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `pilih_permintaan_options` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `nama_opsi` VARCHAR(255) NOT NULL,
+            `bagian_target` VARCHAR(50) NOT NULL DEFAULT 'bagian_2',
+            `urutan` INT NOT NULL DEFAULT 0,
+            `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+            INDEX `idx_nama_opsi` (`nama_opsi`),
+            INDEX `idx_is_active` (`is_active`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        if (!$conn->query($createTableSql)) {
+            throw new Exception("Error creating pilih_permintaan_options table: " . $conn->error);
+        }
+    }
+
+    $checkIsActive = $conn->query("SHOW COLUMNS FROM `pilih_permintaan_options` LIKE 'is_active'");
+    if (!$checkIsActive || $checkIsActive->num_rows === 0) {
+        $conn->query("ALTER TABLE `pilih_permintaan_options` ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1");
+    }
+
+    $checkBagianTarget = $conn->query("SHOW COLUMNS FROM `pilih_permintaan_options` LIKE 'bagian_target'");
+    if (!$checkBagianTarget || $checkBagianTarget->num_rows === 0) {
+        $conn->query("ALTER TABLE `pilih_permintaan_options` ADD COLUMN `bagian_target` VARCHAR(50) NOT NULL DEFAULT 'bagian_2'");
+    }
+
+    $checkUrutan = $conn->query("SHOW COLUMNS FROM `pilih_permintaan_options` LIKE 'urutan'");
+    if (!$checkUrutan || $checkUrutan->num_rows === 0) {
+        $conn->query("ALTER TABLE `pilih_permintaan_options` ADD COLUMN `urutan` INT NOT NULL DEFAULT 0");
+    }
+}
+
+function handleGetJenisPermintaan($conn) {
+    ensureJenisPermintaanTable($conn);
+
+    $sql = "SELECT `id`, `nama_opsi`, `bagian_target`, `urutan`
+            FROM `pilih_permintaan_options`
+            WHERE `is_active` = 1
+            ORDER BY `urutan` ASC, `id` ASC";
     $result = $conn->query($sql);
-    
     if (!$result) {
         throw new Exception("Query error: " . $conn->error);
     }
-    
+
     $data = [];
     while ($row = $result->fetch_assoc()) {
         $data[] = [
             'id' => intval($row['id']),
+            'nama_jenis' => $row['nama_opsi'],
             'nama_opsi' => $row['nama_opsi'],
             'bagian_target' => $row['bagian_target'],
-            'urutan' => intval($row['urutan'])
+            'urutan' => intval($row['urutan']),
+            'is_active' => true
         ];
     }
-    
+
     sendJSONResponse(true, $data);
 }
 
-// Handler untuk addPilihPermintaanOption
-function handleAddPilihPermintaanOption($conn) {
-    $namaOpsi = trim(getRequestParam('nama_opsi', ''));
-    $bagianTarget = getRequestParam('bagian_target', 'bagian_2');
-    
-    if ($namaOpsi === '') {
-        throw new Exception("Nama opsi wajib diisi.");
+function handleGetAllJenisPermintaan($conn) {
+    $session = requireSuperAdmin($conn);
+    ensureJenisPermintaanTable($conn);
+
+    $sql = "SELECT `id`, `nama_opsi`, `bagian_target`, `urutan`, `is_active`
+            FROM `pilih_permintaan_options`
+            ORDER BY `urutan` ASC, `id` ASC";
+    $result = $conn->query($sql);
+    if (!$result) {
+        throw new Exception("Query error: " . $conn->error);
     }
-    
-    // Get max urutan
-    $maxResult = $conn->query("SELECT MAX(`urutan`) as max_urutan FROM `pilih_permintaan_options`");
-    $maxRow = $maxResult->fetch_assoc();
-    $urutan = ($maxRow['max_urutan'] ?? 0) + 1;
-    
-    $sql = "INSERT INTO `pilih_permintaan_options` (`nama_opsi`, `bagian_target`, `urutan`, `is_active`) VALUES (?, ?, ?, 1)";
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new Exception("Prepare error: " . $conn->error);
+
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = [
+            'id' => intval($row['id']),
+            'nama_jenis' => $row['nama_opsi'],
+            'nama_opsi' => $row['nama_opsi'],
+            'bagian_target' => $row['bagian_target'],
+            'urutan' => intval($row['urutan']),
+            'is_active' => intval($row['is_active']) === 1
+        ];
     }
-    $stmt->bind_param('ssi', $namaOpsi, $bagianTarget, $urutan);
-    
-    if (!$stmt->execute()) {
-        throw new Exception("Execute error: " . $stmt->error);
-    }
-    $stmt->close();
-    
-    sendJSONResponse(true, ['message' => 'Opsi berhasil ditambahkan']);
+
+    sendJSONResponse(true, $data);
 }
 
-// Handler untuk updatePilihPermintaanOption
-function handleUpdatePilihPermintaanOption($conn) {
-    $id = intval(getRequestParam('id', 0));
-    $bagianTarget = getRequestParam('bagian_target', '');
-    
-    if ($id <= 0) {
-        throw new Exception("ID tidak valid.");
+function handleCreateJenisPermintaan($conn) {
+    $session = requireSuperAdmin($conn);
+    ensureJenisPermintaanTable($conn);
+
+    $nama = trim(getRequestParam('nama', getRequestParam('nama_opsi', '')));
+    $bagianTarget = trim(getRequestParam('bagian_target', 'bagian_2'));
+    if ($nama === '') {
+        throw new Exception("Nama jenis permintaan wajib diisi.");
     }
-    
     if ($bagianTarget === '') {
-        throw new Exception("Bagian target wajib diisi.");
+        $bagianTarget = 'bagian_2';
     }
-    
-    $sql = "UPDATE `pilih_permintaan_options` SET `bagian_target` = ? WHERE `id` = ?";
+
+    $check = $conn->prepare("SELECT `id` FROM `pilih_permintaan_options` WHERE LOWER(TRIM(`nama_opsi`)) = LOWER(TRIM(?)) AND `is_active` = 1 LIMIT 1");
+    if ($check) {
+        $check->bind_param('s', $nama);
+        $check->execute();
+        $res = $check->get_result();
+        if ($res && $res->num_rows > 0) {
+            $check->close();
+            throw new Exception("Jenis permintaan dengan nama tersebut sudah ada.");
+        }
+        $check->close();
+    }
+
+    $maxResult = $conn->query("SELECT MAX(`urutan`) as max_urutan FROM `pilih_permintaan_options`");
+    $maxRow = $maxResult ? $maxResult->fetch_assoc() : null;
+    $urutan = intval($maxRow['max_urutan'] ?? 0) + 1;
+
+    $stmt = $conn->prepare("INSERT INTO `pilih_permintaan_options` (`nama_opsi`, `bagian_target`, `urutan`, `is_active`) VALUES (?, ?, ?, 1)");
+    if (!$stmt) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $stmt->bind_param('ssi', $nama, $bagianTarget, $urutan);
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal membuat jenis permintaan: " . $err);
+    }
+    $newId = $conn->insert_id;
+    $stmt->close();
+
+    auditLog($conn, $session['user_id'], 'create_jenis_permintaan', 'pilih_permintaan_options', ['createdJenisPermintaanId' => $newId, 'nama' => $nama]);
+    sendJSONResponse(true, ['message' => 'Jenis permintaan berhasil dibuat', 'id' => $newId]);
+}
+
+function handleUpdateJenisPermintaan($conn) {
+    $session = requireSuperAdmin($conn);
+    ensureJenisPermintaanTable($conn);
+
+    $id = intval(getRequestParam('id', 0));
+    $nama = trim(getRequestParam('nama', getRequestParam('nama_opsi', '')));
+    $isActive = getRequestParam('is_active', null);
+    $bagianTarget = trim(getRequestParam('bagian_target', ''));
+
+    if ($id <= 0) {
+        throw new Exception("ID jenis permintaan tidak valid.");
+    }
+    if ($nama === '') {
+        throw new Exception("Nama jenis permintaan wajib diisi.");
+    }
+
+    $checkExists = $conn->prepare("SELECT `id` FROM `pilih_permintaan_options` WHERE `id` = ? LIMIT 1");
+    if (!$checkExists) {
+        throw new Exception("Prepare error: " . $conn->error);
+    }
+    $checkExists->bind_param('i', $id);
+    $checkExists->execute();
+    $existsRes = $checkExists->get_result();
+    if (!$existsRes || $existsRes->num_rows === 0) {
+        $checkExists->close();
+        throw new Exception("Jenis permintaan tidak ditemukan.");
+    }
+    $checkExists->close();
+
+    $checkDuplicate = $conn->prepare("SELECT `id` FROM `pilih_permintaan_options` WHERE LOWER(TRIM(`nama_opsi`)) = LOWER(TRIM(?)) AND `id` != ? AND `is_active` = 1 LIMIT 1");
+    if ($checkDuplicate) {
+        $checkDuplicate->bind_param('si', $nama, $id);
+        $checkDuplicate->execute();
+        $dupRes = $checkDuplicate->get_result();
+        if ($dupRes && $dupRes->num_rows > 0) {
+            $checkDuplicate->close();
+            throw new Exception("Jenis permintaan dengan nama tersebut sudah ada.");
+        }
+        $checkDuplicate->close();
+    }
+
+    $updates = ["`nama_opsi` = ?"];
+    $types = 's';
+    $params = [$nama];
+    if ($bagianTarget !== '') {
+        $updates[] = "`bagian_target` = ?";
+        $types .= 's';
+        $params[] = $bagianTarget;
+    }
+    if ($isActive !== null) {
+        $updates[] = "`is_active` = ?";
+        $types .= 'i';
+        $params[] = intval($isActive);
+    }
+    $types .= 'i';
+    $params[] = $id;
+
+    $sql = "UPDATE `pilih_permintaan_options` SET " . implode(', ', $updates) . " WHERE `id` = ?";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         throw new Exception("Prepare error: " . $conn->error);
     }
-    $stmt->bind_param('si', $bagianTarget, $id);
-    
+    $stmt->bind_param($types, ...$params);
     if (!$stmt->execute()) {
-        throw new Exception("Execute error: " . $stmt->error);
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal update jenis permintaan: " . $err);
     }
     $stmt->close();
-    
-    sendJSONResponse(true, ['message' => 'Opsi berhasil diupdate']);
+
+    auditLog($conn, $session['user_id'], 'update_jenis_permintaan', 'pilih_permintaan_options', ['updatedJenisPermintaanId' => $id]);
+    sendJSONResponse(true, ['message' => 'Jenis permintaan berhasil diupdate']);
 }
 
-// Handler untuk deletePilihPermintaanOption
-function handleDeletePilihPermintaanOption($conn) {
+function handleDeleteJenisPermintaan($conn) {
+    $session = requireSuperAdmin($conn);
+    ensureJenisPermintaanTable($conn);
+
     $id = intval(getRequestParam('id', 0));
-    
     if ($id <= 0) {
-        throw new Exception("ID tidak valid.");
+        throw new Exception("ID jenis permintaan tidak valid.");
     }
-    
-    // Soft delete (set is_active = 0)
-    $sql = "UPDATE `pilih_permintaan_options` SET `is_active` = 0 WHERE `id` = ?";
-    $stmt = $conn->prepare($sql);
+
+    $stmt = $conn->prepare("UPDATE `pilih_permintaan_options` SET `is_active` = 0 WHERE `id` = ?");
     if (!$stmt) {
         throw new Exception("Prepare error: " . $conn->error);
     }
     $stmt->bind_param('i', $id);
-    
     if (!$stmt->execute()) {
-        throw new Exception("Execute error: " . $stmt->error);
+        $err = $stmt->error;
+        $stmt->close();
+        throw new Exception("Gagal menonaktifkan jenis permintaan: " . $err);
     }
     $stmt->close();
-    
-    sendJSONResponse(true, ['message' => 'Opsi berhasil dihapus']);
+
+    auditLog($conn, $session['user_id'], 'delete_jenis_permintaan', 'pilih_permintaan_options', ['deletedJenisPermintaanId' => $id]);
+    sendJSONResponse(true, ['message' => 'Jenis permintaan berhasil dinonaktifkan']);
 }
 
 // Handler untuk getPetugas

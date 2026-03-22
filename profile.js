@@ -26,6 +26,7 @@ function getApiUrl() {
 
 let currentUser = null;
 let currentPinType = null;
+let isProfilePinVisible = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!checkAuth()) {
@@ -69,6 +70,11 @@ function setupEventListeners() {
     const changePinBtn = document.getElementById('changePinBtn');
     if (changePinBtn) {
         changePinBtn.addEventListener('click', openPinModal);
+    }
+
+    const toggleProfilePinBtn = document.getElementById('toggleProfilePinBtn');
+    if (toggleProfilePinBtn) {
+        toggleProfilePinBtn.addEventListener('click', toggleProfileCurrentPinVisibility);
     }
 
     // Close modals
@@ -143,6 +149,8 @@ function setupEventListeners() {
         pinForm.addEventListener('submit', handlePinChange);
     }
 
+    setupPinInputRestrictions();
+
     const toggleButtons = document.querySelectorAll('.toggle-password');
     toggleButtons.forEach(btn => {
         btn.addEventListener('click', function() {
@@ -156,6 +164,22 @@ function setupEventListeners() {
                     input.type = 'password';
                     this.querySelector('.eye-icon').textContent = '👁️';
                 }
+            }
+        });
+    });
+}
+
+function setupPinInputRestrictions() {
+    const pinInputs = ['newPin', 'confirmPin'];
+
+    pinInputs.forEach((inputId) => {
+        const inputEl = document.getElementById(inputId);
+        if (!inputEl) return;
+
+        inputEl.addEventListener('input', () => {
+            const numbersOnly = inputEl.value.replace(/\D/g, '').slice(0, 4);
+            if (inputEl.value !== numbersOnly) {
+                inputEl.value = numbersOnly;
             }
         });
     });
@@ -180,7 +204,7 @@ async function loadUserProfile() {
         });
 
         if (!response.ok) {
-            throw new Error('Gagal memuat data profile');
+            throw new Error('Gagal memuat data profil');
         }
 
         const result = await response.json();
@@ -189,11 +213,11 @@ async function loadUserProfile() {
             currentUser = result.user;
             displayProfile(result.user);
         } else {
-            throw new Error(result.error || 'Gagal memuat data profile');
+            throw new Error(result.error || 'Gagal memuat data profil');
         }
     } catch (error) {
         console.error('Error loading profile:', error);
-        alert('Gagal memuat data profile: ' + error.message);
+        alert('Gagal memuat data profil: ' + error.message);
     }
 }
 
@@ -242,15 +266,56 @@ function displayProfile(user) {
 
     const changePinBtn = document.getElementById('changePinBtn');
     const pinRole = String(effectiveRole).toLowerCase();
+    const profilePinInfoItem = document.getElementById('profilePinInfoItem');
+    const currentPin = String(user.currentPin || '').trim();
     if (changePinBtn) {
         if (pinRole === 'approver' || pinRole === 'manager') {
             changePinBtn.style.display = 'block';
             currentPinType = pinRole;
+            if (profilePinInfoItem) {
+                profilePinInfoItem.style.display = 'flex';
+            }
+            isProfilePinVisible = false;
+            updateProfileCurrentPinText(currentPin);
         } else {
             changePinBtn.style.display = 'none';
             currentPinType = null;
+            if (profilePinInfoItem) {
+                profilePinInfoItem.style.display = 'none';
         }
     }
+    }
+}
+
+function updateProfileCurrentPinText(pinValue) {
+    const pinTextEl = document.getElementById('profileCurrentPinText');
+    const toggleBtn = document.getElementById('toggleProfilePinBtn');
+    const safePin = String(pinValue || '').replace(/\D/g, '').slice(0, 4);
+
+    if (!pinTextEl || !toggleBtn) return;
+
+    if (!safePin) {
+        pinTextEl.textContent = '-';
+        toggleBtn.style.display = 'none';
+        return;
+    }
+
+    toggleBtn.style.display = 'inline-block';
+    if (isProfilePinVisible) {
+        pinTextEl.textContent = safePin;
+        toggleBtn.textContent = 'Sembunyikan';
+    } else {
+        pinTextEl.textContent = '••••';
+        toggleBtn.textContent = 'Lihat';
+    }
+}
+
+function toggleProfileCurrentPinVisibility() {
+    if (!currentUser) return;
+    const currentPin = String(currentUser.currentPin || '').trim();
+    if (!currentPin) return;
+    isProfilePinVisible = !isProfilePinVisible;
+    updateProfileCurrentPinText(currentPin);
 }
 
 function openPinModal() {
@@ -267,6 +332,7 @@ function openPinModal() {
     }
     form.reset();
     hidePinMessages();
+    resetPinVisibility();
     modal.classList.add('show');
     document.body.style.overflow = 'hidden';
 }
@@ -279,7 +345,23 @@ function closePinModal() {
         document.body.style.overflow = 'auto';
     }
     if (form) form.reset();
+    resetPinVisibility();
     hidePinMessages();
+}
+
+function resetPinVisibility() {
+    const pinInputIds = ['newPin', 'confirmPin'];
+    pinInputIds.forEach((inputId) => {
+        const inputEl = document.getElementById(inputId);
+        if (inputEl) {
+            inputEl.type = 'password';
+        }
+    });
+
+    const pinToggleButtons = document.querySelectorAll('#pinModal .toggle-password .eye-icon');
+    pinToggleButtons.forEach((iconEl) => {
+        iconEl.textContent = '👁️';
+    });
 }
 
 function hidePinMessages() {
@@ -578,13 +660,13 @@ async function handleProfileUpdate(e) {
         });
         
         if (!response.ok) {
-            throw new Error('Gagal mengupdate profile');
+            throw new Error('Gagal mengubah profil');
         }
         
         const result = await response.json();
         
         if (result.success) {
-            showEditProfileSuccess('Profile berhasil diupdate!');
+            showEditProfileSuccess('Profil berhasil diperbarui!');
             
             // Reload profile data
             await loadUserProfile();
@@ -593,11 +675,11 @@ async function handleProfileUpdate(e) {
                 closeEditProfileModal();
             }, 1500);
         } else {
-            throw new Error(result.error || 'Gagal mengupdate profile');
+            throw new Error(result.error || 'Gagal mengubah profil');
         }
     } catch (error) {
         console.error('Error updating profile:', error);
-        showEditProfileError(error.message || 'Terjadi kesalahan saat mengupdate profile');
+        showEditProfileError(error.message || 'Terjadi kesalahan saat mengubah profil');
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
